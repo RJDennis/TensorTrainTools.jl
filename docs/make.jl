@@ -8,7 +8,7 @@ makedocs(;
     authors="Richard Dennis <richard.dennis@glasgow.ac.uk> and contributors",
     sitename="TensorTrainApprox.jl",
     format=Documenter.HTML(;
-        canonical="https://RJDENNIS.github.io/TensorTrainApprox.jl",
+        canonical="https://RJDennis.github.io/TensorTrainApprox.jl",
         edit_link="master",
         assets=String[],
     ),
@@ -18,6 +18,6 @@ makedocs(;
 )
 
 deploydocs(;
-    repo="github.com/RJDENNIS/TensorTrainApprox.jl",
+    repo="github.com/RJDennis/TensorTrainApprox.jl",
     devbranch="master",
 )
