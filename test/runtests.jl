@@ -36,7 +36,7 @@ using Test
       
     hilbert(x) = 1/sum(x)
       
-    nodes = chebyshev_nodes(21,[1.0,0.0])
+    nodes = ChebyshevApprox.chebyshev_nodes(21,[1.0,0.0])
       
     node_vec = (nodes,nodes,nodes,nodes)
       
@@ -59,7 +59,7 @@ using Test
       
     normal_density(x) = (1/sqrt(2π))^length(x)*exp((-1/(2))*sum(x.^2))
       
-    x_nodes = chebyshev_nodes(1001,[6.0,-6.0])
+    x_nodes = ChebyshevApprox.chebyshev_nodes(1001,[6.0,-6.0])
       
     normTT = DMRGcross(normal_density,(x_nodes,x_nodes,x_nodes),1.05,1e-13)
       
