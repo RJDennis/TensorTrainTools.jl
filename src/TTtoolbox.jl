@@ -779,7 +779,7 @@ function decompress_threaded(train::TensorTrain) # Recreates the full tensor fro
   n = Tuple([size(train.cores[i])[2] for i = 1:d])
 
   a = Array{Float64,d}(undef,n)
-  @sync Threads.@threaded for i in CartesianIndices(a)
+  @sync Threads.@threads for i in CartesianIndices(a)
     temp = train.cores[1][:,i[1],:]
     for j = 2:d
       temp *= train.cores[j][:,i[j],:]
