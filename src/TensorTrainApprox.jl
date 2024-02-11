@@ -3,11 +3,11 @@ module TensorTrainApprox
 using ChebyshevApprox
 using GaussQuadrature
 using Maxvol
+using LinearAlgebra
 
 include("TTtoolbox.jl")
 
-export chebyshev_nodes,
-       chebyshev_extrema
+export chebyshev_nodes
 
 export TensorTrain,
        ChebyshevTensorTrain,
