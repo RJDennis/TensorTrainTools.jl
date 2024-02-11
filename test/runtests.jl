@@ -1,5 +1,4 @@
 
-#=
 using TensorTrainApprox
 using Test
 
@@ -69,4 +68,3 @@ using Test
     test_six = abs(integral-1.0) < 1e-8
 
 end
-=#
