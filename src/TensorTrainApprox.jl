@@ -6,6 +6,9 @@ using Maxvol
 
 include("TTtoolbox.jl")
 
+export chebyshev_nodes,
+       chebyshev_extrema
+
 export TensorTrain,
        ChebyshevTensorTrain,
        FunctionalTensorTrain
