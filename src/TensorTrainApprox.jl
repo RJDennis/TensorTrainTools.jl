@@ -1,7 +1,7 @@
 module TensorTrainApprox
 
 using ChebyshevApprox
-using GuassQuadrature
+using GaussQuadrature
 using Maxvol
 
 include("TTtoolbox.jl")
