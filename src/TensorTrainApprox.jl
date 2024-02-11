@@ -24,6 +24,6 @@ export constantTT,
        createFTT,
        TTintegrate_GC,
        TTintegrate_GL,
-       TTintegrate_GH,
+       TTintegrate_GH
 
 end
