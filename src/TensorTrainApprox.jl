@@ -25,6 +25,7 @@ export constantTT,
        TTgradient,
        createCTT,
        createFTT,
+       TTinterp,
        TTintegrate_GC,
        TTintegrate_GL,
        TTintegrate_GH
