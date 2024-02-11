@@ -12,3 +12,6 @@ Documentation for [TensorTrainApprox](https://github.com/RJDENNIS/TensorTrainApp
 ```@autodocs
 Modules = [TensorTrainApprox]
 ```
+```@docs
+frobenius(x)
+```

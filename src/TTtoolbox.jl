@@ -103,7 +103,9 @@ function constantTT(value::T,r::Array{S,1},n::NTuple{d,S}) where {T<:AbstractFlo
 end
 
 """
-Compute the Frobenius norm of a d-dimensional array.
+frobenius(x)
+
+Compute the Frobenius norm of a d-dimensional array, x.
 """ 
 function frobenius(M::Array{T,d}) where {T <: Number, d}
 
