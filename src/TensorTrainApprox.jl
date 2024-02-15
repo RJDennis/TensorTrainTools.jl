@@ -4,10 +4,12 @@ using ChebyshevApprox
 using GaussQuadrature
 using Maxvol
 using LinearAlgebra
+using PiecewiseLinearApprox
 
 include("TTtoolbox.jl")
 
-export chebyshev_nodes
+export chebyshev_nodes,
+       piecewise_linear_nodes
 
 export TensorTrain,
        ChebyshevTensorTrain,

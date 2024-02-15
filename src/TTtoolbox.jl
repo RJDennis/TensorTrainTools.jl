@@ -24,10 +24,16 @@ struct ChebyshevTensorTrain{T} # T is a vector of Chebyshev weights (Float64)
 
 end
 
+struct PiecewiseTensorTrain{T}
+
+  cores::Array{Array{T,3},1}
+  ranks::Array{Int,1}
+  sweeps::Int
+
+end
+
 """
-
 Create a random tensor train with spacial dimensions 'n' and tensor ranks 'r'.
-
 """
 function randomTT(r::S,n::NTuple{d,S}) where {S<:Integer,d}
 
@@ -44,9 +50,7 @@ function randomTT(r::S,n::NTuple{d,S}) where {S<:Integer,d}
 end
 
 """
-
 Create a random tensor train with spacial dimensions 'n' and tensor ranks 'r'.
-
 """
 function randomTT(r::Array{S,1},n::NTuple{d,S}) where {S<:Integer,d}
 
@@ -60,9 +64,7 @@ function randomTT(r::Array{S,1},n::NTuple{d,S}) where {S<:Integer,d}
 end
 
 """
-
 Create a tensor train of a constant 'value' with spacial dimensions 'n' and tensor ranks 'r'.
-
 """
 function constantTT(value::T,r::S,n::NTuple{d,S}) where {T<:AbstractFloat,S<:Integer,d}
 
@@ -83,9 +85,7 @@ function constantTT(value::T,r::S,n::NTuple{d,S}) where {T<:AbstractFloat,S<:Int
 end
 
 """
-
 Create a tensor train of a constant 'value' with spacial dimensions 'n' and tensor ranks 'r'.
-
 """
 function constantTT(value::T,r::Array{S,1},n::NTuple{d,S}) where {T<:AbstractFloat,S<:Integer,d}
 
@@ -103,9 +103,7 @@ function constantTT(value::T,r::Array{S,1},n::NTuple{d,S}) where {T<:AbstractFlo
 end
 
 """
-frobenius(x)
-
-Compute the Frobenius norm of a d-dimensional array, x.
+Compute the Frobenius norm of a d-dimensional array.
 """ 
 function frobenius(M::Array{T,d}) where {T <: Number, d}
 
@@ -876,6 +874,56 @@ function TTevaluate(train::FunctionalTensorTrain,point::Array{Array{T,1}}) where
 end
 
 """
+Create a Chebyshev tensor train from a tensor train.
+"""
+function createCTT(g::TensorTrain,nodes::NTuple{d,Array{T,1}},domain::Array{T,2}) where {T <: AbstractFloat, d} # Creates a Chebyshev tensor train from a tensor train
+
+  f = Array{Array{Array{T,1},2},1}(undef,d)
+
+  for i = 1:d
+
+    order = size(g.cores[i],2)-1
+    c_grid = Grid((ChebRoots(nodes[i],domain[:,i]),))
+    c_plan = CApproxPlan(c_grid,(order,),domain[:,i])
+
+    f[i] = [chebyshev_weights(g.cores[i][j,:,k],c_plan) for j = 1:g.ranks[i], k = 1:g.ranks[i+1]]
+
+  end
+
+  return ChebyshevTensorTrain(f,g.ranks,g.sweeps)
+
+end
+
+"""
+Create a Chebyshev tensor train from a tensor train.
+"""
+function createCTT(g::TensorTrain,order::NTuple{d,S},nodes::NTuple{d,Array{T,1}},domain::Array{T,2}) where {T <: AbstractFloat, S <: Integer, d} # Creates a Chebyshev tensor train from a tensor train
+
+  f = Array{Array{Array{T,1},2},1}(undef,d)
+
+  for i = 1:d
+
+    c_grid = Grid((ChebRoots(nodes[i],domain[:,i]),))
+    c_plan = CApproxPlan(c_grid,(order[i],),domain[:,i])
+
+    f[i] = [chebyshev_weights(g.cores[i][j,:,k],c_plan) for j = 1:g.ranks[i], k = 1:g.ranks[i+1]]
+
+  end
+
+  return ChebyshevTensorTrain(f,g.ranks,g.sweeps)
+
+end
+
+"""
+Create a piecewise linear tensor train from a tensor train.
+"""
+function createPTT(g::TensorTrain) # Creates a piecewise linear tensor train from a tensor train
+
+  return PiecewiseTensorTrain(g.cores,g.ranks,g.sweeps)
+
+end
+
+"""
 Create a functional tensor train from a tensor train.
 """
 function createFTT(g::TensorTrain,nodes::NTuple{d,Array{T,1}},domain::Array{T,2}) where {T <: AbstractFloat, d} # Creates a functional tensor train from a tensor train
@@ -955,49 +1003,25 @@ function createFTT(g::ChebyshevTensorTrain,order::NTuple{d,S},domain::Array{T,2}
 end
 
 """
-Create a Chebyshev tensor train from a tensor train.
+Create a functional tensor train from a piecewise tensor train.
 """
-function createCTT(g::TensorTrain,nodes::NTuple{d,Array{T,1}},domain::Array{T,2}) where {T <: AbstractFloat, d} # Creates a Chebyshev tensor train from a tensor train
+function createFTT(g::PiecewiseTensorTrain,nodes::NTuple{d,Array{T,1}},domain::Array{T,2}) where {T <: AbstractFloat, d} # Creates a functional tensor train from a tensor train
 
-  f = Array{Array{Array{T,1},2},1}(undef,d)
+  f = Array{Array{Function,2},1}(undef,d)
 
   for i = 1:d
 
-    order = size(g.cores[i],2)-1
-    c_grid = Grid((ChebRoots(nodes[i],domain[:,i]),))
-    c_plan = CApproxPlan(c_grid,(order,),domain[:,i])
-
-    f[i] = [chebyshev_weights(g.cores[i][j,:,k],c_plan) for j = 1:g.ranks[i], k = 1:g.ranks[i+1]]
+    f[i] = [piecewise_linear_evaluate(g.cores[i][j,:,k],(nodes[i],)) for j = 1:g.ranks[i], k = 1:g.ranks[i+1]]
 
   end
 
-  return ChebyshevTensorTrain(f,g.ranks,g.sweeps)
-
-end
-
-"""
-Create a Chebyshev tensor train from a tensor train.
-"""
-function createCTT(g::TensorTrain,order::NTuple{d,S},nodes::NTuple{d,Array{T,1}},domain::Array{T,2}) where {T <: AbstractFloat, S <: Integer, d} # Creates a Chebyshev tensor train from a tensor train
-
-  f = Array{Array{Array{T,1},2},1}(undef,d)
-
-  for i = 1:d
-
-    c_grid = Grid((ChebRoots(nodes[i],domain[:,i]),))
-    c_plan = CApproxPlan(c_grid,(order[i],),domain[:,i])
-
-    f[i] = [chebyshev_weights(g.cores[i][j,:,k],c_plan) for j = 1:g.ranks[i], k = 1:g.ranks[i+1]]
-
-  end
-
-  return ChebyshevTensorTrain(f,g.ranks,g.sweeps)
+  return FunctionalTensorTrain(f,g.ranks,g.sweeps)
 
 end
 
 """
 Create an interpolating function from a functional tensor train.
-  """
+"""
 function TTinterp(train::FunctionalTensorTrain) # Creates an interpolating function from a functional tensor train
 
   function TTinterp(point::Array{T,1}) where {T <: AbstractFloat}
