@@ -5,13 +5,11 @@ version = "0.1.0"
 
 [compat]
 julia = "1.6"
-ChebyshevApprox = "^0.3"
 GaussQuadrature = "^0.5"
 Maxvol = "^1.0"
 PiecewiseLinearApprox = "^0.1"
 
 [deps]
-ChebyshevApprox = "17a596ad-87cd-578c-9b6d-01108c31dc04"
 GaussQuadrature = "d54b0c1a-921d-58e0-8e36-89d8069c0969"
 Maxvol = "4cc553b9-be87-484b-81d9-b5ae2a4e3958"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"

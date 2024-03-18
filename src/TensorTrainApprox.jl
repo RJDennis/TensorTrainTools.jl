@@ -1,6 +1,5 @@
 module TensorTrainApprox
 
-using ChebyshevApprox
 using GaussQuadrature
 using Maxvol
 using LinearAlgebra
@@ -9,10 +8,13 @@ using PiecewiseLinearApprox
 include("TTtoolbox.jl")
 
 export chebyshev_nodes,
+       legendre_nodes,
        piecewise_linear_nodes
 
 export TensorTrain,
        ChebyshevTensorTrain,
+       LegendreTensorTrain,
+       PiecewiseTensorTrain,
        FunctionalTensorTrain
 
 export constantTT,
@@ -26,6 +28,8 @@ export constantTT,
        TTderivative,
        TTgradient,
        createCTT,
+       createLTT,
+       createPTT,
        createFTT,
        TTinterp,
        TTintegrate_GC,
