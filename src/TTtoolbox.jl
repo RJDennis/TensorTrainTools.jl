@@ -1642,9 +1642,9 @@ function TTevaluate(train::FunctionalTensorTrain,point::Array{T,1}) where {T <: 
 
   d = length(train.cores)
 
-  a = reshape([train.cores[1][k]([point[1]]) for k in eachindex(train.cores[1])],train.ranks[1],train.ranks[2])
+  a = reshape([train.cores[1][k](point[1]) for k in eachindex(train.cores[1])],train.ranks[1],train.ranks[2])
   for j = 2:d
-    a *= reshape([train.cores[j][k]([point[j]]) for k in eachindex(train.cores[j])],train.ranks[j],train.ranks[j+1])
+    a *= reshape([train.cores[j][k](point[j]) for k in eachindex(train.cores[j])],train.ranks[j],train.ranks[j+1])
   end
 
   return a[1]
@@ -1663,9 +1663,9 @@ function TTevaluate(train::FunctionalTensorTrain,points::Array{Array{T,1}}) wher
   y = zeros(N)
 
   for i in 1:N
-    a = reshape([train.cores[1][k]([points[i][1]]) for k in eachindex(train.cores[1])],train.ranks[1],train.ranks[2])
+    a = reshape([train.cores[1][k](points[i][1]) for k in eachindex(train.cores[1])],train.ranks[1],train.ranks[2])
     for j = 2:d
-      a *= reshape([train.cores[j][k]([points[i][j]]) for k in eachindex(train.cores[j])],train.ranks[j],train.ranks[j+1])
+      a *= reshape([train.cores[j][k](points[i][j]) for k in eachindex(train.cores[j])],train.ranks[j],train.ranks[j+1])
     end
 
     y[i] = a[1]
