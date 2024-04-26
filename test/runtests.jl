@@ -4,11 +4,11 @@ using Test
 
 @testset "TensorTrainApprox.jl" begin
     
-    constant_tensor_train_a = constantTT(2.0,(5,6,7),3)
-    constant_tensor_train_b = constantTT(2.0,(5,6,7),[1,3,3,1])
+    constant_tensor_train_a = TTconstant(2.0,(5,6,7),3)
+    constant_tensor_train_b = TTconstant(2.0,(5,6,7),[1,3,3,1])
 
-    random_tensor_train_a = randomTT((5,6,7),3)
-    random_tensor_train_b = randomTT((5,6,7),[1,3,3,1])
+    random_tensor_train_a = TTrandom((5,6,7),3)
+    random_tensor_train_b = TTrandom((5,6,7),[1,3,3,1])
 
     # Test on exponential density
 
