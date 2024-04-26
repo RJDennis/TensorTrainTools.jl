@@ -4480,7 +4480,7 @@ end
 """
 Integrate a functional tensor train using Gauss-Legendre quadrature.
 """
-function TTintegrate_GC(train::FunctionalTensorTrain,nodes::NTuple{d,Array{T,1}},domain::Union{Array{R,2},Array{R,1}}) where {T <: AbstractFloat, R <: AbstractFloat, d} # Integrates over all dimensions
+function TTintegrate_GL(train::FunctionalTensorTrain,nodes::NTuple{d,Array{T,1}},domain::Union{Array{R,2},Array{R,1}}) where {T <: AbstractFloat, R <: AbstractFloat, d} # Integrates over all dimensions
 
   n = length.(nodes)
 
@@ -4524,7 +4524,7 @@ end
 """
 Integrate a discrete tensor train over all dimensions except 'ind' using Gauss-Hermite quadrature.
 """
-function compute_marginal_GC(train::TensorTrain, ind::S) where {S<:Integer} # Assumes Gauss-Hermite quadrature
+function compute_marginal_GH(train::TensorTrain, ind::S) where {S <: Integer} # Assumes Gauss-Hermite quadrature
 
   if ind == 1
     integral = reshape(train.cores[1], train.ranks[1], size(train.cores[1], 2), train.ranks[2])
