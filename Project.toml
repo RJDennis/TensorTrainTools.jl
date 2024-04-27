@@ -3,15 +3,17 @@ uuid = "1940a7fa-26bb-40ed-82aa-2c0b66cfb046"
 authors = ["Richard Dennis <richard.dennis@glasgow.ac.uk>"]
 version = "0.1.0"
 
+[deps]
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+DocumenterTools = "35a29f4d-8980-5a13-9543-d66fff28ecb8"
+GaussQuadrature = "d54b0c1a-921d-58e0-8e36-89d8069c0969"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Maxvol = "4cc553b9-be87-484b-81d9-b5ae2a4e3958"
+
 [compat]
-julia = "1.6"
 GaussQuadrature = "^0.5"
 Maxvol = "^1.0"
-
-[deps]
-GaussQuadrature = "d54b0c1a-921d-58e0-8e36-89d8069c0969"
-Maxvol = "4cc553b9-be87-484b-81d9-b5ae2a4e3958"
-LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+julia = "1.6"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
