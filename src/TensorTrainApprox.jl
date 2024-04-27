@@ -3,6 +3,7 @@ module TensorTrainApprox
 using GaussQuadrature
 using Maxvol
 using LinearAlgebra
+using GenericLinearAlgebra
 
 include("TTtoolbox.jl")
 
