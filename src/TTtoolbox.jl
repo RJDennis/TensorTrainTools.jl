@@ -4119,7 +4119,6 @@ function createFTT(g::PiecewiseTensorTrain,nodes::NTuple{d,Array{T,1}}) where {T
 
   for i = 1:d
 
-    #f[i] = [interp = piecewise_linear_evaluate(g.cores[i][j,:,k],nodes[i]) for j = 1:g.ranks[i], k = 1:g.ranks[i+1]]
     f[i] = [piecewise_linear_evaluate(g.cores[i][j,:,k],nodes[i]) for j = 1:g.ranks[i], k = 1:g.ranks[i+1]]
 
   end
