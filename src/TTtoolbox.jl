@@ -4525,6 +4525,8 @@ Integrate a discrete tensor train over all dimensions except 'ind' using Gauss-H
 """
 function compute_marginal_GH(train::TensorTrain, ind::S) where {S <: Integer} # Assumes Gauss-Hermite quadrature
 
+  d = length(train.cores)
+
   if ind == 1
     integral = reshape(train.cores[1], train.ranks[1], size(train.cores[1], 2), train.ranks[2])
     for i = 2:d
@@ -4578,6 +4580,8 @@ end
 Integrate a discrete tensor train over all dimensions except 'ind' using Gauss-Chebyshev quadrature.
 """
 function compute_marginal_GC(train::TensorTrain, ind::S, domain::Array{T,2}) where {T<:AbstractFloat,S<:Integer} # Assumes Gauss-Chebyshev quadrature
+
+  d = length(train.cores)
 
   if ind == 1
     integral = reshape(train.cores[1], train.ranks[1], size(train.cores[1], 2), train.ranks[2])
@@ -4633,6 +4637,8 @@ Integrate a discrete tensor train over all dimensions except 'ind' using Gauss-L
 """
 function compute_marginal_GL(train::TensorTrain, ind::S, domain::Array{T,2}) where {T<:AbstractFloat,S<:Integer} # Assumes Gauss-Legendre quadrature
 
+  d = length(train.cores)
+
   if ind == 1
     integral = reshape(train.cores[1], train.ranks[1], size(train.cores[1], 2), train.ranks[2])
     for i = 2:d
@@ -4687,6 +4693,8 @@ Integrate a discrete tensor train over all dimensions except 'ind' using the tra
 """
 function compute_marginal_PL(train::TensorTrain, ind::S, domain::Array{T,2}) where {T<:AbstractFloat,S<:Integer} # Assumes trapazoidal integration 
 
+  d = length(train.cores)
+  
   if ind == 1
     integral = reshape(train.cores[1], train.ranks[1], size(train.cores[1], 2), train.ranks[2])
     for i = 2:d
