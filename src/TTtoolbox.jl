@@ -1,5 +1,3 @@
-# Toolbox for Tensor train methods
-
 # Structures that define and hold tensor trains
 
 abstract type TensorTrain end
@@ -431,7 +429,7 @@ Tensor compression based on Oseledets and Tyrtyshnikov (2010).
 function TTsvd(a::Array{T,d},tol::R) where {T <: AbstractFloat, R <: AbstractFloat, d}
 
   if d == 1
-    return TensorTrain([reshape(a,1,length(a),1)],[1,1],0)
+    return BaseTensorTrain([reshape(a,1,length(a),1)],[1,1],0)
   end
 
   δ = (tol/sqrt(d-1))*frobenius(a)
@@ -470,7 +468,7 @@ end
 Compute a tensor train approximation of a dense d-dimensional array based on the function that populates the array.
 DMRG function approximation based on Dolgov and Savostyanov (2020).
 """
-function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,maxsweeps::S = 10) where {T <: AbstractFloat, S <: Integer, d}
+function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,maxsweeps::S = 100) where {T <: AbstractFloat, S <: Integer, d}
 
   n = length.(nodes)
 
@@ -748,7 +746,7 @@ end
 Compute a tensor train approximation of a dense d-dimensional array based on the function that populates the array.
 DMRG function approximation based on Dolgov and Savostyanov (2020).
 """
-function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,initial::TensorTrain,maxsweeps::S = 10) where {T <: AbstractFloat, S <: Integer, d}
+function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,initial::TensorTrain,maxsweeps::S = 100) where {T <: AbstractFloat, S <: Integer, d}
 
   n = length.(nodes)
 
@@ -983,7 +981,7 @@ end
 Compute a tensor train approximation of a dense d-dimensional array based on the function that populates the array.
 DMRG function approximation based on Dolgov and Savostyanov (2020).
 """
-function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R1,tol::R2,maxsweeps::S = 10) where {T <: AbstractFloat, R1 <: AbstractFloat, R2 <: AbstractFloat, S <: Integer, d}
+function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R1,tol::R2,maxsweeps::S = 100) where {T <: AbstractFloat, R1 <: AbstractFloat, R2 <: AbstractFloat, S <: Integer, d}
 
   n = length.(nodes)
 
@@ -1261,7 +1259,7 @@ end
 Compute a tensor train approximation of a dense d-dimensional array based on the function that populates the array.
 DMRG function approximation based on Dolgov and Savostyanov (2020).
 """
-function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R1,tol::R2,initial::TensorTrain,maxsweeps::S = 10) where {T <: AbstractFloat, R1 <: AbstractFloat, R2 <: AbstractFloat, S <: Integer, d}
+function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R1,tol::R2,initial::TensorTrain,maxsweeps::S = 100) where {T <: AbstractFloat, R1 <: AbstractFloat, R2 <: AbstractFloat, S <: Integer, d}
 
   n = length.(nodes)
 
@@ -1496,7 +1494,7 @@ end
 Compute a tensor train approximation of a dense d-dimensional array based on the function that populates the array.
 DMRG function approximation based on Dolgov and Savostyanov (2020).
 """
-function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,maxsweeps::S = 10) where {T <: AbstractFloat, S <: Integer, d}
+function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,maxsweeps::S = 100) where {T <: AbstractFloat, S <: Integer, d}
 
   n = length.(nodes)
 
@@ -1755,7 +1753,7 @@ end
 Compute a tensor train approximation of a dense d-dimensional array based on the function that populates the array.
 DMRG function approximation based on Dolgov and Savostyanov (2020).
 """
-function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,initial::TensorTrain,maxsweeps::S = 10) where {T <: AbstractFloat, S <: Integer, d}
+function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,initial::TensorTrain,maxsweeps::S = 100) where {T <: AbstractFloat, S <: Integer, d}
 
   n = length.(nodes)
 
@@ -1971,7 +1969,7 @@ end
 Compute a tensor train approximation of a dense d-dimensional array based on the function that populates the array.
 DMRG function approximation based on Dolgov and Savostyanov (2020).
 """
-function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::R1,tol::R2,maxsweeps::S = 10) where {T <: AbstractFloat, R1 <: AbstractFloat, R2 <: AbstractFloat, S <: Integer, d}
+function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::R1,tol::R2,maxsweeps::S = 100) where {T <: AbstractFloat, R1 <: AbstractFloat, R2 <: AbstractFloat, S <: Integer, d}
 
   n = length.(nodes)
 
@@ -2230,7 +2228,7 @@ end
 Compute a tensor train approximation of a dense d-dimensional array based on the function that populates the array.
 DMRG function approximation based on Dolgov and Savostyanov (2020).
 """
-function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::R1,tol::R2,initial::TensorTrain,maxsweeps::S = 10) where {T <: AbstractFloat, R1 <: AbstractFloat, R2 <: AbstractFloat, S <: Integer, d}
+function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::R1,tol::R2,initial::TensorTrain,maxsweeps::S = 100) where {T <: AbstractFloat, R1 <: AbstractFloat, R2 <: AbstractFloat, S <: Integer, d}
 
   n = length.(nodes)
 
@@ -2446,7 +2444,7 @@ end
 Compute a tensor train approximation of a dense d-dimensional array.
 DMRG tensor compression based on Dolgov and Savostyanov (2020).
 """
-function DMRGcross(b::Array{T,d},μ::T,tol::T,maxsweeps::S = 10) where {T <: AbstractFloat, S <: Integer, d}
+function DMRGcross(b::Array{T,d},μ::T,tol::T,maxsweeps::S = 100) where {T <: AbstractFloat, S <: Integer, d}
 
   n = size(b)
 
@@ -2717,7 +2715,7 @@ end
 Compute a tensor train approximation of a dense d-dimensional array.
 DMRG tensor compression based on Dolgov and Savostyanov (2020).
 """
-function DMRGcross_generic(b::Array{T,d},μ::R1,tol::R2,maxsweeps::S = 10) where {T <: AbstractFloat, R1 <: AbstractFloat, R2 <: AbstractFloat, S <: Integer, d}
+function DMRGcross_generic(b::Array{T,d},μ::R1,tol::R2,maxsweeps::S = 100) where {T <: AbstractFloat, R1 <: AbstractFloat, R2 <: AbstractFloat, S <: Integer, d}
 
   n = size(b)
 
@@ -2988,7 +2986,7 @@ end
 Compute a tensor train approximation of a dense d-dimensional array.
 DMRG tensor compression based on Dolgov and Savostyanov (2020).
 """
-function DMRGcross_threaded(b::Array{T,d},μ::T,tol::T,maxsweeps::S = 10) where {T <: AbstractFloat, S <: Integer, d}
+function DMRGcross_threaded(b::Array{T,d},μ::T,tol::T,maxsweeps::S = 100) where {T <: AbstractFloat, S <: Integer, d}
 
   n = size(b)
 
@@ -3225,7 +3223,7 @@ end
 Compute a tensor train approximation of a dense d-dimensional array.
 DMRG tensor compression based on Dolgov and Savostyanov (2020).
 """
-function DMRGcross_generic_threaded(b::Array{T,d},μ::R1,tol::R2,maxsweeps::S = 10) where {T <: AbstractFloat, R1 <: AbstractFloat, R2 <: AbstractFloat, S <: Integer, d}
+function DMRGcross_generic_threaded(b::Array{T,d},μ::R1,tol::R2,maxsweeps::S = 100) where {T <: AbstractFloat, R1 <: AbstractFloat, R2 <: AbstractFloat, S <: Integer, d}
 
   n = size(b)
 
@@ -4479,7 +4477,7 @@ end
 """
 Integrate a functional tensor train using Gauss-Legendre quadrature.
 """
-function TTintegrate_GL(train::FunctionalTensorTrain,nodes::NTuple{d,Array{T,1}},domain::Union{Array{R,2},Array{R,1}}) where {T <: AbstractFloat, R <: AbstractFloat, d} # Integrates over all dimensions
+function TTintegrate_GC(train::FunctionalTensorTrain,nodes::NTuple{d,Array{T,1}},domain::Union{Array{R,2},Array{R,1}}) where {T <: AbstractFloat, R <: AbstractFloat, d} # Integrates over all dimensions
 
   n = length.(nodes)
 
@@ -4523,7 +4521,7 @@ end
 """
 Integrate a discrete tensor train over all dimensions except 'ind' using Gauss-Hermite quadrature.
 """
-function compute_marginal_GH(train::TensorTrain, ind::S) where {S <: Integer} # Assumes Gauss-Hermite quadrature
+function compute_marginal_GC(train::TensorTrain, ind::S) where {S<:Integer} # Assumes Gauss-Hermite quadrature
 
   d = length(train.cores)
 
@@ -4694,7 +4692,7 @@ Integrate a discrete tensor train over all dimensions except 'ind' using the tra
 function compute_marginal_PL(train::TensorTrain, ind::S, domain::Array{T,2}) where {T<:AbstractFloat,S<:Integer} # Assumes trapazoidal integration 
 
   d = length(train.cores)
-  
+
   if ind == 1
     integral = reshape(train.cores[1], train.ranks[1], size(train.cores[1], 2), train.ranks[2])
     for i = 2:d
@@ -4821,9 +4819,23 @@ function TTadd(traina::DiscreteTensorTrain,trainb::DiscreteTensorTrain)
   da = length(traina.cores)
   db = length(trainb.cores)
 
-  if da != db
-    error("Trains have different number of cores")
+  if da > db # traina has more cores than trainb
+    n = [size(traina.cores[i])[2] for i in 1:da]
+    filler = TTconstant(1.0,Tuple(n[db+1:end]),1)
+    cores = [trainb.cores;filler.cores]
+    temp_train = BaseTensorTrain(cores,[trainb.ranks;ones(Int,da-db)],0)
+    return TTadd(traina,temp_train)
   end
+
+  if db > da # trainb has more cores than traina
+    n = [size(trainb.cores[i])[2] for i in 1:db]
+    filler = TTconstant(1.0,Tuple(n[da+1:end]),1)
+    cores = [traina.cores;filler.cores]
+    temp_train = BaseTensorTrain(cores,[traina.ranks;ones(Int,db-da)],0)
+    return TTadd(temp_train,trainb)
+  end
+
+  # traina and trainb have the same number of cores
 
   na = [size(traina.cores[i])[2] for i in 1:da]
   nb = [size(trainb.cores[i])[2] for i in 1:db]
@@ -4874,9 +4886,23 @@ function TTsubtract(traina::DiscreteTensorTrain,trainb::DiscreteTensorTrain)
   da = length(traina.cores)
   db = length(trainb.cores)
 
-  if da != db
-    error("Trains have different number of cores")
+  if da > db # traina has more cores than trainb
+    n = [size(traina.cores[i])[2] for i in 1:da]
+    filler = TTconstant(1.0,Tuple(n[db+1:end]),1)
+    cores = [trainb.cores;filler.cores]
+    temp_train = BaseTensorTrain(cores,[trainb.ranks;ones(Int,da-db)],0)
+    return TTsubtract(traina,temp_train)
   end
+
+  if db > da # trainb has more cores than traina
+    n = [size(trainb.cores[i])[2] for i in 1:db]
+    filler = TTconstant(1.0,Tuple(n[da+1:end]),1)
+    cores = [traina.cores;filler.cores]
+    temp_train = BaseTensorTrain(cores,[traina.ranks;ones(Int,db-da)],0)
+    return TTsubtract(temp_train,trainb)
+  end
+
+  # traina and trainb have the same number of cores
 
   na = [size(traina.cores[i])[2] for i in 1:da]
   nb = [size(trainb.cores[i])[2] for i in 1:db]
