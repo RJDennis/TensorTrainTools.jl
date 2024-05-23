@@ -1,3 +1,43 @@
+# Toolbox for Tensor train methods
+
+#= Things to do:
+
+1. DMRGcross_threaded function for array input --- tick (4)
+2. TTcross_threaded function for array input --- tick (5)
+3. TTcross function for function input --- tick (1)
+4. TTcross_threaded function for function input --- tick (2)
+5. TTcross_generic function for function input --- tick (3)
+6. TTadd() --- tick (9)
+7. TTsubtract() --- tick (10)
+8. TTmult() --- tick (8)
+9. TTrounding() --- tick (7)
+10. TTorthright() --- tick (6)
+11. TTextremize() --- tick (15)
+12. TToptimize() --- tick (16)
+13. TTorthleft() --- tick (17)
+14. TTGO() --- ???? (24) # Tensor train global optimization based on Shetty, Lembono, Loew, and Calinon (2023), International Journal of Robotics Research, or the deterministic version based on Shetty, Xue, and Calinon (2024)
+15. TTorthleftright() --- tick (18)
+16. TTnorm() --- tick (19)
+17. TTCD_GH() --- tick (11) # Tensor train conditional distribution sampling with Gauss-Hermite nodes
+18. TTCD_GC() --- tick (12) # Tensor train conditional distribution sampling with Gauss-Chebyshev nodes
+19. TTCD_GL() --- tick (13) # Tensor train conditional distribution sampling with Gauss-Legendre nodes
+20. TTCD_PL() --- tick (14) # Tensor train conditional distribution sampling with uniformly spaced nodes
+21. TTChebyshev() --- tick (20) # Creates a Chebyshev tensor train
+22. TTLegendre() --- tick (21) # Creates a Legendre tensor train
+
+23. TTadd() when the number of cores in each train differs --- tick (22)
+24. TTsubtract() when the number of cores in each train differs --- tick (23)
+
+25. RTTC_SD() --- ???? (27) # Riemannian tensor train completion using steepest descent, simplifying the method from Steinlechner (2016), SIAM Journal on Scientific Computing, Vol. 38, Iss. 5.
+26. RTTC_GD() --- ???? (28) # Riemannian tensor train completion using gradient descent, based on Steinlechner (2016), SIAM Journal on Scientific Computing, Vol. 38, Iss. 5.
+
+27. TTsize() --- tick (25)
+28. TTinner_prod --- tick (26)
+
+=#
+
+using Maxvol, GaussQuadrature, MultiFloats, DoubleFloats, GenericLinearAlgebra
+
 # Structures that define and hold tensor trains
 
 abstract type TensorTrain end
@@ -159,7 +199,7 @@ end
 """
 Find the array sub-indices from a linear index.
 """
-function ind2sub(i::S,dims::Tuple{S,Vararg{S}}) where {S <: Integer}
+function ind2sub(i::S,dims::Union{Array{S,1},Tuple{S,Vararg{S}}}) where {S <: Integer}
 
   if i < 1 || i > prod(dims)
     error("index is out of bounds.")
@@ -172,9 +212,9 @@ function ind2sub(i::S,dims::Tuple{S,Vararg{S}}) where {S <: Integer}
 end
 
 """
-Find the array sub-indices from a linear index.
+Find the array sub-indices from a vector of linear indexes.
 """
-function ind2sub(i::Array{S,1},dims::Tuple{S,Vararg{S}}) where {S <: Integer}
+function ind2sub(i::Array{S,1},dims::Union{Array{S,1},Tuple{S,Vararg{S}}}) where {S <: Integer}
 
   for x in i
     if x < 1 || x > prod(dims)
@@ -187,6 +227,8 @@ function ind2sub(i::Array{S,1},dims::Tuple{S,Vararg{S}}) where {S <: Integer}
   return subs
 
 end
+
+#=
 
 """
 Find the array sub-indices from a linear index.
@@ -204,7 +246,7 @@ function ind2sub(i::S,dims::Array{S,1}) where {S <: Integer}
 end
 
 """
-Find the array sub-indices from a linear index.
+Find the array sub-indices from a vector of linear indexes.
 """
 function ind2sub(i::Array{S,1},dims::Array{S,1}) where {S <: Integer}
 
@@ -219,6 +261,8 @@ function ind2sub(i::Array{S,1},dims::Array{S,1}) where {S <: Integer}
   return subs
 
 end
+
+=#
 
 function compute_integrals(sd::T,order::S) where {T <: AbstractFloat, S <: Integer}
 
@@ -314,7 +358,7 @@ end
 ### Functions that initialise continuous tensor trains
 
 """
-Create a Chebyshev tensor train with ranks 'r', orders, 'order', and Chebyshev coefficients, 'θ'.
+Create a Chebyshev tensor train with ranks, 'r', orders, 'order', and Chebyshev coefficients, 'θ'.
 """
 function TTChebyshev(r::Array{S,1},order::Array{S,1},θ::Array{T,1}) where {S <: Integer, T <: AbstractFloat}
 
@@ -348,7 +392,7 @@ function TTChebyshev(r::Array{S,1},order::Array{S,1},θ::Array{T,1}) where {S <:
 end
 
 """
-Create a Legendre tensor train with ranks 'r', orders, 'order', and Legendre coefficients, 'θ'.
+Create a Legendre tensor train with ranks, 'r', orders, 'order', and Legendre coefficients, 'θ'.
 """
 function TTLegendre(r::Array{S,1},order::Array{S,1},θ::Array{T,1}) where {S <: Integer, T <: AbstractFloat}
 
@@ -468,7 +512,7 @@ end
 Compute a tensor train approximation of a dense d-dimensional array based on the function that populates the array.
 DMRG function approximation based on Dolgov and Savostyanov (2020).
 """
-function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,maxsweeps::S = 100) where {T <: AbstractFloat, S <: Integer, d}
+function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,maxsweeps::S = 30) where {T <: AbstractFloat, S <: Integer, d}
 
   n = length.(nodes)
 
@@ -746,7 +790,7 @@ end
 Compute a tensor train approximation of a dense d-dimensional array based on the function that populates the array.
 DMRG function approximation based on Dolgov and Savostyanov (2020).
 """
-function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,initial::TensorTrain,maxsweeps::S = 100) where {T <: AbstractFloat, S <: Integer, d}
+function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,initial::TensorTrain,maxsweeps::S = 30) where {T <: AbstractFloat, S <: Integer, d}
 
   n = length.(nodes)
 
@@ -981,7 +1025,7 @@ end
 Compute a tensor train approximation of a dense d-dimensional array based on the function that populates the array.
 DMRG function approximation based on Dolgov and Savostyanov (2020).
 """
-function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R1,tol::R2,maxsweeps::S = 100) where {T <: AbstractFloat, R1 <: AbstractFloat, R2 <: AbstractFloat, S <: Integer, d}
+function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R1,tol::R2,maxsweeps::S = 30) where {T <: AbstractFloat, R1 <: AbstractFloat, R2 <: AbstractFloat, S <: Integer, d}
 
   n = length.(nodes)
 
@@ -1259,7 +1303,7 @@ end
 Compute a tensor train approximation of a dense d-dimensional array based on the function that populates the array.
 DMRG function approximation based on Dolgov and Savostyanov (2020).
 """
-function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R1,tol::R2,initial::TensorTrain,maxsweeps::S = 100) where {T <: AbstractFloat, R1 <: AbstractFloat, R2 <: AbstractFloat, S <: Integer, d}
+function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R1,tol::R2,initial::TensorTrain,maxsweeps::S = 30) where {T <: AbstractFloat, R1 <: AbstractFloat, R2 <: AbstractFloat, S <: Integer, d}
 
   n = length.(nodes)
 
@@ -1494,7 +1538,7 @@ end
 Compute a tensor train approximation of a dense d-dimensional array based on the function that populates the array.
 DMRG function approximation based on Dolgov and Savostyanov (2020).
 """
-function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,maxsweeps::S = 100) where {T <: AbstractFloat, S <: Integer, d}
+function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,maxsweeps::S = 30) where {T <: AbstractFloat, S <: Integer, d}
 
   n = length.(nodes)
 
@@ -1753,7 +1797,7 @@ end
 Compute a tensor train approximation of a dense d-dimensional array based on the function that populates the array.
 DMRG function approximation based on Dolgov and Savostyanov (2020).
 """
-function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,initial::TensorTrain,maxsweeps::S = 100) where {T <: AbstractFloat, S <: Integer, d}
+function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,initial::TensorTrain,maxsweeps::S = 30) where {T <: AbstractFloat, S <: Integer, d}
 
   n = length.(nodes)
 
@@ -1969,7 +2013,7 @@ end
 Compute a tensor train approximation of a dense d-dimensional array based on the function that populates the array.
 DMRG function approximation based on Dolgov and Savostyanov (2020).
 """
-function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::R1,tol::R2,maxsweeps::S = 100) where {T <: AbstractFloat, R1 <: AbstractFloat, R2 <: AbstractFloat, S <: Integer, d}
+function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::R1,tol::R2,maxsweeps::S = 30) where {T <: AbstractFloat, R1 <: AbstractFloat, R2 <: AbstractFloat, S <: Integer, d}
 
   n = length.(nodes)
 
@@ -2228,7 +2272,7 @@ end
 Compute a tensor train approximation of a dense d-dimensional array based on the function that populates the array.
 DMRG function approximation based on Dolgov and Savostyanov (2020).
 """
-function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::R1,tol::R2,initial::TensorTrain,maxsweeps::S = 100) where {T <: AbstractFloat, R1 <: AbstractFloat, R2 <: AbstractFloat, S <: Integer, d}
+function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::R1,tol::R2,initial::TensorTrain,maxsweeps::S = 30) where {T <: AbstractFloat, R1 <: AbstractFloat, R2 <: AbstractFloat, S <: Integer, d}
 
   n = length.(nodes)
 
@@ -2444,7 +2488,7 @@ end
 Compute a tensor train approximation of a dense d-dimensional array.
 DMRG tensor compression based on Dolgov and Savostyanov (2020).
 """
-function DMRGcross(b::Array{T,d},μ::T,tol::T,maxsweeps::S = 100) where {T <: AbstractFloat, S <: Integer, d}
+function DMRGcross(b::Array{T,d},μ::T,tol::T,maxsweeps::S = 30) where {T <: AbstractFloat, S <: Integer, d}
 
   n = size(b)
 
@@ -2715,7 +2759,7 @@ end
 Compute a tensor train approximation of a dense d-dimensional array.
 DMRG tensor compression based on Dolgov and Savostyanov (2020).
 """
-function DMRGcross_generic(b::Array{T,d},μ::R1,tol::R2,maxsweeps::S = 100) where {T <: AbstractFloat, R1 <: AbstractFloat, R2 <: AbstractFloat, S <: Integer, d}
+function DMRGcross_generic(b::Array{T,d},μ::R1,tol::R2,maxsweeps::S = 30) where {T <: AbstractFloat, R1 <: AbstractFloat, R2 <: AbstractFloat, S <: Integer, d}
 
   n = size(b)
 
@@ -2986,7 +3030,7 @@ end
 Compute a tensor train approximation of a dense d-dimensional array.
 DMRG tensor compression based on Dolgov and Savostyanov (2020).
 """
-function DMRGcross_threaded(b::Array{T,d},μ::T,tol::T,maxsweeps::S = 100) where {T <: AbstractFloat, S <: Integer, d}
+function DMRGcross_threaded(b::Array{T,d},μ::T,tol::T,maxsweeps::S = 30) where {T <: AbstractFloat, S <: Integer, d}
 
   n = size(b)
 
@@ -3223,7 +3267,7 @@ end
 Compute a tensor train approximation of a dense d-dimensional array.
 DMRG tensor compression based on Dolgov and Savostyanov (2020).
 """
-function DMRGcross_generic_threaded(b::Array{T,d},μ::R1,tol::R2,maxsweeps::S = 100) where {T <: AbstractFloat, R1 <: AbstractFloat, R2 <: AbstractFloat, S <: Integer, d}
+function DMRGcross_generic_threaded(b::Array{T,d},μ::R1,tol::R2,maxsweeps::S = 30) where {T <: AbstractFloat, R1 <: AbstractFloat, R2 <: AbstractFloat, S <: Integer, d}
 
   n = size(b)
 
@@ -4521,7 +4565,7 @@ end
 """
 Integrate a discrete tensor train over all dimensions except 'ind' using Gauss-Hermite quadrature.
 """
-function compute_marginal_GC(train::TensorTrain, ind::S) where {S<:Integer} # Assumes Gauss-Hermite quadrature
+function TTcompute_marginal_GH(train::TensorTrain, ind::S) where {S<:Integer} # Assumes Gauss-Hermite quadrature
 
   d = length(train.cores)
 
@@ -4577,7 +4621,7 @@ end
 """
 Integrate a discrete tensor train over all dimensions except 'ind' using Gauss-Chebyshev quadrature.
 """
-function compute_marginal_GC(train::TensorTrain, ind::S, domain::Array{T,2}) where {T<:AbstractFloat,S<:Integer} # Assumes Gauss-Chebyshev quadrature
+function TTcompute_marginal_GC(train::TensorTrain, ind::S, domain::Array{T,2}) where {T<:AbstractFloat,S<:Integer} # Assumes Gauss-Chebyshev quadrature
 
   d = length(train.cores)
 
@@ -4633,7 +4677,7 @@ end
 """
 Integrate a discrete tensor train over all dimensions except 'ind' using Gauss-Legendre quadrature.
 """
-function compute_marginal_GL(train::TensorTrain, ind::S, domain::Array{T,2}) where {T<:AbstractFloat,S<:Integer} # Assumes Gauss-Legendre quadrature
+function TTcompute_marginal_GL(train::TensorTrain, ind::S, domain::Array{T,2}) where {T<:AbstractFloat,S<:Integer} # Assumes Gauss-Legendre quadrature
 
   d = length(train.cores)
 
@@ -4689,7 +4733,7 @@ end
 """
 Integrate a discrete tensor train over all dimensions except 'ind' using the trapazoidal method.
 """
-function compute_marginal_PL(train::TensorTrain, ind::S, domain::Array{T,2}) where {T<:AbstractFloat,S<:Integer} # Assumes trapazoidal integration 
+function TTcompute_marginal_PL(train::TensorTrain, ind::S, domain::Array{T,2}) where {T<:AbstractFloat,S<:Integer} # Assumes trapazoidal integration 
 
   d = length(train.cores)
 
@@ -4947,6 +4991,27 @@ function TTsubtract(traina::DiscreteTensorTrain,trainb::DiscreteTensorTrain)
 
 end
 
+"""
+Construct the square of a tensor train.
+"""
+function TTsquared(train::DiscreteTensorTrain)
+
+  d = length(train.cores)
+  r = copy(train.ranks)
+  n = [size(train.cores[i])[2] for i in 1:d]
+
+  new_cores = [zeros(r[i]^2,n[i],r[i+1]^2) for i = 1:d]
+  
+  for k = 1:d
+    for i = 1:n[k]
+      new_cores[k][:,i,:] = kron(train.cores[k][:,i,:],train.cores[k][:,i,:])
+    end
+  end
+
+  return BaseTensorTrain(new_cores,r.^2,0)
+
+end
+
 #### Functions to orthogonalise discrete tensor trains
 
 """
@@ -5161,6 +5226,52 @@ function TTnorm(train::DiscreteTensorTrain)
     orthtrain = TTorthleft(train)
     return norm(orthtrain.cores[d])
   end
+
+end
+
+"""
+Compute the (implied) size of a decompressed tensor train.
+"""
+function TTsize(train::DiscreteTensorTrain)
+
+  d = length(train.cores)
+  n = Tuple([size(train.cores[i])[2] for i in 1:d])
+
+  return n
+
+end
+
+"""
+Compute the inner product of two tensor trains.
+"""
+function TTinner_prod(traina::DiscreteTensorTrain,trainb::DiscreteTensorTrain)
+
+  na = TTsize(traina)
+  nb = TTsize(trainb)
+
+  if length(na) != length(nb) || sum(na .- nb) != 0
+    error("Tensor trains have incompatible dimensions")
+  end
+
+  d = length(na)
+
+  ga = copy(traina.cores)
+  gb = copy(trainb.cores)
+
+  ra = copy(traina.ranks)
+  rb = copy(trainb.ranks)
+
+  for i = 1:d-1
+
+    temp = transpose(transpose(reshape(ga[i],ra[i]*na[i],ra[i+1]))*reshape(gb[i],rb[i]*nb[i],rb[i+1]))
+    ga[i+1] = reshape(temp*reshape(ga[i+1],ra[i+1],na[i+1]*ra[i+2]),rb[i+1],na[i+1],ra[i+2])
+    ra[i+1] = rb[i+1]
+    
+  end
+
+  inner_prod = reshape(ga[d],ra[d]*na[d],ra[d+1])'*reshape(gb[d],rb[d]*nb[d],rb[d+1])
+
+  return inner_prod[1]
 
 end
 
@@ -5475,6 +5586,58 @@ function TTMH(logdensity::Function,logtrain::FunctionalTensorTrain,sample::Array
 
 end
 
+"""
+Conditional distribution sampling from the square of a tensor train when the nodes are Gauss-Chebyshev.
+"""
+function TTSIRT_GC(train::DiscreteTensorTrain,N::S,domain::Array{T,2},seed::S = 123456) where {T <: AbstractFloat, S <: Integer} # Squared inverse Rosenblatt transport with GC integration
+
+  temp_train = TTsquared(train)
+
+  sample = TTCD_GC(temp_train,N,domain,seed)
+
+  return sample
+
+end
+
+"""
+Conditional distribution sampling from the square of a tensor train when the nodes are Gauss-Legendre.
+"""
+function TTSIRT_GL(train::DiscreteTensorTrain,N::S,domain::Array{T,2},seed::S = 123456) where {T <: AbstractFloat, S <: Integer} # Squared inverse Rosenblatt transport with GL integration
+
+  temp_train = TTsquared(train)
+
+  sample = TTCD_GL(temp_train,N,domain,seed)
+
+  return sample
+
+end
+
+"""
+Conditional distribution sampling from the square of a tensor train when the nodes are Gauss-Hermite.
+"""
+function TTSIRT_GH(train::DiscreteTensorTrain,N::S,domain::Array{T,2},seed::S = 123456) where {T <: AbstractFloat, S <: Integer} # Squared inverse Rosenblatt transport with GH integration
+
+  temp_train = TTsquared(train)
+
+  sample = TTCD_GH(temp_train,N,domain,seed)
+
+  return sample
+
+end
+
+"""
+Conditional distribution sampling from the square of a tensor train when the nodes are uniformly spaced.
+"""
+function TTSIRT_PL(train::DiscreteTensorTrain,N::S,domain::Array{T,2},seed::S = 123456) where {T <: AbstractFloat, S <: Integer} # Squared inverse Rosenblatt transport with trapazoidal integration
+
+  temp_train = TTsquared(train)
+
+  sample = TTCD_PL(temp_train,N,domain,seed)
+
+  return sample
+
+end
+
 #### Functions to optimize over a discrete tensor train
 
 """
@@ -5503,9 +5666,10 @@ function stack(a::Array{T,2},b::Array{T,2}) where {T <: AbstractFloat}
 
 end
 
-# Tensor train extremization according to Chertkov, Ryzhakov, Novikov, and Oseledets (2022), algorthm 1.
-
-function TTextremize(train::L,K::S) where {L <: DiscreteTensorTrain, S <: Integer} # Output could be maxima or minima
+"""
+Extremize over the cores of a tensor train.  The output could be a maxima or a minima. 
+"""
+function TTextremize(train::L,K::S) where {L <: DiscreteTensorTrain, S <: Integer} # Chertkov, Ryzhakov, Novikov, and Oseledets (2022), algorthm 1.
 
   orth_train = TTorthright(train)  
   Π = copy(orth_train.cores)
@@ -5536,9 +5700,11 @@ function TTextremize(train::L,K::S) where {L <: DiscreteTensorTrain, S <: Intege
 
 end
 
-# Extremize over the final (d-ds) cores, evaluating the first ds cores at the indices given in state
-
-function TTextremize(train::L,K::S,state::Array{S,1}) where {L <: DiscreteTensorTrain, S <: Integer} # Output could be maxima or minima
+"""
+Extremize over the final (d-ds) cores of a tensor train, evaluating the first 'ds' cores at the indices given in 'state'.
+The output could be a maxima or a minima. 
+"""
+function TTextremize(train::L,K::S,state::Array{S,1}) where {L <: DiscreteTensorTrain, S <: Integer}
 
   orth_train = TTorthright(train)  
   Π = copy(orth_train.cores)
@@ -5579,9 +5745,10 @@ function TTextremize(train::L,K::S,state::Array{S,1}) where {L <: DiscreteTensor
 
 end
 
-# Tensor train optimization according to Chertkov, Ryzhakov, Novikov, and Oseledets (2022), algorthm 2.
-
-function TToptimize(train::L,K::S) where {L <: DiscreteTensorTrain, S <: Integer}
+"""
+Optimize over the cores of a tensor train, returning the maximum and the minimum. 
+"""
+function TToptimize(train::L,K::S) where {L <: DiscreteTensorTrain, S <: Integer} # Chertkov, Ryzhakov, Novikov, and Oseledets (2022), algorthm 2.
 
   d = length(train.cores)
   r = copy(train.ranks)
@@ -5609,8 +5776,10 @@ function TToptimize(train::L,K::S) where {L <: DiscreteTensorTrain, S <: Integer
 
 end
 
-# Optimizes over the final (d-ds) cores, evaluating the first ds cores at the indices given in state
-
+"""
+Optimize over the cores final (d-ds) of a tensor train, evaluating the first 'ds' cores at the indices given 
+in 'state' and returning the maximum and the minimum. 
+"""
 function TToptimize(train::L,K::S,state::Array{S,1}) where {L <: DiscreteTensorTrain, S <: Integer}
 
   d = length(train.cores)
