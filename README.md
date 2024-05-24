@@ -6,4 +6,51 @@
 [![Coverage](https://codecov.io/gh/RJDENNIS/TensorTrainApprox.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/RJDENNIS/TensorTrainApprox.jl)
 
 Introduction
+============
+
+??????
+
+Initializing tensor trains
+--------------------------
+
+??????
+
+Algebraic operations
+--------------------
+
+??????
+
+Array compression
+-----------------
+
+??????
+
+Function approximation
+----------------------
+
+??????
+
+Functional tensor trains
+------------------------
+
+??????
+
+Integration
+-----------
+
+??????
+
+Sampling
+--------
+
+??????
+
+Optimization
 ------------
+
+??????
+
+References
+----------
+
+??????
