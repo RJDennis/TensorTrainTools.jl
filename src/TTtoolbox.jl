@@ -4972,6 +4972,32 @@ function TTsquared(train::DiscreteTensorTrain)
 
 end
 
+"""
+Construct the N'th power of a tensor train.
+"""
+function TTpower(train::DiscreteTensorTrain,N::S) where {S <: Integer}
+
+  d = length(train.cores)
+  r = copy(train.ranks)
+  n = [size(train.cores[i])[2] for i in 1:d]
+
+  new_cores = [zeros(r[i]^N,n[i],r[i+1]^N) for i = 1:d]
+  
+  for k = 1:d
+    for i = 1:n[k]
+      A = train.cores[k][:,i,:]
+      for j = 2:N
+        A = kron(A,train.cores[k][:,i,:])
+      end
+      new_cores[k][:,i,:] = A
+    end
+
+  end
+
+  return BaseTensorTrain(new_cores,r.^N,0)
+
+end
+
 #### Functions to orthogonalise discrete tensor trains
 
 """
@@ -5661,7 +5687,7 @@ function TTextremize(train::L,K::S) where {L <: DiscreteTensorTrain, S <: Intege
 end
 
 """
-Extremize over the final (d-ds) cores of a tensor train, evaluating the first 'ds' cores at the indices given in 'state'.
+Extremize over the final (d-ds) cores of a tensor train, evaluating the first ds cores at the indices given in 'state'.
 The output could be a maxima or a minima. 
 """
 function TTextremize(train::L,K::S,state::Array{S,1}) where {L <: DiscreteTensorTrain, S <: Integer}
@@ -5737,7 +5763,7 @@ function TToptimize(train::L,K::S) where {L <: DiscreteTensorTrain, S <: Integer
 end
 
 """
-Optimize over the cores final (d-ds) of a tensor train, evaluating the first 'ds' cores at the indices given 
+Optimize over the cores final (d-ds) of a tensor train, evaluating the first ds cores at the indices given 
 in 'state' and returning the maximum and the minimum. 
 """
 function TToptimize(train::L,K::S,state::Array{S,1}) where {L <: DiscreteTensorTrain, S <: Integer}
