@@ -129,10 +129,11 @@ The following creates a functional tensor train where the univariate interpolati
 ```julia
 c_nodes = chebyshev_nodes(31,[3.0,1.0])
 train = DMRGcross(hilbert,(c_nodes,c_nodes,c_nodes,c_nodes),1.05,1e-12)
-c_train = createCTT(train,(c_nodes,c_nodes,c_nodes,c_nodes),[3.0 3.0 3.0 3.0; 1.0 1.0 1.0 1.0])
-f_train = createFTT(c_train,[3.0 3.0 3.0 3.0; 1.0 1.0 1.0 1.0])
+domain = [dom dom dom dom]
+c_train = createCTT(train,(c_nodes,c_nodes,c_nodes,c_nodes),domain)
+f_train = createFTT(c_train,domain)
 ```
-The intermediate step of creating a Chebyshev tensor train (`c_train` above) and then converting that to a functional tensor train is there because it can sometimes be useful to get access to the weights in the Chebyshev polynomials.
+The intermediate step of creating a Chebyshev tensor train (`c_train` above) and then converting that to a functional tensor train is there because it can sometimes be useful to get access to the weights in the Chebyshev polynomials, i.e., to compute derivatives, gradients, and hessians.
 
 The Julia code to create functional tensor trains based on Legendre polynomials or piecewise linear interpolation is analogous.
 
@@ -154,15 +155,26 @@ where `train` is the tensor train to be integrated, `ind` is an integer specifyi
 
 ## Sampling
 
-If the tensor train is an approximation to a probability density function, then we would like to be able to sample from it.  The package implements a sampling method that is based on inverting the conditional distribution function using a bisection method.  Suppose that the tensor train to be sampled from (`train`) was constructed using Chebyshev nodes as approximation points, then:
+If the tensor train is an approximation to a probability density function, then we would like to be able to sample from it.  The package implements a sampling method that is based on inverting the conditional distribution function using a bisection method.  Suppose that the tensor train to be sampled from (`train`) was constructed using Gauss-Chebyshev nodes as approximation points, then:
 ```julia
 samp = TTCD_GC(train,N,domain,initial_seed)
 ```
 will compute a sample of `N` draws for each of the `d` variables in the tensor train (`samp` will be an $N$ $\times$ $d$ matrix).  `initial_seed` is optional; it has default `123456`.
 
+This sampling procedure is based on Dolgov, Anaya-Izquierdo, Fox, and Scheichi, (2020).
+
 ## Optimization
 
-??????
+To optimize over a discrete tensor train:
+```julia
+soln = TTextremize(train,K)
+```
+where `K` is an integer reflecting the number of candidate indices to retain when sweeping left-to-right over the `d` cores.  `TTextremize` may produce either the (approximate) maximum or the (approximate) minimum.  The following will produce both the maximum and the minimum:
+```julia
+soln = TToptimize(train,K)
+```
+
+The optimization procedure is deterministic and follows Chertkov, Ryzhakov, Novikov, and Oseledets, (2022).
 
 ## References
 
