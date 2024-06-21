@@ -267,6 +267,13 @@ Create a random tensor train with spacial dimensions 'n' and tensor ranks 'r'.
 """
 function TTrandom(n::NTuple{d,S},r::Array{S,1},T::DataType=Float64) where {S <: Integer, d}
 
+  if length(r) != d+1
+    error("Dimension mis-match between 'n' and 'r'.")
+  end
+  if r[begin] != r[end] || r[end] != 1
+    error("The first and last ranks must equal 1.")
+  end
+
   g = Array{Array{T,3},1}(undef,d)
   for i = 1:d
     g[i] = rand(T,r[i],n[i],r[i+1])
@@ -302,6 +309,13 @@ Create a tensor train of a constant 'value' with spacial dimensions 'n' and tens
 """
 function TTconstant(value::T,n::NTuple{d,S},r::Array{S,1}) where {T <: AbstractFloat,S<:Integer,d}
 
+  if length(r) != d+1
+    error("Dimension mis-match between 'n' and 'r'.")
+  end
+  if r[begin] != r[end] || r[end] != 1
+    error("The first and last ranks must equal 1.")
+  end
+    
   s = sign(value)
   value = abs(value)
 
