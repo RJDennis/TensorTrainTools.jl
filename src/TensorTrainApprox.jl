@@ -7,7 +7,7 @@ using GenericLinearAlgebra
 
 include("TTtoolbox.jl")
 
-export chebyshev_nodes,
+export cheb_nodes,
        legendre_nodes,
        piecewise_linear_nodes
 
@@ -27,7 +27,6 @@ export TTconstant,
        DMRGcross_generic,
        DMRGcross_threaded,
        DMRGcross_generic_threaded,
-       cheb_nodes,
        createCTT,
        createLTT,
        createPTT,
