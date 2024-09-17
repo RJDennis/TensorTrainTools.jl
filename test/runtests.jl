@@ -14,9 +14,9 @@ using Test
 
     test(x) = exp(-0.5*sum(x.^2))
 
-    n1 = chebyshev_nodes(51,[2.0,-2.0])
-    n2 = chebyshev_nodes(51,[2.0,-2.0])
-    n3 = chebyshev_nodes(51,[2.0,-2.0])
+    n1 = cheb_nodes(51,[2.0,-2.0])
+    n2 = cheb_nodes(51,[2.0,-2.0])
+    n3 = cheb_nodes(51,[2.0,-2.0])
       
     A = [test([n1[i],n2[j],n3[k]]) for i in 1:51, j in 1:51, k in 1:51]
 
@@ -36,7 +36,7 @@ using Test
       
     hilbert(x) = 1/sum(x)
       
-    nodes = chebyshev_nodes(21,[1.0,0.0])
+    nodes = cheb_nodes(21,[1.0,0.0])
       
     node_vec = (nodes,nodes,nodes,nodes)
       
@@ -59,7 +59,7 @@ using Test
       
     normal_density(x) = (1/sqrt(2π))^length(x)*exp((-1/(2))*sum(x.^2))
       
-    x_nodes = chebyshev_nodes(1001,[6.0,-6.0])
+    x_nodes = cheb_nodes(1001,[6.0,-6.0])
       
     normTT = DMRGcross(normal_density,(x_nodes,x_nodes,x_nodes),1.05,1e-13)
       
