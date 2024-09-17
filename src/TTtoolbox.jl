@@ -5224,7 +5224,7 @@ area = TTintegrate_GL(train,nodes,domain)
 
 Integrate a functional tensor train using Gauss-Legendre quadrature.
 """
-function TTintegrate_GC(train::FunctionalTensorTrain,nodes::NTuple{d,Array{T,1}},domain::Union{Array{R,2},Array{R,1}}) where {T <: AbstractFloat, R <: AbstractFloat, d} # Integrates over all dimensions
+function TTintegrate_LC(train::FunctionalTensorTrain,nodes::NTuple{d,Array{T,1}},domain::Union{Array{R,2},Array{R,1}}) where {T <: AbstractFloat, R <: AbstractFloat, d} # Integrates over all dimensions
 
   n = length.(nodes)
 
