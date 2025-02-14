@@ -204,4 +204,4 @@ Oseledets, I., (2009), "Tensor train decomposotion," *SIAM Journal on Scientific
 
 Oseledets, I., and E. Tyrtyshnikov, (2010), "TT-cross approximation for multidimensional arrays," *Linear Algebra and its Applications*, 432, pp. 70--88.
 
-Sozykin, K., Chertkov, A., Schutski, R., Phan, A-H., Cichocki, A., and I. Oseledets (2022), "TTOpt: A Maximum Volume Quantized Tensor Train-based Optimization and its Application to Reinforcement Learning," *36th Conference on Neural Information Processing Systems*.
+Sozykin, K., Chertkov, A., Schutski, R., Phan, A-H., Cichocki, A., and I. Oseledets, (2022), "TTOpt: A Maximum Volume Quantized Tensor Train-based Optimization and its Application to Reinforcement Learning," *36th Conference on Neural Information Processing Systems*.
