@@ -73,6 +73,11 @@ new_train = TTpower(train,p)
 ``` 
 where `p` is the desired integer power.
 
+To take the Hadamard product of two tensor trains:
+```julia
+new_train = TThadamard(train_a,train_b)
+```
+
 Most of the algebraic operations described above cause the resulting tensor train to have expanded ranks.  To reduce the ranks it is often usful to perform a rounding operation:
 ```julia
 new_train = TTrounding(train,tol)
@@ -123,7 +128,7 @@ c_nodes = chebyshev_nodes(N,dom)
 l_nodes = legendre_nodes(N,dom)
 p_nodes = piecewise_linear_nodes(N,dom)
 ```
-where `N` is an integer specifing the number of approximating points, abd `dom` is a vector containing two elements, the upper and lower boundaries of the domain.
+where `N` is an integer specifing the number of approximating points, and `dom` is a vector containing two elements, the upper and lower boundaries of the domain.
 
 The following creates a functional tensor train where the univariate interpolating functions are Chebyshev polynomials:
 ```julia
@@ -176,6 +181,11 @@ soln = TToptimize(train,K)
 
 The optimization procedure is deterministic and follows Chertkov, Ryzhakov, Novikov, and Oseledets, (2022).
 
+Alternatively, a function `f` can be minimized using the maximum-volume method from Sozykin, Chertkov, Schutski, Phan, Cichocki, and Oseledets (2022):
+```julia
+soln = TTOpt(f,nodes,rmax,maxsweeps)
+```
+
 ## References
 
 Bigoni, D., Engsig-Karup, A., and Y. Marzouk, (2016), "Spectral tensor-train decomposition," *SIAM Journal on Scientific Computing*, 38, 4, pp. A2405--A2439.
@@ -193,3 +203,5 @@ Gorodetsky, A., Karaman, S., and Y. Marzouk, (2018), "A continuous analogue of t
 Oseledets, I., (2009), "Tensor train decomposotion," *SIAM Journal on Scientific Computing*, 33, 5, pp. 2295--2317.
 
 Oseledets, I., and E. Tyrtyshnikov, (2010), "TT-cross approximation for multidimensional arrays," *Linear Algebra and its Applications*, 432, pp. 70--88.
+
+Sozykin, K., Chertkov, A., Schutski, R., Phan, A-H., Cichocki, A., and I. Oseledets (2022), "TTOpt: A Maximum Volume Quantized Tensor Train-based Optimization and its Application to Reinforcement Learning," *36th Conference on Neural Information Processing Systems*.
