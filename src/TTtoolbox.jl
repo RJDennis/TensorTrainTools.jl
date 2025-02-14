@@ -6763,7 +6763,7 @@ function TToptimize(train::DiscreteTensorTrain,K::S,nodes::NTuple{ds,Array{T,1}}
 end
 
 """
-soln = TTOPpt(f,nodes,rmax,sweeps)
+soln = TTOpt(f,nodes,rmax,sweeps)
 
 Minimize a function by discretizing and compressing it using a tensor train with maximum rank, rmax. 
 """
