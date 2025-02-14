@@ -81,7 +81,7 @@ end
 """
 t = times_dim_1(a,b)
 
-Multiply a 3D array (a) by a matrix (b) along the first dimension of the 3D array.
+Multiply a 3D array (b) by a matrix (a) along the first dimension of the 3D array.
 """
 function times_dim_1(a::Array{T1,2},b::Array{T2,3}) where {T1 <: Number, T2 <: Number}
 
@@ -899,11 +899,11 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,initial:
 
   g = Array{Array{T,3},1}(undef,d)
 
-  left_to_right_indices = copy(initial.left_to_right_ind)
-  right_to_left_indices = copy(initial.right_to_left_ind)
+  left_to_right_indices = deepcopy(initial.left_to_right_ind)
+  right_to_left_indices = deepcopy(initial.right_to_left_ind)
   
-  left_to_right_subs = copy(initial.left_to_right_sub)
-  right_to_left_subs = copy(initial.right_to_left_sub)
+  left_to_right_subs = deepcopy(initial.left_to_right_sub)
+  right_to_left_subs = deepcopy(initial.right_to_left_sub)
   
   r = copy(initial.ranks)
 
@@ -1161,11 +1161,11 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},initial::ExtendedTens
 
   g = Array{Array{T,3},1}(undef,d)
 
-  left_to_right_indices = copy(initial.left_to_right_ind)
-  right_to_left_indices = copy(initial.right_to_left_ind)
+  left_to_right_indices = deepcopy(initial.left_to_right_ind)
+  right_to_left_indices = deepcopy(initial.right_to_left_ind)
   
-  left_to_right_subs = copy(initial.left_to_right_sub)
-  right_to_left_subs = copy(initial.right_to_left_sub)
+  left_to_right_subs = deepcopy(initial.left_to_right_sub)
+  right_to_left_subs = deepcopy(initial.right_to_left_sub)
   
   r = copy(initial.ranks)
 
@@ -1588,11 +1588,11 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R1,tol::R
 
   g = Array{Array{T,3},1}(undef,d)
 
-  left_to_right_indices = copy(initial.left_to_right_ind)
-  right_to_left_indices = copy(initial.right_to_left_ind)
+  left_to_right_indices = deepcopy(initial.left_to_right_ind)
+  right_to_left_indices = deepcopy(initial.right_to_left_ind)
 
-  left_to_right_subs = copy(initial.left_to_right_sub)
-  right_to_left_subs = copy(initial.right_to_left_sub)
+  left_to_right_subs = deepcopy(initial.left_to_right_sub)
+  right_to_left_subs = deepcopy(initial.right_to_left_sub)
 
   r = copy(initial.ranks)
 
@@ -2138,11 +2138,11 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T
 
   g = Array{Array{T,3},1}(undef,d)
 
-  left_to_right_indices = copy(initial.left_to_right_ind)
-  right_to_left_indices = copy(initial.right_to_left_ind)
+  left_to_right_indices = deepcopy(initial.left_to_right_ind)
+  right_to_left_indices = deepcopy(initial.right_to_left_ind)
 
-  left_to_right_subs = copy(initial.left_to_right_sub)
-  right_to_left_subs = copy(initial.right_to_left_sub)
+  left_to_right_subs = deepcopy(initial.left_to_right_sub)
+  right_to_left_subs = deepcopy(initial.right_to_left_sub)
 
   r = copy(initial.ranks)
   
@@ -2381,11 +2381,11 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},initial::Ext
 
   g = Array{Array{T,3},1}(undef,d)
 
-  left_to_right_indices = copy(initial.left_to_right_ind)
-  right_to_left_indices = copy(initial.right_to_left_ind)
+  left_to_right_indices = deepcopy(initial.left_to_right_ind)
+  right_to_left_indices = deepcopy(initial.right_to_left_ind)
 
-  left_to_right_subs = copy(initial.left_to_right_sub)
-  right_to_left_subs = copy(initial.right_to_left_sub)
+  left_to_right_subs = deepcopy(initial.left_to_right_sub)
+  right_to_left_subs = deepcopy(initial.right_to_left_sub)
 
   r = copy(initial.ranks)
   
@@ -2776,11 +2776,11 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
 
   g = Array{Array{T,3},1}(undef,d)
 
-  left_to_right_indices = copy(initial.left_to_right_ind)
-  right_to_left_indices = copy(initial.right_to_left_ind)
+  left_to_right_indices = deepcopy(initial.left_to_right_ind)
+  right_to_left_indices = deepcopy(initial.right_to_left_ind)
 
-  left_to_right_subs = copy(initial.left_to_right_sub)
-  right_to_left_subs = copy(initial.right_to_left_sub)
+  left_to_right_subs = deepcopy(initial.left_to_right_sub)
+  right_to_left_subs = deepcopy(initial.right_to_left_sub)
 
   r = copy(initial.ranks)
   
@@ -4159,9 +4159,9 @@ nodes = cheb_nodes(n,domain)
 
 Create a vector of 'n' Chebyshev nodes on 'domain' with element type 'T'.
 """
-function cheb_nodes(n::S,domain=[1.0,-1.0],T::DataType=Float64) where {S <: Integer}
+function cheb_nodes(n::S,domain = [1.0,-1.0],T::DataType=Float64) where {S <: Integer}
 
-  points = fill((domain[1] + domain[2]) * T(0.5), n)
+  points = [(domain[1] + domain[2]) * T(0.5) for _ in 1:n]
 
   @inbounds for i = 1:div(n, 2)
     x = -cos(T(i - 0.5) * π / n) * (domain[1] - domain[2]) * T(0.5)
@@ -4874,7 +4874,7 @@ function decompress(train::DiscreteTensorTrain)
   T = eltype(train.cores[1])
   d = length(train.cores)
 
-  n = Tuple([size(train.cores[i])[2] for i = 1:d])
+  n = Tuple(size(train.cores[i])[2] for i = 1:d)
 
   a = Array{T,d}(undef,n)
   for i in CartesianIndices(a)
@@ -4899,7 +4899,7 @@ function decompress_threaded(train::DiscreteTensorTrain)
   T = eltype(train.cores[1])
   d = length(train.cores)
 
-  n = Tuple([size(train.cores[i])[2] for i = 1:d])
+  n = Tuple(size(train.cores[i])[2] for i = 1:d)
 
   a = Array{T,d}(undef,n)
   @sync Threads.@threads for i in CartesianIndices(a)
@@ -5490,9 +5490,9 @@ function TTrounding(train::BaseTensorTrain,tol::T) where {T <: AbstractFloat}
 
   d = length(train.cores)
   r = copy(train.ranks)
-  n = [size(train.cores[i])[2] for i in 1:d]
+  n = Tuple(size(train.cores[i])[2] for i in 1:d)
 
-  cores = copy(train.cores)
+  cores = deepcopy(train.cores)
 
   r_new = copy(r)
 
@@ -5519,9 +5519,9 @@ function TTrounding(train::ExtendedTensorTrain,tol::T) where {T <: AbstractFloat
 
   d = length(train.cores)
   r = copy(train.ranks)
-  n = [size(train.cores[i])[2] for i in 1:d]
+  n = Tuple(size(train.cores[i])[2] for i in 1:d)
 
-  cores = copy(train.cores)
+  cores = deepcopy(train.cores)
 
   r_new = copy(r)
 
@@ -5546,7 +5546,7 @@ Multiply a discrete tensor train and a scalar.
 """
 function TTmult(train::BaseTensorTrain,s::T) where {T <: Real}
 
-  cores = copy(train.cores)
+  cores = deepcopy(train.cores)
   cores[1] = cores[1]*s
 
   return BaseTensorTrain(cores,train.ranks,train.sweeps)
@@ -5560,7 +5560,7 @@ Multiply a discrete tensor train and a scalar.
 """
 function TTmult(train::ExtendedTensorTrain,s::T) where {T <: Real}
 
-  cores = copy(train.cores)
+  cores = deepcopy(train.cores)
   cores[1] = cores[1]*s
 
   return ExtendedTensorTrain(cores,train.ranks,train.left_to_right_ind,train.right_to_left_ind,train.left_to_right_sub,train.right_to_left_sub,train.sweeps)
@@ -5594,7 +5594,7 @@ function TTadd(traina::DiscreteTensorTrain,trainb::DiscreteTensorTrain,anchor="s
   db = length(trainb.cores)
 
   if da > db # traina has more cores than trainb
-    n = [size(traina.cores[i])[2] for i in 1:da]
+    n = Tuple(size(traina.cores[i])[2] for i in 1:da)
     filler = TTconstant(one(Z),Tuple(n[db+1:end]),1)
     if anchor == "end"
       cores = [filler.cores;trainb.cores]
@@ -5608,7 +5608,7 @@ function TTadd(traina::DiscreteTensorTrain,trainb::DiscreteTensorTrain,anchor="s
   end
 
   if db > da # trainb has more cores than traina
-    n = [size(trainb.cores[i])[2] for i in 1:db]
+    n = Tuple(size(trainb.cores[i])[2] for i in 1:db)
     filler = TTconstant(one(Z),Tuple(n[da+1:end]),1)
     if anchor == "end"
       cores = [filler.cores;traina.cores]
@@ -5623,8 +5623,8 @@ function TTadd(traina::DiscreteTensorTrain,trainb::DiscreteTensorTrain,anchor="s
 
   # traina and trainb have the same number of cores
 
-  na = [size(traina.cores[i])[2] for i in 1:da]
-  nb = [size(trainb.cores[i])[2] for i in 1:db]
+  na = Tuple(size(traina.cores[i])[2] for i in 1:da)
+  nb = Tuple(size(trainb.cores[i])[2] for i in 1:db)
 
   for i in eachindex(na)
     if na[i] != nb[i]
@@ -5632,10 +5632,10 @@ function TTadd(traina::DiscreteTensorTrain,trainb::DiscreteTensorTrain,anchor="s
     end
   end
 
-  coresa = copy(traina.cores)
+  coresa = deepcopy(traina.cores)
   ra     = copy(traina.ranks)
 
-  coresb = copy(trainb.cores)
+  coresb = deepcopy(trainb.cores)
   rb     = copy(trainb.ranks)
 
   cores = Array{Array{Z,3},1}(undef,da)
@@ -5683,7 +5683,7 @@ function TTsubtract(traina::DiscreteTensorTrain,trainb::DiscreteTensorTrain,anch
   db = length(trainb.cores)
 
   if da > db # traina has more cores than trainb
-    n = [size(traina.cores[i])[2] for i in 1:da]
+    n = Tuple(size(traina.cores[i])[2] for i in 1:da)
     filler = TTconstant(1.0,Tuple(n[db+1:end]),1)
     if anchor == "end"
       cores = [filler.cores;trainb.cores]
@@ -5697,7 +5697,7 @@ function TTsubtract(traina::DiscreteTensorTrain,trainb::DiscreteTensorTrain,anch
   end
 
   if db > da # trainb has more cores than traina
-    n = [size(trainb.cores[i])[2] for i in 1:db]
+    n = Tuple(size(trainb.cores[i])[2] for i in 1:db)
     filler = TTconstant(1.0,Tuple(n[da+1:end]),1)
     if anchor == "end"
       cores = [filler.cores;traina.cores]
@@ -5712,8 +5712,8 @@ function TTsubtract(traina::DiscreteTensorTrain,trainb::DiscreteTensorTrain,anch
 
   # traina and trainb have the same number of cores
 
-  na = [size(traina.cores[i])[2] for i in 1:da]
-  nb = [size(trainb.cores[i])[2] for i in 1:db]
+  na = Tuple(size(traina.cores[i])[2] for i in 1:da)
+  nb = Tuple(size(trainb.cores[i])[2] for i in 1:db)
 
   for i in eachindex(na)
     if na[i] != nb[i]
@@ -5721,10 +5721,10 @@ function TTsubtract(traina::DiscreteTensorTrain,trainb::DiscreteTensorTrain,anch
     end
   end
 
-  coresa = copy(traina.cores)
+  coresa = deepcopy(traina.cores)
   ra     = copy(traina.ranks)
 
-  coresb = copy(trainb.cores)
+  coresb = deepcopy(trainb.cores)
   rb     = copy(trainb.ranks)
 
   cores = Array{Array{Float64,3},1}(undef,da)
@@ -5774,7 +5774,7 @@ function TTsquared(train::DiscreteTensorTrain)
   
   d = length(train.cores)
   r = copy(train.ranks)
-  n = [size(train.cores[i])[2] for i in 1:d]
+  n = Tuple(size(train.cores[i])[2] for i in 1:d)
 
   new_cores = [zeros(T,r[i]^2,n[i],r[i+1]^2) for i = 1:d]
   
@@ -5799,7 +5799,7 @@ function TTpower(train::DiscreteTensorTrain,N::S) where {S <: Integer}
 
   d = length(train.cores)
   r = copy(train.ranks)
-  n = [size(train.cores[i])[2] for i in 1:d]
+  n = Tuple(size(train.cores[i])[2] for i in 1:d)
 
   new_cores = [zeros(T,r[i]^N,n[i],r[i+1]^N) for i = 1:d]
   
@@ -5819,9 +5819,49 @@ function TTpower(train::DiscreteTensorTrain,N::S) where {S <: Integer}
 end
 
 """
+t = TThadamard(train1,train2)
+
+Take the Hadamand product of two tensor trains.
+"""
+
+function TThadamard(train1::DiscreteTensorTrain,train2::DiscreteTensorTrain) # Based on the description given in Daas, Ballard, and Benner (2020)
+
+  # do some testing on the tensor trains to make sure the product can be performed
+
+  d1 = length(train1.cores)
+  d2 = length(train1.cores)
+
+  T = eltype(train1.cores[1])
+
+  if d1 != d2
+    error("Tensor trains have different numbers of cores")
+  end
+
+  for i in 1:d1
+    if size(train1.cores[i])[2] != size(train2.cores[i])[2]
+      error("Tensor trains have different mode lengths for dimension $i")
+    end
+  end
+
+  d = length(train1.cores)
+
+  g = Array{Array{T,3},1}(undef,d)
+  for k = 1:d
+    temp = zeros(train1.ranks[k]*train2.ranks[k],size(train1.cores[k])[2],train1.ranks[k+1]*train2.ranks[k+1])
+    for i in axes(train1.cores[k],2)
+      temp[:,i,:] = kron(train1.cores[k][:,i,:],train2.cores[k][:,i,:])
+    end
+    g[k] = temp
+  end
+  
+  return BaseTensorTrain(g,train1.ranks.*train2.ranks,0)
+
+end
+
+"""
 t = TTexp(train,N,tol)
 
-Approximate the expoential of a tensor train in tensor train format
+Approximate the exponetial of a tensor train in tensor train format
 """
 function TTexp(train::DiscreteTensorTrain,order::S,tol::T) where {S <: Integer, T <: AbstractFloat}
 
@@ -5862,9 +5902,9 @@ Right orthogonalise a discrete tensor train.
 """
 function TTorthright(train::L) where {L <: BaseTensorTrain}  #Tensor train orthogonalisation according to Chertkov, Ryzhakov, Novikov, and Oseledets (2022), algorthm 3.
 
-  Π = copy(train.cores)
+  Π = deepcopy(train.cores)
   d = length(Π)
-  n = [size(Π[k])[2] for k = 1:d]
+  n = Tuple(size(Π[k])[2] for k = 1:d)
   r = copy(train.ranks)
   
   for k = d:-1:2
@@ -5891,9 +5931,9 @@ Right orthogonalise a discrete tensor train.
 """
 function TTorthright(train::L) where {L <: ExtendedTensorTrain}
 
-  Π = copy(train.cores)
+  Π = deepcopy(train.cores)
   d = length(Π)
-  n = [size(Π[k])[2] for k = 1:d]
+  n = Tuple(size(Π[k])[2] for k = 1:d)
   r = copy(train.ranks)
   
   for k = d:-1:2
@@ -5920,9 +5960,9 @@ Left orthogonalise a discrete tensor train.
 """
 function TTorthleft(train::L) where {L <: BaseTensorTrain}
 
-  Π = copy(train.cores)
+  Π = cdeepopy(train.cores)
   d = length(Π)
-  n = [size(Π[k])[2] for k = 1:d]
+  n = Tuple(size(Π[k])[2] for k = 1:d)
   r = copy(train.ranks)
   
   for k = 1:d-1
@@ -5949,9 +5989,9 @@ Left orthogonalise a discrete tensor train.
 """
 function TTorthleft(train::L) where {L <: ExtendedTensorTrain}
 
-  Π = copy(train.cores)
+  Π = deepcopy(train.cores)
   d = length(Π)
-  n = [size(Π[k])[2] for k = 1:d]
+  n = Tuple(size(Π[k])[2] for k = 1:d)
   r = copy(train.ranks)
   
   for k = 1:d-1
@@ -5978,9 +6018,9 @@ Left orthogonalise a train up to core 'μ' and right orthogonalise the remaining
 """
 function TTorthleftright(train::L,μ::S) where {L <: BaseTensorTrain, S <: Integer}
 
-  Π = copy(train.cores)
+  Π = deepcopy(train.cores)
   d = length(Π)
-  n = [size(Π[k])[2] for k = 1:d]
+  n = Tuple(size(Π[k])[2] for k = 1:d)
   r = copy(train.ranks)
   
   for k = 1:μ-1
@@ -6020,9 +6060,9 @@ Left orthogonalise a train up to core 'μ' and right orthogonalise the remaining
 """
 function TTorthleftright(train::L,μ::S) where {L <: ExtendedTensorTrain, S <: Integer}
 
-  Π = copy(train.cores)
+  Π = deepcopy(train.cores)
   d = length(Π)
-  n = [size(Π[k])[2] for k = 1:d]
+  n = Tuple(size(Π[k])[2] for k = 1:d)
   r = copy(train.ranks)
   
   for k = 1:μ-1
@@ -6080,7 +6120,7 @@ Compute the (implied) size of a decompressed tensor train.
 function TTsize(train::DiscreteTensorTrain)
 
   d = length(train.cores)
-  n = Tuple([size(train.cores[i])[2] for i in 1:d])
+  n = Tuple(size(train.cores[i])[2] for i in 1:d)
 
   return n
 
@@ -6102,8 +6142,8 @@ function TTinner_prod(traina::DiscreteTensorTrain,trainb::DiscreteTensorTrain)
 
   d = length(na)
 
-  ga = copy(traina.cores)
-  gb = copy(trainb.cores)
+  ga = deepcopy(traina.cores)
+  gb = deepcopy(trainb.cores)
 
   ra = copy(traina.ranks)
   rb = copy(trainb.ranks)
@@ -6211,16 +6251,17 @@ Conditional distribution sampling when the nodes are Gauss-Hermite.
 function TTCD_GH(train::DiscreteTensorTrain,N::S,seed::S = 123456) where {S <: Integer} # Gauss-Hermite quadrature used to marginalise
 
   d = length(train.cores)
-  Π = copy(train.cores)
-  n = [size(Π[i]) for i in 1:d]
+  Π = deepcopy(train.cores)
+  n = Tuple(size(Π[i]) for i in 1:d)
+  r = copy(train.ranks)
 
   rng = MersenneTwister(seed)
   q = rand(rng,N,d)
   sample = zeros(N,d)
 
-  P = Array{Array{Float64,2},1}(undef,d+1)
-  Φ = Array{Array{Float64,2},1}(undef,d+1)
-  Ψ = Array{Array{Float64,1},1}(undef,d)
+  P = Array{Array{T,2},1}(undef,d+1)
+  Φ = Array{Array{T,2},1}(undef,d+1)
+  Ψ = Array{Array{T,2},1}(undef,d)
 
   nodes   = Array{Array{Float64,1},1}(undef,d)
   weights = Array{Array{Float64,1},1}(undef,d)
@@ -6235,18 +6276,18 @@ function TTCD_GH(train::DiscreteTensorTrain,N::S,seed::S = 123456) where {S <: I
     P[k] = term*P[k+1]
   end
 
-  Φ[1] = ones(N,n[1][2])
+  Φ[1] = ones(N,1)
   for k = 1:d
-    ϕ = zeros(N,n[k][2])
-    Ψ[k] = [(Π[k][:,i,:]*P[k+1])[1] for i in 1:n[k][2]]
+    ϕ = zeros(N,n[k][3])
+    Ψ[k] = times_dim_3(Π[k],P[k+1])[:,:,1] # [Π[k][:,i,:]*P[k+1] for i in 1:n[k][2]]
     for l = 1:N
-      p = abs.(Φ[k][l,:].*Ψ[k])
-      g = piecewise_linear_evaluate(p,nodes[k])
+      p = abs.(Φ[k][l:l,:]*Ψ[k])[:] # p is now a vector with length n[k][2]
       p .= cumsum(p)
       p .= p./p[end]
       f = piecewise_linear_evaluate(p,nodes[k])
       sample[l,k] = invert_cdf(f,q[l,k],nodes[k][begin],nodes[k][end])
-      ϕ[l,:] = Φ[k][l,:]*g(sample[l,k])
+      g = [piecewise_linear_evaluate(Π[k][i,:,j],nodes[k]) for i = 1:r[k], j = 1:r[k+1]]
+      ϕ[l,:] = Φ[k][l,:]'*[g[i,j].(sample[l,k]) for i in axes(g,1),j in axes(g,2)]
     end
     Φ[k+1] = ϕ
   end
@@ -6264,8 +6305,9 @@ Conditional distribution sampling when the nodes are Gauss-Chebyshev.
 function TTCD_GC(train::DiscreteTensorTrain,N::S,domain::Array{T,2},seed::S = 123456) where {T <: AbstractFloat, S <: Integer} # Gauss-Chebyshev quadrature used to marginalise
 
   d = length(train.cores)
-  Π = copy(train.cores)
-  n = [size(Π[i]) for i in 1:d]
+  Π = deepcopy(train.cores)
+  n = Tuple(size(Π[i]) for i in 1:d)
+  r = copy(train.ranks)
 
   rng = MersenneTwister(seed)
   q = rand(rng,N,d)
@@ -6273,7 +6315,7 @@ function TTCD_GC(train::DiscreteTensorTrain,N::S,domain::Array{T,2},seed::S = 12
 
   P = Array{Array{T,2},1}(undef,d+1)
   Φ = Array{Array{T,2},1}(undef,d+1)
-  Ψ = Array{Array{T,1},1}(undef,d)
+  Ψ = Array{Array{T,2},1}(undef,d)
 
   nodes   = Array{Array{T,1},1}(undef,d)
   weights = Array{Array{T,1},1}(undef,d)
@@ -6289,18 +6331,18 @@ function TTCD_GC(train::DiscreteTensorTrain,N::S,domain::Array{T,2},seed::S = 12
     nodes[k] = (domain[1,k]+domain[2,k])/2 .+ nodes[k]*((domain[1,k]-domain[2,k])/2)
   end
 
-  Φ[1] = ones(N,n[1][2])
+  Φ[1] = ones(N,1)
   for k = 1:d
-    ϕ = zeros(N,n[k][2])
-    Ψ[k] = [(Π[k][:,i,:]*P[k+1])[1] for i in 1:n[k][2]]
+    ϕ = zeros(N,n[k][3])
+    Ψ[k] = times_dim_3(Π[k],P[k+1])[:,:,1] # [Π[k][:,i,:]*P[k+1] for i in 1:n[k][2]]
     for l = 1:N
-      p = abs.(Φ[k][l,:].*Ψ[k])
-      g = piecewise_linear_evaluate(p,nodes[k])
+      p = abs.(Φ[k][l:l,:]*Ψ[k])[:] # p is now a vector with length n[k][2]
       p .= cumsum(p)
       p .= p./p[end]
       f = piecewise_linear_evaluate(p,nodes[k])
       sample[l,k] = invert_cdf(f,q[l,k],nodes[k][begin],nodes[k][end])
-      ϕ[l,:] = Φ[k][l,:]*g(sample[l,k])
+      g = [piecewise_linear_evaluate(Π[k][i,:,j],nodes[k]) for i = 1:r[k], j = 1:r[k+1]]
+      ϕ[l,:] = Φ[k][l,:]'*[g[i,j].(sample[l,k]) for i in axes(g,1),j in axes(g,2)]
     end
     Φ[k+1] = ϕ
   end
@@ -6318,8 +6360,9 @@ Conditional distribution sampling when the nodes are Gauss-Legendre.
 function TTCD_GL(train::DiscreteTensorTrain,N::S,domain::Array{T,2},seed::S = 123456) where {T <: AbstractFloat, S <: Integer} # Gauss-Legendre quadrature used to marginalise
 
   d = length(train.cores)
-  Π = copy(train.cores)
-  n = [size(Π[i]) for i in 1:d]
+  Π = deepcopy(train.cores)
+  n = Tuple(size(Π[i]) for i in 1:d)
+  r = copy(train.ranks)
 
   rng = MersenneTwister(seed)
   q = rand(rng,N,d)
@@ -6327,7 +6370,7 @@ function TTCD_GL(train::DiscreteTensorTrain,N::S,domain::Array{T,2},seed::S = 12
 
   P = Array{Array{T,2},1}(undef,d+1)
   Φ = Array{Array{T,2},1}(undef,d+1)
-  Ψ = Array{Array{T,1},1}(undef,d)
+  Ψ = Array{Array{T,2},1}(undef,d)
 
   nodes   = Array{Array{T,1},1}(undef,d)
   weights = Array{Array{T,1},1}(undef,d)
@@ -6343,18 +6386,18 @@ function TTCD_GL(train::DiscreteTensorTrain,N::S,domain::Array{T,2},seed::S = 12
     nodes[k] = (domain[1,k]+domain[2,k])/2 .+ nodes[k]*((domain[1,k]-domain[2,k])/2)
   end
 
-  Φ[1] = ones(N,n[1][2])
+  Φ[1] = ones(N,1)
   for k = 1:d
-    ϕ = zeros(N,n[k][2])
-    Ψ[k] = [(Π[k][:,i,:]*P[k+1])[1] for i in 1:n[k][2]]
+    ϕ = zeros(N,n[k][3])
+    Ψ[k] = times_dim_3(Π[k],P[k+1])[:,:,1] # [Π[k][:,i,:]*P[k+1] for i in 1:n[k][2]]
     for l = 1:N
-      p = abs.(Φ[k][l,:].*Ψ[k])
-      g = piecewise_linear_evaluate(p,nodes[k])
+      p = abs.(Φ[k][l:l,:]*Ψ[k])[:] # p is now a vector with length n[k][2]
       p .= cumsum(p)
       p .= p./p[end]
       f = piecewise_linear_evaluate(p,nodes[k])
       sample[l,k] = invert_cdf(f,q[l,k],nodes[k][begin],nodes[k][end])
-      ϕ[l,:] = Φ[k][l,:]*g(sample[l,k])
+      g = [piecewise_linear_evaluate(Π[k][i,:,j],nodes[k]) for i = 1:r[k], j = 1:r[k+1]]
+      ϕ[l,:] = Φ[k][l,:]'*[g[i,j].(sample[l,k]) for i in axes(g,1),j in axes(g,2)]
     end
     Φ[k+1] = ϕ
   end
@@ -6372,8 +6415,9 @@ Conditional distribution sampling when the nodes are uniformly spaced.
 function TTCD_PL(train::DiscreteTensorTrain,N::S,domain::Array{T,2},seed::S = 123456) where {T <: AbstractFloat, S <: Integer} # Trapazopidal integration used to marginalise
 
   d = length(train.cores)
-  Π = copy(train.cores)
-  n = [size(Π[i]) for i in 1:d]
+  Π = deepcopy(train.cores)
+  n = Tuple(size(Π[i]) for i in 1:d)
+  r = copy(train.ranks)
 
   rng = MersenneTwister(seed)
   q = rand(rng,N,d)
@@ -6381,7 +6425,7 @@ function TTCD_PL(train::DiscreteTensorTrain,N::S,domain::Array{T,2},seed::S = 12
 
   P = Array{Array{T,2},1}(undef,d+1)
   Φ = Array{Array{T,2},1}(undef,d+1)
-  Ψ = Array{Array{T,1},1}(undef,d)
+  Ψ = Array{Array{T,2},1}(undef,d)
 
   nodes   = Array{Array{T,1},1}(undef,d)
 
@@ -6392,18 +6436,18 @@ function TTCD_PL(train::DiscreteTensorTrain,N::S,domain::Array{T,2},seed::S = 12
     P[k] = term*P[k+1]
   end
 
-  Φ[1] = ones(N,n[1][2])
+  Φ[1] = ones(N,1)
   for k = 1:d
-    ϕ = zeros(N,n[k][2])
-    Ψ[k] = [(Π[k][:,i,:]*P[k+1])[1] for i in 1:n[k][2]]
+    ϕ = zeros(N,n[k][3])
+    Ψ[k] = times_dim_3(Π[k],P[k+1])[:,:,1] # [Π[k][:,i,:]*P[k+1] for i in 1:n[k][2]]
     for l = 1:N
-      p = abs.(Φ[k][l,:].*Ψ[k])
-      g = piecewise_linear_evaluate(p,nodes[k])
+      p = abs.(Φ[k][l:l,:]*Ψ[k])[:] # p is now a vector with length n[k][2]
       p .= cumsum(p)
       p .= p./p[end]
       f = piecewise_linear_evaluate(p,nodes[k])
       sample[l,k] = invert_cdf(f,q[l,k],nodes[k][begin],nodes[k][end])
-      ϕ[l,:] = Φ[k][l,:]*g(sample[l,k])
+      g = [piecewise_linear_evaluate(Π[k][i,:,j],nodes[k]) for i = 1:r[k], j = 1:r[k+1]]
+      ϕ[l,:] = Φ[k][l,:]'*[g[i,j].(sample[l,k]) for i in axes(g,1),j in axes(g,2)]
     end
     Φ[k+1] = ϕ
   end
@@ -6545,11 +6589,11 @@ Extremize over the cores of a tensor train.  The output could be a maxima or a m
 function TTextremize(train::DiscreteTensorTrain,K::S) where {S <: Integer} # Chertkov, Ryzhakov, Novikov, and Oseledets (2022), algorthm 1.
 
   orth_train = TTorthright(train)  
-  Π = copy(orth_train.cores)
+  Π = deepcopy(orth_train.cores)
   
   d = length(Π)
   r = copy(orth_train.ranks)
-  n = [size(Π[i])[2] for i = 1:d]
+  n = Tuple(size(Π[i])[2] for i = 1:d)
 
   Q = Π[1][1,:,:]
   ind = topK(Q,K)
@@ -6582,12 +6626,12 @@ The output could be a maxima or a minima.
 function TTextremize(train::DiscreteTensorTrain,K::S,state::Array{S,1}) where {S <: Integer}
 
   orth_train = TTorthright(train)  
-  Π = copy(orth_train.cores)
+  Π = deepcopy(orth_train.cores)
   
   d = length(Π)
   ds = length(state)
   r = copy(orth_train.ranks)
-  n = [size(Π[i])[2] for i = 1:d]
+  n = Tuple(size(Π[i])[2] for i = 1:d)
 
   if ds == d
     return state
@@ -6601,7 +6645,7 @@ function TTextremize(train::DiscreteTensorTrain,K::S,state::Array{S,1}) where {S
   Q = reshape(Q,n[ds+1],r[ds+2])
   ind = topK(Q,K)
   Q = Q[ind,:]
-  I = [1:1:n[1];;]
+  I = [1:1:n[ds+1];;]
   I = I[ind,:]
 
   for k = (ds+2):d
@@ -6621,6 +6665,21 @@ function TTextremize(train::DiscreteTensorTrain,K::S,state::Array{S,1}) where {S
 end
 
 """
+soln = TTextremize(train,K,nodes,state)
+
+Extremize over the final (d-ds) cores of a tensor train, evaluating the first ds cores at the point given in 'state'.
+The output could be a maxima or a minima. 
+"""
+function TTextremize(train::DiscreteTensorTrain,K::S,nodes::NTuple{ds,Array{T,1}},state::Array{T,1}) where {S <: Integer, T <: AbstractFloat,ds}
+
+  state_index = [findfirst(x->x==state[i],nodes[i]) for i in 1:ds]
+
+  ind = TTextremize(train,K,state_index)
+  return ind
+
+end
+
+"""
 soln = TToptimize(train,K)
 
 Optimize over the cores of a tensor train, returning the maximum and the minimum. 
@@ -6629,7 +6688,7 @@ function TToptimize(train::DiscreteTensorTrain,K::S,tol=1e-12) where {S <: Integ
 
   d = length(train.cores)
   r = copy(train.ranks)
-  n = Tuple([size(train.cores[i])[2] for i in 1:d])
+  n = Tuple(size(train.cores[i])[2] for i in 1:d)
 
   imax = TTextremize(train,K)
   ymax = TTevaluate(train,imax)
@@ -6663,7 +6722,7 @@ function TToptimize(train::DiscreteTensorTrain,K::S,state::Array{S,1},tol=1e-12)
 
   d = length(train.cores)
   r = copy(train.ranks)
-  n = Tuple([size(train.cores[i])[2] for i in 1:d])
+  n = Tuple(size(train.cores[i])[2] for i in 1:d)
 
   imax = TTextremize(train,K,state)
   ymax = TTevaluate(train,[state;imax])
@@ -6684,5 +6743,157 @@ function TToptimize(train::DiscreteTensorTrain,K::S,state::Array{S,1},tol=1e-12)
     return (imax, imin), (ymax, ymin)
 
   end
+
+end
+
+"""
+soln = TToptimize(train,K,nodes,state)
+
+Optimize over the cores final (d-ds) of a tensor train, evaluating the first ds cores at the point given 
+in 'state' and returning the maximum and the minimum. 
+"""
+function TToptimize(train::DiscreteTensorTrain,K::S,nodes::NTuple{ds,Array{T,1}},state::Array{T,1},tol=1e-12) where {S <: Integer,T <: AbstractFloat,ds}
+
+  state_index = [findfirst(x->x==state[i],nodes[i]) for i = 1:ds]
+
+  (imax, imin), (ymax, ymin) = TToptimize(train,K,state_index,tol)
+
+  return (imax, imin), (ymax, ymin)
+
+end
+
+"""
+soln = TTOPpt(f,nodes,rmax,sweeps)
+
+Minimize a function by discretizing and compressing it using a tensor train with maximum rank, rmax. 
+"""
+function TTOpt(f::Function,nodes::NTuple{d,Array{T,1}},rmax::S,sweeps::S) where {T <: AbstractFloat, S <: Integer,d} # Algorithm A1 from Sozykin, Chertkov, Schutski, Phan, Cichocki, and Oseledets (2022)
+
+  n = Tuple(length.(nodes))
+
+  X = Array{Array{T,2},1}(undef,d)
+  
+  r = Array{S,1}(undef,d+1)
+  r[1] = 1
+  for i in 2:d
+    r[i] = min(r[i-1]*n[i-1],r[i-1]*n[i],rmax)
+  end
+  r[d+1] = 1
+  
+  g = randn(r[1]*n[1],r[2])
+  q,R = qr(g)
+  ind,s = maxvol!(Matrix(q),1.005,300)
+  W2 = kron(nodes[1],ones(r[1]))
+  X[1] = W2[ind,:]
+  
+  for i in 2:d-1
+    g = randn(r[i]*n[i],r[i+1])
+    q,R = qr(g)
+    ind,s = maxvol!(Matrix(q),1.005,300)
+  
+    W1 = kron(ones(n[i]),X[i-1])
+    W2 = kron(nodes[i],ones(r[i]))
+    W = [W1 W2]
+    X[i] = W[ind,:]
+  end
+  
+  θₘᵢₙ = Array{T,1}(undef,d)
+  Jₘᵢₙ = Inf
+
+  for k = 1:sweeps
+
+    # Iterate right to left
+  
+    # Treat dimension d
+  
+    W1 = kron(ones(n[d]*r[d+1]),X[d-1])
+    W2 = kron(kron(ones(r[d+1]),nodes[d]),ones(r[d]))
+    W = [W1 W2]
+    Z = [f(W[i,:]) for i in axes(W,1)]
+    if minimum(Z) < Jₘᵢₙ
+      Jₘᵢₙ = minimum(Z)
+      mₘᵢₙ = findfirst(x->x==Jₘᵢₙ,Z)[1]
+      θₘᵢₙ = W[mₘᵢₙ,:]
+    end
+    Z .= π/2 .- atan.(Z .- Jₘᵢₙ)
+    Z = reshape(Z,r[d],n[d])
+    q,R = qr(Z')
+    ind,s = maxvol!(Matrix(q),1.005,300)
+    W1 = kron(ones(r[d+1]),nodes[d])
+    X[d] = W1[ind,:]
+  
+    # Treat dimensions d-1 to 2
+  
+    for i = d-1:-1:2
+  
+      W1 = kron(ones(n[i]*r[i+1]),X[i-1])
+      W2 = kron(kron(ones(r[i+1]),nodes[i]),ones(r[i]))
+      W3 = kron(X[i+1],ones(r[i]*n[i]))
+      W = [W1 W2 W3]
+      Z = [f(W[i,:]) for i in axes(W,1)]
+      if minimum(Z) < Jₘᵢₙ
+        Jₘᵢₙ = minimum(Z)
+        mₘᵢₙ = findfirst(x->x==Jₘᵢₙ,Z)[1]
+        θₘᵢₙ = W[mₘᵢₙ,:]
+      end
+      Z .= π/2 .- atan.(Z .- Jₘᵢₙ)
+      Z = reshape(Z,r[i],n[i]*r[i+1])
+      q,R = qr(Z')
+      ind,s = maxvol!(Matrix(q),1.005,300)
+      W1 = kron(ones(r[i+1]),nodes[i])
+      W2 = kron(X[i+1],ones(n[i]))
+      W = [W1 W2]
+      X[i] = W[ind,:]
+  
+    end
+  
+    # Iterate left to right
+  
+    # Treat dimension 1
+  
+    W2 = kron(kron(ones(r[2]),nodes[1]),ones(r[1]))
+    W3 = kron(X[2],ones(r[1]*n[1]))
+    W = [W2 W3]
+    Z = [f(W[i,:]) for i in axes(W,1)]
+    if minimum(Z) < Jₘᵢₙ
+      Jₘᵢₙ = minimum(Z)
+      mₘᵢₙ = findfirst(x->x==Jₘᵢₙ,Z)[1]
+      θₘᵢₙ = W[mₘᵢₙ,:]
+    end
+    Z .= π/2 .- atan.(Z .- Jₘᵢₙ)
+    Z = reshape(Z,r[1]*n[1],r[2])
+    q,R = qr(Z)
+    ind,s = maxvol!(Matrix(q),1.005,300)
+    W2 = kron(nodes[1],ones(r[1]))
+    X[1] = W2[ind,:]
+  
+    # Treat dimension 2 to d-1
+  
+    for i = 2:d-1
+  
+      W1 = kron(ones(n[i]*r[i+1]),X[i-1])
+      W2 = kron(kron(ones(r[i+1]),nodes[i]),ones(r[i]))
+      W3 = kron(X[i+1],ones(r[i]*n[i]))
+      W = [W1 W2 W3]
+      Z = [f(W[i,:]) for i in axes(W,1)]
+      if minimum(Z) < Jₘᵢₙ
+        Jₘᵢₙ = minimum(Z)
+        mₘᵢₙ = findfirst(x->x==Jₘᵢₙ,Z)[1]
+        θₘᵢₙ = W[mₘᵢₙ,:]
+      end
+      Z .= π/2 .- atan.(Z .- Jₘᵢₙ)
+      Z = reshape(Z,r[i],n[i]*r[i+1])
+      q,R = qr(Z')
+      ind,s = maxvol!(Matrix(q),1.005,300)
+      W1 = kron(ones(r[i+1]),nodes[i])
+      W2 = kron(X[i+1],ones(n[i]))
+      W = [W1 W2]
+      X[i] = W[ind,:]
+  
+    end
+
+  end
+
+  return Jₘᵢₙ, θₘᵢₙ
 
 end

@@ -51,6 +51,7 @@ export TTconstant,
        TTsubtract,
        TTsquared,
        TTpower,
+       TThadamard,
        TTorthright,
        TTorthleft,
        TTorthleftright,
@@ -62,6 +63,7 @@ export TTconstant,
        TTCD_GL,
        TTCD_PL,
        TTextremize,
-       TToptimize
+       TToptimize,
+       TTOpt
 
 end
