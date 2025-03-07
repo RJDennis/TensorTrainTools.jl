@@ -15,6 +15,8 @@ A tensor train is a system of connected 3d-arrays where the number of cores or c
 
 To initialize a discrete tensor train with `d` cores with rank `r`, and nodes `n` to a constant value, use:
 ```julia
+train = TTzeros(n,r)
+train = TTones(n,r)
 train = TTconstant(value,n,r)
 ```
 where `n` is a tuple containing `d` positive integers specifying the number of points (or nodes) along each dimension and `r` is either an integer or a `d+1` vector of integers, with first and last elements equaling `1`, specifying the ranks.
@@ -36,7 +38,7 @@ n = TTsize(train)
 ```
 The dense array itself can be generated through:
 ```julia
-A = decompress(train)
+A = TTdecompress(train)
 ```
 
 Lastly, the Frobenius norm of a tensor train can be computed using:
