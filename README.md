@@ -126,7 +126,7 @@ train = DMRGcross(hilbert,grid,1.05,1e-12)
 
 The `k`'th core of a tensor train is a $r_{k}$ $\times$ $N_{k}$ $\times$ $r_{k+1}$ array.  These cores can be reduced to $r_{k}$ $\times$ $r_{k+1}$ matrices of functions by fitting univariate interpolating functions to the $N_{k}$ points along the middle dimension.  Different interpolating functions are associated with different interpolating points.  To help with this, we have the following:
 ```julia
-c_nodes = chebyshev_nodes(N,dom)
+c_nodes = cheb_nodes(N,dom)
 l_nodes = legendre_nodes(N,dom)
 p_nodes = piecewise_linear_nodes(N,dom)
 ```
@@ -134,7 +134,7 @@ where `N` is an integer specifing the number of approximating points, and `dom` 
 
 The following creates a functional tensor train where the univariate interpolating functions are Chebyshev polynomials:
 ```julia
-c_nodes = chebyshev_nodes(31,[3.0,1.0])
+c_nodes = cheb_nodes(31,[3.0,1.0])
 train = DMRGcross(hilbert,(c_nodes,c_nodes,c_nodes,c_nodes),1.05,1e-12)
 domain = [dom dom dom dom]
 c_train = createCTT(train,(c_nodes,c_nodes,c_nodes,c_nodes),domain)
