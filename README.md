@@ -57,7 +57,7 @@ new_train = TTmult(train,s)
 ```
 where `s` is a real number and `train` is a discrete tensor train.
 
-Two discrete tensor trains that are conformable, conformable is the sense that they share the same number of points along each dimension, can be added to each other or subtracted from each other using:
+Two discrete tensor trains that are conformable, conformable in the sense that they share the same number of points along each dimension, can be added to each other or subtracted from each other using:
 ```julia
 new_train = TTadd(train_a,train_b)
 new_train = TTsubtract(train_a,train_b)
