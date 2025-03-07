@@ -146,7 +146,7 @@ The Julia code to create functional tensor trains based on Legendre polynomials 
 
 ## Integration
 
-Once a discrete tensor train or a functional tensor train has been created, many other operations become extremely fast.  One such operation is numerical integration.  Each core is a tensor train is associated with a single variable, which means that integrating a tensor train simply involves the application of univariate quadrature rules followed by matrix multiplication.
+Once a discrete tensor train or a functional tensor train has been created, many other operations become extremely fast.  One such operation is numerical integration.  Each core in a tensor train is associated with a single variable, which means that integrating a tensor train simply involves the application of univariate quadrature rules followed by matrix multiplication.
 
 Suppose you have created a tensor train using the Gauss-Legendre points, then this tensor train can be integrated over all dimensions:
 ```julia
