@@ -24,9 +24,9 @@ using Test
     A_DMRG_a = DMRGcross(A,1.05,1e-10)
     A_DMRG_b = DMRGcross(test,(n1,n2,n3),1.05,1e-10)
 
-    B_TTsvd  = decompress(A_TTsvd)
-    B_DMRG_a = decompress(A_DMRG_a)
-    B_DMRG_b = decompress(A_DMRG_b)
+    B_TTsvd  = TTdecompress(A_TTsvd)
+    B_DMRG_a = TTdecompress(A_DMRG_a)
+    B_DMRG_b = TTdecompress(A_DMRG_b)
 
     test_one   = maximum(abs,A-B_TTsvd) < 1e-10
     test_two   = maximum(abs,A-B_DMRG_a) < 1e-10
@@ -41,14 +41,14 @@ using Test
     node_vec = (nodes,nodes,nodes,nodes)
       
     hilbert_tt = DMRGcross(hilbert,node_vec,1.05,1e-9)
-    H = decompress(hilbert_tt)
+    H = TTdecompress(hilbert_tt)
       
     n = length.(node_vec)
     J = [hilbert([nodes[i],nodes[j],nodes[k],nodes[l]]) for i in 1:21, j in 1:21, k in 1:21, l in 1:21]
     
     test_four = maximum(abs,H-J) < 1e-7
       
-    hilbert_ftt = createFTT(hilbert_tt,node_vec,[1.0 1.0 1.0 1.0; 0.0 0.0 0.0 0.0])
+    hilbert_ftt = TTcreateFTT(hilbert_tt,node_vec,[1.0 1.0 1.0 1.0; 0.0 0.0 0.0 0.0])
     TTevaluate(hilbert_ftt,[0.5,0.5,0.5,0.5])
       
     hilbertfn = TTinterp(hilbert_ftt)
