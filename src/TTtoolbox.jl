@@ -10494,7 +10494,7 @@ xstar, ind_xstar, f_xstar = TTOpt(train,nodes)
 """
 function TTOpt(train::ExtendedTensorTrain,nodes::NTuple{d,AbstractArray{T,1}}) where {T<:AbstractFloat,d} # Motivated by Dolgov and Savostyanov (2025)
 
-  f_opt = Inf
+  f_opt = -Inf
   point_index_opt = Array{Int,1}(undef,d)
 
   for i = 1:d-1
