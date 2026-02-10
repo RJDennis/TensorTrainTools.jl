@@ -91,7 +91,7 @@ where `tol` is a small tolerance parameter.
 
 If we have a dense array, `A`, then this array can be approximated to a prescribed accuracy using either:
 ```julia
-train = TTSVD(A,tol)
+train = TTsvd(A,tol)
 train = DMRGcross(A,mu,tol,maxsweeps)
 ```
 where `tol` is an accuracy parameter, `mu` (greater than one) determines convergence of the maxvol procedure, and `maxsweeps` is an optional integer specifying the maximum number of sweeps performed by the DMRGcross algorithm.  The default `maxsweeps` is `30`, which is usually more than enough.
