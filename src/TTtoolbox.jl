@@ -107,20 +107,19 @@ Signature
 
 t = times_cores(A,B)
 """
-function times_cores(A::AbstractArray{T,3},B::AbstractArray{T,3}) where {T<:Real}
+function times_cores(A::AbstractArray{T1,3},B::AbstractArray{T2,3}) where {T1<:Number,T2<:Number}
 
   na = size(A)
   nb = size(B)
 
   if na[3] != nb[1]
-    error("Cores are not conformable and cannot be multiplied.")
+    throw(DimensionMismatch("incompatible dimensions: A has $(na[3]) columns in dimension 3, B has $(nb[1]) rows in dimension 1"))
   end
 
-  A = reshape(A,prod(na[1:2]),na[3])
-  B = reshape(B,nb[1],prod(nb[2:3]))
-  C = A*B
-  C = reshape(C,na[1],na[2],nb[2],nb[3])
-
+  A = reshape(A,na[1]*na[2],na[3])
+  B = reshape(B,nb[1],nb[2]*nb[3])
+  C = reshape(A*B,na[1],na[2],nb[2],nb[3])
+  
   return C
 
 end
@@ -133,22 +132,18 @@ Signature
 
 t = times_dim_1(A,B)
 """
-function times_dim_1(A::AbstractArray{T1,2},B::AbstractArray{T2,3}) where {T1<:Real,T2<:Real}
-
-  T = promote_type(T1,T2)
+function times_dim_1(A::AbstractArray{T1,2},B::AbstractArray{T2,3}) where {T1<:Number,T2<:Number}
 
   na = size(A)
   nb = size(B)
 
   if na[2] != nb[1]
-    error("Arrays are not conformable and cannot be multiplied.")
+    throw(DimensionMismatch("incompatible dimensions: A has $(na[2]) columns, B has $(nb[1]) rows in dimension 1"))
   end
 
-  C = Array{T}(undef,na[1],nb[2],nb[3])
-  for i in 1:nb[3]
-    C[:,:,i] .= @views A*B[:,:,i]
-  end
-
+  B = reshape(B,nb[1],nb[2]*nb[3])
+  C = reshape(A*B,na[1],nb[2],nb[3])
+  
   return C
 
 end
@@ -161,23 +156,17 @@ Signature
 
 t = times_dim_1(A,B)
 """
-function times_dim_1(A::AbstractArray{T1,2},B::AbstractArray{T2,4}) where {T1<:Real,T2<:Real}
-
-  T = promote_type(T1,T2)
+function times_dim_1(A::AbstractArray{T1,2},B::AbstractArray{T2,4}) where {T1<:Number,T2<:Number}
 
   na = size(A)
   nb = size(B)
 
   if na[2] != nb[1]
-    error("Arrays are not conformable and cannot be multiplied.")
+    throw(DimensionMismatch("incompatible dimensions: A has $(na[2]) columns, B has $(nb[1]) rows in dimension 1"))
   end
 
-  C = Array{T}(undef,na[1],nb[2],nb[3],nb[4])
-  for j in 1:nb[4]
-    for i in 1:nb[3]
-      C[:,:,i,j] .= @views A*B[:,:,i,j]
-    end
-  end
+  B = reshape(B,nb[1],nb[2]*nb[3]*nb[4])
+  C = reshape(A*B,na[1],nb[2],nb[3],nb[4])
 
   return C
 
@@ -191,21 +180,17 @@ Signature
 
 t = times_dim_3(A,B)
 """
-function times_dim_3(A::AbstractArray{T1,3},B::AbstractArray{T2,2}) where {T1<:Real,T2<:Real}
-
-  T = promote_type(T1,T2)
+function times_dim_3(A::AbstractArray{T1,3},B::AbstractArray{T2,2}) where {T1<:Number,T2<:Number}
 
   na = size(A)
   nb = size(B)
 
   if na[3] != nb[1]
-    error("Arrays are not conformable and cannot be multiplied.")
+    throw(DimensionMismatch("incompatible dimensions: A has $(na[3]) columns in mode 3, B has $(nb[1]) rows"))
   end
 
-  C = Array{T}(undef,na[1],na[2],nb[2])
-  for i in 1:na[1]
-    C[i,:,:] .= @views A[i,:,:]*B
-  end
+  A = reshape(A,na[1]*na[2],na[3])
+  C = reshape(A*B,na[1],na[2],nb[2])
   
   return C
 
@@ -219,23 +204,17 @@ Signature
 
 t = times_dim_4(A,B)
 """
-function times_dim_4(A::AbstractArray{T1,4},B::AbstractArray{T2,2}) where {T1<:Real,T2<:Real}
-
-  T = promote_type(T1,T2)
+function times_dim_4(A::AbstractArray{T1,4},B::AbstractArray{T2,2}) where {T1<:Number,T2<:Number}
 
   na = size(A)
   nb = size(B)
 
   if na[4] != nb[1]
-    error("Arrays are not conformable and cannot be multiplied.")
+    throw(DimensionMismatch("incompatible dimensions: A has $(na[4]) columns in mode 4, B has $(nb[1]) rows"))
   end
 
-  C = Array{T}(undef,na[1],na[2],na[3],nb[2])
-  for i in 1:na[1]
-    for j in 1:na[2]
-      C[i,j,:,:] .= @views A[i,j,:,:]*B
-    end
-  end
+  A = reshape(A,na[1]*na[2]*na[3],na[4])
+  C = reshape(A*B,na[1],na[2],na[3],nb[2])
 
   return C
 
@@ -251,72 +230,53 @@ s = ind2sub(i,dims)
 """
 function ind2sub(i::S,dims::Tuple{S,Vararg{S}}) where {S<:Integer}
 
-  if i < 1 || i > prod(dims)
-    error("index is out of bounds.")
+  n = prod(dims)
+
+  if i < 1 || i > n
+    throw(BoundsError("index $i is out of bounds for dimensions $dims (valid range: 1:$n)"))
   end
 
-  subs = Tuple(CartesianIndices(dims)[i])
-
-  return subs
+  return Tuple(CartesianIndices(dims)[i])
 
 end
 
 function ind2sub(i::AbstractArray{S,1},dims::Tuple{S,Vararg{S}}) where {S<:Integer}
 
+  n = prod(dims)
+
   for x in i
-    if x < 1 || x > prod(dims)
-      error("index is out of bounds.")
+    if x < 1 || x > n
+      throw(BoundsError("index $i is out of bounds for dimensions $dims (valid range: 1:$n)"))
     end
   end
 
-  subs = Tuple.(CartesianIndices(dims)[i])
-
-  return subs
+  return Tuple.(CartesianIndices(dims)[i])
 
 end
 
 function ind2sub(i::S,dims::AbstractArray{S,1}) where {S<:Integer}
 
-  if i < 1 || i > prod(dims)
-    error("index is out of bounds.")
+  n = prod(dims)
+
+  if i < 1 || i > n
+    throw(BoundsError("index $i is out of bounds for dimensions $dims (valid range: 1:$n)"))
   end
 
-  subs = Tuple(CartesianIndices(Tuple(dims))[i])
-
-  return subs
+  return Tuple(CartesianIndices(Tuple(dims))[i])
 
 end
 
 function ind2sub(i::AbstractArray{S,1},dims::AbstractArray{S,1}) where {S<:Integer}
 
+  n = prod(dims)
+
   for x in i
-    if x < 1 || x > prod(dims)
-      error("index is out of bounds.")
+    if x < 1 || x > n
+      throw(BoundsError("index $i is out of bounds for dimensions $dims (valid range: 1:$n)"))
     end
   end
 
-  subs = Tuple(CartesianIndices(Tuple(dims))[i])
-
-  return subs
-
-end
-
-"""
-Compute the Frobenius norm of a d-dimensional array.
-
-Signature
-=========
-
-t = frobenius(A)
-""" 
-function frobenius(A::AbstractArray{T,d}) where {T<:AbstractFloat,d}
-
-  frobenius_norm = zero(T)
-  for x in A
-      frobenius_norm += abs(x)^2
-  end
-
-  return sqrt(frobenius_norm)
+  return Tuple(CartesianIndices(Tuple(dims))[i])
 
 end
 
@@ -343,19 +303,17 @@ function tsvd(A::AbstractArray{T1,2},δ::T2) where {T1<:AbstractFloat,T2<:Abstra
     end
   end
 
-  if r > 0
-    return u[:,1:r], s[1:r], v[:,1:r], r
-  else
-    return u[:,1], s[1:1], v[:,1], 1
-  end
+  r = max(r,1)
+    
+  return u[:,1:r], s[1:r], v[:,1:r], r
 
 end
 
 function tsvd(A::AbstractArray{T,2},r::S) where {T<:AbstractFloat,S<:Integer} # Looks at norm of singular values
 
   n = size(A)
-  if r > minimum(n) !! r < 1
-    error("Invalid rank.")
+  if r > minimum(n) || r < 1
+    throw(ArgumentError("Invalid rank: r must be between 1 and $min_dim"))
   end
 
   u, s, v = svd(A)
@@ -367,22 +325,22 @@ end
 #### Functions to initialize discrete tensor trains
 
 """
-Create a tensor train with uniformly random entries of eltype(T) that has spacial dimensions 'n' and tensor ranks 'r' (an integer or vector of integers).
+Create a tensor train with uniformly random entries of eltype(T) that has spatial dimensions 'n' and tensor ranks 'r' (an integer or vector of integers).
 
 Signatures
 ==========
 
-t = TTrandom(n,r)
-t = TTrandom(n,r,T)
+t = TTrand(n,r)
+t = TTrand(n,r,T)
 """
-function TTrandom(n::NTuple{d,S},r::S,T::DataType=Float64) where {S<:Integer,d}
+function TTrand(n::NTuple{d,S},r::S,T::DataType=Float64) where {S<:Integer,d}
 
   r      = fill(r,d+1)
   r[1]   = 1
-  r[d+1] = 1
+  r[end] = 1
 
   G = Array{Array{T,3},1}(undef,d)
-  for i = 1:d
+  for i in 1:d
     G[i] = rand(T,r[i],n[i],r[i+1])
   end
 
@@ -390,7 +348,7 @@ function TTrandom(n::NTuple{d,S},r::S,T::DataType=Float64) where {S<:Integer,d}
 
 end
 
-function TTrandom(n::NTuple{d,S},r::Array{S,1},T::DataType=Float64) where {S<:Integer,d}
+function TTrand(n::NTuple{d,S},r::Array{S,1},T::DataType=Float64) where {S<:Integer,d}
 
   if length(r) != d+1
     error("Dimension mis-match between 'n' and 'r'.")
@@ -400,7 +358,7 @@ function TTrandom(n::NTuple{d,S},r::Array{S,1},T::DataType=Float64) where {S<:In
   end
 
   G = Array{Array{T,3},1}(undef,d)
-  for i = 1:d
+  for i in 1:d
     G[i] = rand(T,r[i],n[i],r[i+1])
   end
 
@@ -409,7 +367,49 @@ function TTrandom(n::NTuple{d,S},r::Array{S,1},T::DataType=Float64) where {S<:In
 end
 
 """
-Create a tensor train of a constant 'value' with spacial dimensions 'n' and tensor ranks 'r' (an integer or vector of integers).
+Create a tensor train with normally distributed entries of eltype(T) that has spatial dimensions 'n' and tensor ranks 'r' (an integer or vector of integers).
+
+Signatures
+==========
+
+t = TTrandn(n,r)
+t = TTrandn(n,r,T)
+"""
+function TTrandn(n::NTuple{d,S},r::S,T::DataType=Float64) where {S<:Integer,d}
+
+  r      = fill(r,d+1)
+  r[1]   = 1
+  r[end] = 1
+
+  G = Array{Array{T,3},1}(undef,d)
+  for i in 1:d
+    G[i] = randn(T,r[i],n[i],r[i+1])
+  end
+
+  return BaseTensorTrain(G,r,0)
+
+end
+
+function TTrandn(n::NTuple{d,S},r::Array{S,1},T::DataType=Float64) where {S<:Integer,d}
+
+  if length(r) != d+1
+    error("Dimension mis-match between 'n' and 'r'.")
+  end
+  if r[begin] != r[end] || r[end] != 1
+    error("The first and last ranks must equal 1.")
+  end
+
+  G = Array{Array{T,3},1}(undef,d)
+  for i in 1:d
+    G[i] = randn(T,r[i],n[i],r[i+1])
+  end
+
+  return BaseTensorTrain(G,r,0)
+
+end
+
+"""
+Create a tensor train of a constant 'value' with spatial dimensions 'n' and tensor ranks 'r' (an integer or vector of integers).
 
 Signature
 =========
@@ -423,10 +423,10 @@ function TTconstant(value::T,n::NTuple{d,S},r::S) where {T<:AbstractFloat,S<:Int
 
   r      = fill(r,d+1)
   r[1]   = 1
-  r[d+1] = 1
+  r[end] = 1
 
   G = Array{Array{T,3},1}(undef,d)
-  for i = 1:d
+  for i in 1:d
     G[i] = fill(v/r[i+1],r[i],n[i],r[i+1])
   end
   G[1] = s*G[1]
@@ -448,7 +448,7 @@ function TTconstant(value::T,n::NTuple{d,S},r::Array{S,1}) where {T<:AbstractFlo
   v = abs(value)^(1/d)
 
   G = Array{Array{T,3},1}(undef,d)
-  for i = 1:d
+  for i in 1:d
     G[i] = fill(v/r[i+1],r[i],n[i],r[i+1])
   end
   G[1] = s*G[1]
@@ -458,7 +458,7 @@ function TTconstant(value::T,n::NTuple{d,S},r::Array{S,1}) where {T<:AbstractFlo
 end
 
 """
-Create a tensor train of a ones of eltype(T) with spacial dimensions 'n' and tensor ranks 'r' (an integer or vector of integers).
+Create a tensor train of a ones of eltype(T) with spatial dimensions 'n' and tensor ranks 'r' (an integer or vector of integers).
 
 Signatures
 ==========
@@ -470,10 +470,10 @@ function TTones(n::NTuple{d,S},r::S,T::DataType=Float64) where {S<:Integer,d}
 
   r      = fill(r,d+1)
   r[1]   = 1
-  r[d+1] = 1
+  r[end] = 1
 
   G = Array{Array{T,3},1}(undef,d)
-  for i = 1:d
+  for i in 1:d
     G[i] = fill(1.0/r[i+1],r[i],n[i],r[i+1])
   end
 
@@ -491,7 +491,7 @@ function TTones(n::NTuple{d,S},r::Array{S,1},T::DataType=Float64) where {S<:Inte
   end
     
   G = Array{Array{T,3},1}(undef,d)
-  for i = 1:d
+  for i in 1:d
     G[i] = fill(1.0/r[i+1],r[i],n[i],r[i+1])
   end
 
@@ -500,7 +500,7 @@ function TTones(n::NTuple{d,S},r::Array{S,1},T::DataType=Float64) where {S<:Inte
 end
 
 """
-Create a tensor train of zeros of eltype(T) with spacial dimensions 'n' and tensor ranks 'r'.
+Create a tensor train of zeros of eltype(T) with spatial dimensions 'n' and tensor ranks 'r'.
 
 Signatures
 ==========
@@ -512,10 +512,10 @@ function TTzeros(n::NTuple{d,S},r::S,T::DataType=Float64) where {S<:Integer,d}
 
   r      = fill(r,d+1)
   r[1]   = 1
-  r[d+1] = 1
+  r[end] = 1
 
   G = Array{Array{T,3},1}(undef,d)
-  for i = 1:d
+  for i in 1:d
     G[i] = fill(T(0.0),r[i],n[i],r[i+1])
   end
 
@@ -533,7 +533,7 @@ function TTzeros(n::NTuple{d,S},r::Array{S,1},T::DataType=Float64) where {S<:Int
   end
     
   G = Array{Array{T,3},1}(undef,d)
-  for i = 1:d
+  for i in 1:d
     G[i] = fill(T(0.0),r[i],n[i],r[i+1])
   end
 
@@ -556,7 +556,7 @@ function TTChebyshev(r::Array{S,1},order::Array{S,1},θ::Array{T,1}) where {S<:I
   d = length(order)
 
   if length(r) != d+1
-    error("Inconsistency regarding the number of spacial dimensions.")
+    error("Inconsistency regarding the number of spatial dimensions.")
   end
 
   if r[begin] != r[end] || r[begin] != 1
@@ -565,7 +565,7 @@ function TTChebyshev(r::Array{S,1},order::Array{S,1},θ::Array{T,1}) where {S<:I
 
   N = Array{S,1}(undef,d+1)
   N[1] = zero(S)
-  for k = 1:d
+  for k in 1:d
     N[k+1] = N[k] + r[k]*r[k+1]*order[k]
   end
 
@@ -574,7 +574,7 @@ function TTChebyshev(r::Array{S,1},order::Array{S,1},θ::Array{T,1}) where {S<:I
   end
 
   cores = Array{Array{Array{T,1},2},1}(undef,d)
-  for k = 1:d
+  for k in 1:d
     c = reshape(θ[N[k]+1:N[k+1]],r[k],order[k],r[k+1])
     cores[k] = [c[i,:,j] for i in 1:r[k], j in 1:r[k+1]]
   end
@@ -595,7 +595,7 @@ function TTLegendre(r::Array{S,1},order::Array{S,1},θ::Array{T,1}) where {S<:In
 
   d = length(order)
   if length(r) != d+1
-    error("Inconsistency regarding the number of spacial dimensions.")
+    error("Inconsistency regarding the number of spatial dimensions.")
   end
 
   if r[begin] != r[end] || r[begin] != 1
@@ -604,7 +604,7 @@ function TTLegendre(r::Array{S,1},order::Array{S,1},θ::Array{T,1}) where {S<:In
 
   N = Array{S,1}(undef,d+1)
   N[1] = zero(S)
-  for k = 1:d
+  for k in 1:d
     N[k+1] = N[k] + r[k]*r[k+1]*order[k]
   end
 
@@ -613,7 +613,7 @@ function TTLegendre(r::Array{S,1},order::Array{S,1},θ::Array{T,1}) where {S<:In
   end
 
   cores = Array{Array{Array{T,1},2},1}(undef,d)
-  for k = 1:d
+  for k in 1:d
     c = reshape(θ[N[k]+1:N[k+1]],r[k],order[k],r[k+1])
     cores[k] = [c[i,:,j] for i in 1:r[k], j in 1:r[k+1]]
   end
@@ -639,7 +639,7 @@ function TTsvd(A::AbstractArray{T1,d},tol::T2) where {T1<:AbstractFloat,T2<:Abst
     return BaseTensorTrain([reshape(A,1,length(A),1)],[1,1],0)
   end
 
-  δ = (tol/sqrt(d-1))*frobenius(A)
+  δ = (tol/sqrt(d-1))*norm(A)
 
   n = size(A)
   r = ones(Int,d+1)
@@ -774,19 +774,19 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6) where {T
 
   # Initialize the left-to-right indices and sub-indicies
 
-  for i = 1:d-1
+  for i in 1:d-1
 
     p = div(n[i] - r[i+1], 2)
     left_to_right_indices[i] = [p+1:p+r[i+1];]
 
     if i == 1
     
-      left_to_right_subs[i] = [tuple(ind2sub(x,(r[i],n[i]))[2]) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(ind2sub(x,(n[i],r[i]))[1]) for x in left_to_right_indices[i]]
 
     else
 
-      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
 
     end
   end
@@ -830,19 +830,19 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6) where {T
     end
 
     A = reshape(A,n[1],n[2]*r[3])
-    δ = (tol/sqrt(d-1))*frobenius(A)
+    δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
 
     if r[2] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[1], sweep = maxvol!(u,μ,300)
     right_to_left_indices_new[1], sweep = maxvol!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    left_to_right_subs[1] = [tuple(ind2sub(x,(r[1],n[1]))[2]) for x in left_to_right_indices_new[1]]
+    left_to_right_subs[1] = [tuple(ind2sub(x,(n[1],r[1]))[1]) for x in left_to_right_indices_new[1]]
 
     @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
@@ -857,20 +857,20 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6) where {T
       end
 
       A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
-      δ = (tol/sqrt(d-1))*frobenius(A)
+      δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
 
       if r[i+1] == 1
-        u = reshape(u,length(u),1)
-        v = reshape(v,length(v),1)
+        u = reshape(u,:,1)
+        v = reshape(v,:,1)
       end
   
       left_to_right_indices_new[i], sweep = maxvol!(u,μ,300)
       right_to_left_indices_new[i], sweep = maxvol!(v,μ,300)
 
       # Update left_to_right_subs, keeping the indices nested
-      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices_new[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
 
       @views G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
@@ -885,20 +885,20 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6) where {T
     end
 
     A = reshape(A,r[d-1]*n[d-1],n[d])
-    δ = (tol/sqrt(d-1))*frobenius(A)
+    δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[d] = tsvd(A,δ)
 
     if r[d] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[d-1], sweep = maxvol!(u,μ,300)
     right_to_left_indices_new[d-1], sweep = maxvol!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
-    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
+    temp = [ind2sub(x,(n[d-1],r[d-1])) for x in left_to_right_indices_new[d-1]]
+    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][2]]...,temp[i][1]...) for i in eachindex(temp)]
 
     # Update right_to_left_subs, nesting is not kept
     right_to_left_subs[d-1] = [tuple(ind2sub(x,(n[d],r[d+1]))[1]) for x in right_to_left_indices_new[d-1]]
@@ -921,12 +921,12 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6) where {T
       end
 
       A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
-      δ = (tol/sqrt(d-1))*frobenius(A)
+      δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
 
       if r[i+1] == 1
-        u = reshape(u,length(u),1)
-        v = reshape(v,length(v),1)
+        u = reshape(u,:,1)
+        v = reshape(v,:,1)
       end
   
       left_to_right_indices_new[i], sweep = maxvol!(u,μ,300)
@@ -947,12 +947,12 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6) where {T
     end
 
     A = reshape(A,n[1],n[2]*r[3])
-    δ = (tol/sqrt(d-1))*frobenius(A)
+    δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
 
     if r[2] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[1], sweep = maxvol!(u,μ,300)
@@ -978,7 +978,7 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6) where {T
 
     if sweeps >= maxsweeps 
 
-      if sum(abs,r - r_temp) == 0
+      if r == r_temp
 
         return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps)
 
@@ -1029,19 +1029,19 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,r::Array{S,1},maxsweeps::S = 6) w
 
   # Initialize the left-to-right indices and sub-indices
 
-  for i = 1:d-1
+  for i in 1:d-1
 
     p = div(n[i] - r[i+1], 2)
     left_to_right_indices[i] = [p+1:p+r[i+1];]
 
     if i == 1
     
-      left_to_right_subs[i] = [tuple(ind2sub(x,(r[i],n[i]))[2]) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(ind2sub(x,(n[i],r[i]))[1]) for x in left_to_right_indices[i]]
 
     else
 
-      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
 
     end
   end
@@ -1088,15 +1088,15 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,r::Array{S,1},maxsweeps::S = 6) w
     u,s,v,r[2] = tsvd(A,r[2])
 
     if r[2] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[1], sweep = maxvol!(u,μ,300)
     right_to_left_indices_new[1], sweep = maxvol!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    left_to_right_subs[1] = [tuple(ind2sub(x,(r[1],n[1]))[2]) for x in left_to_right_indices_new[1]]
+    left_to_right_subs[1] = [tuple(ind2sub(x,(n[1],r[1]))[1]) for x in left_to_right_indices_new[1]]
 
     @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
@@ -1114,16 +1114,16 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,r::Array{S,1},maxsweeps::S = 6) w
       u,s,v,r[i+1] = tsvd(A,r[i+1])
 
       if r[i+1] == 1
-        u = reshape(u,length(u),1)
-        v = reshape(v,length(v),1)
+        u = reshape(u,:,1)
+        v = reshape(v,:,1)
       end
   
       left_to_right_indices_new[i], sweep = maxvol!(u,μ,300)
       right_to_left_indices_new[i], sweep = maxvol!(v,μ,300)
 
       # Update left_to_right_subs, keeping the indices nested
-      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices_new[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
 
       @views G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
@@ -1141,16 +1141,16 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,r::Array{S,1},maxsweeps::S = 6) w
     u,s,v,r[d] = tsvd(A,r[d])
 
     if r[d] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[d-1], sweep = maxvol!(u,μ,300)
     right_to_left_indices_new[d-1], sweep = maxvol!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
-    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
+    temp = [ind2sub(x,(n[d-1],r[d-1])) for x in left_to_right_indices_new[d-1]]
+    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][2]]...,temp[i][1]...) for i in eachindex(temp)]
 
     # Update right_to_left_subs, nesting is not kept
     right_to_left_subs[d-1] = [tuple(ind2sub(x,(n[d],r[d+1]))[1]) for x in right_to_left_indices_new[d-1]]
@@ -1176,8 +1176,8 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,r::Array{S,1},maxsweeps::S = 6) w
       u,s,v,r[i+1] = tsvd(A,r[i+1])
 
       if r[i+1] == 1
-        u = reshape(u,length(u),1)
-        v = reshape(v,length(v),1)
+        u = reshape(u,:,1)
+        v = reshape(v,:,1)
       end
   
       left_to_right_indices_new[i], sweep = maxvol!(u,μ,300)
@@ -1201,8 +1201,8 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,r::Array{S,1},maxsweeps::S = 6) w
     u,s,v,r[2] = tsvd(A,r[2])
 
     if r[2] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[1], sweep = maxvol!(u,μ,300)
@@ -1228,7 +1228,7 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,r::Array{S,1},maxsweeps::S = 6) w
 
     if sweeps >= maxsweeps 
 
-      if sum(abs,r - r_temp) == 0
+      if r == r_temp
 
         return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps)
 
@@ -1305,19 +1305,19 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps::S = 6) 
 
   # Initialize the left-to-right indices and sub-indicies
 
-  for i = 1:d-1
+  for i in 1:d-1
 
     p = div(n[i] - r[i+1], 2)
     left_to_right_indices[i] = [p+1:p+r[i+1];]
 
     if i == 1
     
-      left_to_right_subs[i] = [tuple(ind2sub(x,(r[i],n[i]))[2]) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(ind2sub(x,(n[i],r[i]))[1]) for x in left_to_right_indices[i]]
 
     else
 
-      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
 
     end
   end
@@ -1361,19 +1361,19 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps::S = 6) 
     end
 
     A = reshape(A,n[1],n[2]*r[3])
-    δ = (tol/sqrt(d-1))*frobenius(A)
+    δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
 
     if r[2] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[1], sweep = maxvol_generic!(u,μ,300)
     right_to_left_indices_new[1], sweep = maxvol_generic!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    left_to_right_subs[1] = [tuple(ind2sub(x,(r[1],n[1]))[2]) for x in left_to_right_indices_new[1]]
+    left_to_right_subs[1] = [tuple(ind2sub(x,(n[1],r[1]))[1]) for x in left_to_right_indices_new[1]]
 
     @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
@@ -1388,20 +1388,20 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps::S = 6) 
       end
 
       A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
-      δ = (tol/sqrt(d-1))*frobenius(A)
+      δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
 
       if r[i+1] == 1
-        u = reshape(u,length(u),1)
-        v = reshape(v,length(v),1)
+        u = reshape(u,:,1)
+        v = reshape(v,:,1)
       end
   
       left_to_right_indices_new[i], sweep = maxvol_generic!(u,μ,300)
       right_to_left_indices_new[i], sweep = maxvol_generic!(v,μ,300)
 
       # Update left_to_right_subs, keeping the indices nested
-      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices_new[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
 
       @views G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
@@ -1416,20 +1416,20 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps::S = 6) 
     end
 
     A = reshape(A,r[d-1]*n[d-1],n[d])
-    δ = (tol/sqrt(d-1))*frobenius(A)
+    δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[d] = tsvd(A,δ)
 
     if r[d] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[d-1], sweep = maxvol_generic!(u,μ,300)
     right_to_left_indices_new[d-1], sweep = maxvol_generic!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
-    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
+    temp = [ind2sub(x,(n[d-1],r[d-1])) for x in left_to_right_indices_new[d-1]]
+    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][2]]...,temp[i][1]...) for i in eachindex(temp)]
 
     # Update right_to_left_subs, nesting is not kept
     right_to_left_subs[d-1] = [tuple(ind2sub(x,(n[d],r[d+1]))[1]) for x in right_to_left_indices_new[d-1]]
@@ -1452,12 +1452,12 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps::S = 6) 
       end
 
       A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
-      δ = (tol/sqrt(d-1))*frobenius(A)
+      δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
 
       if r[i+1] == 1
-        u = reshape(u,length(u),1)
-        v = reshape(v,length(v),1)
+        u = reshape(u,:,1)
+        v = reshape(v,:,1)
       end
   
       left_to_right_indices_new[i], sweep = maxvol_generic!(u,μ,300)
@@ -1478,12 +1478,12 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps::S = 6) 
     end
 
     A = reshape(A,n[1],n[2]*r[3])
-    δ = (tol/sqrt(d-1))*frobenius(A)
+    δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
 
     if r[2] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[1], sweep = maxvol_generic!(u,μ,300)
@@ -1509,7 +1509,7 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps::S = 6) 
 
     if sweeps >= maxsweeps 
 
-      if sum(abs,r - r_temp) == 0
+      if r == r_temp
 
         return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps)
 
@@ -1561,19 +1561,19 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,r::Array{S,1},maxsweeps::
 
   # Initialize the left-to-right indices and sub-indices
 
-  for i = 1:d-1
+  for i in 1:d-1
 
     p = div(n[i] - r[i+1], 2)
     left_to_right_indices[i] = [p+1:p+r[i+1];]
 
     if i == 1
     
-      left_to_right_subs[i] = [tuple(ind2sub(x,(r[i],n[i]))[2]) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(ind2sub(x,(n[i],r[i]))[1]) for x in left_to_right_indices[i]]
 
     else
 
-      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
 
     end
   end
@@ -1620,15 +1620,15 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,r::Array{S,1},maxsweeps::
     u,s,v,r[2] = tsvd(A,r[2])
 
     if r[2] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[1], sweep = maxvol_generic!(u,μ,300)
     right_to_left_indices_new[1], sweep = maxvol_generic!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    left_to_right_subs[1] = [tuple(ind2sub(x,(r[1],n[1]))[2]) for x in left_to_right_indices_new[1]]
+    left_to_right_subs[1] = [tuple(ind2sub(x,(n[1],r[1]))[1]) for x in left_to_right_indices_new[1]]
 
     @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
@@ -1646,16 +1646,16 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,r::Array{S,1},maxsweeps::
       u,s,v,r[i+1] = tsvd(A,r[i+1])
 
       if r[i+1] == 1
-        u = reshape(u,length(u),1)
-        v = reshape(v,length(v),1)
+        u = reshape(u,:,1)
+        v = reshape(v,:,1)
       end
   
       left_to_right_indices_new[i], sweep = maxvol_generic!(u,μ,300)
       right_to_left_indices_new[i], sweep = maxvol_generic!(v,μ,300)
 
       # Update left_to_right_subs, keeping the indices nested
-      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices_new[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
 
       @views G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
@@ -1673,16 +1673,16 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,r::Array{S,1},maxsweeps::
     u,s,v,r[d] = tsvd(A,r[d])
 
     if r[d] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[d-1], sweep = maxvol_generic!(u,μ,300)
     right_to_left_indices_new[d-1], sweep = maxvol_generic!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
-    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
+    temp = [ind2sub(x,(n[d-1],r[d-1])) for x in left_to_right_indices_new[d-1]]
+    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][2]]...,temp[i][1]...) for i in eachindex(temp)]
 
     # Update right_to_left_subs, nesting is not kept
     right_to_left_subs[d-1] = [tuple(ind2sub(x,(n[d],r[d+1]))[1]) for x in right_to_left_indices_new[d-1]]
@@ -1708,8 +1708,8 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,r::Array{S,1},maxsweeps::
       u,s,v,r[i+1] = tsvd(A,r[i+1])
 
       if r[i+1] == 1
-        u = reshape(u,length(u),1)
-        v = reshape(v,length(v),1)
+        u = reshape(u,:,1)
+        v = reshape(v,:,1)
       end
   
       left_to_right_indices_new[i], sweep = maxvol_generic!(u,μ,300)
@@ -1733,8 +1733,8 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,r::Array{S,1},maxsweeps::
     u,s,v,r[2] = tsvd(A,r[2])
 
     if r[2] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[1], sweep = maxvol_generic!(u,μ,300)
@@ -1760,7 +1760,7 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,r::Array{S,1},maxsweeps::
 
     if sweeps >= maxsweeps 
 
-      if sum(abs,r - r_temp) == 0
+      if r == r_temp
 
         return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps)
 
@@ -1837,19 +1837,19 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6)
 
   # Initialize the left-to-right indices and sub-indicies
 
-  for i = 1:d-1
+  for i in 1:d-1
 
     p = div(n[i] - r[i+1], 2)
     left_to_right_indices[i] = [p+1:p+r[i+1];]
 
     if i == 1
     
-      left_to_right_subs[i] = [tuple(ind2sub(x,(r[i],n[i]))[2]) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(ind2sub(x,(n[i],r[i]))[1]) for x in left_to_right_indices[i]]
 
     else
 
-      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
 
     end
   end
@@ -1893,19 +1893,19 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6)
     end
 
     A = reshape(A,n[1],n[2]*r[3])
-    δ = (tol/sqrt(d-1))*frobenius(A)
+    δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
 
     if r[2] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[1], sweep = maxvol!(u,μ,300)
     right_to_left_indices_new[1], sweep = maxvol!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    left_to_right_subs[1] = [tuple(ind2sub(x,(r[1],n[1]))[2]) for x in left_to_right_indices_new[1]]
+    left_to_right_subs[1] = [tuple(ind2sub(x,(n[1],r[1]))[1]) for x in left_to_right_indices_new[1]]
 
     @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
@@ -1920,20 +1920,20 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6)
       end
 
       A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
-      δ = (tol/sqrt(d-1))*frobenius(A)
+      δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
 
       if r[i+1] == 1
-        u = reshape(u,length(u),1)
-        v = reshape(v,length(v),1)
+        u = reshape(u,:,1)
+        v = reshape(v,:,1)
       end
   
       left_to_right_indices_new[i], sweep = maxvol!(u,μ,300)
       right_to_left_indices_new[i], sweep = maxvol!(v,μ,300)
 
       # Update left_to_right_subs, keeping the indices nested
-      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices_new[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
 
       @views G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
@@ -1948,20 +1948,20 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6)
     end
 
     A = reshape(A,r[d-1]*n[d-1],n[d])
-    δ = (tol/sqrt(d-1))*frobenius(A)
+    δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[d] = tsvd(A,δ)
 
     if r[d] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[d-1], sweep = maxvol!(u,μ,300)
     right_to_left_indices_new[d-1], sweep = maxvol!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
-    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
+    temp = [ind2sub(x,(n[d-1],r[d-1])) for x in left_to_right_indices_new[d-1]]
+    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][2]]...,temp[i][1]...) for i in eachindex(temp)]
 
     # Update right_to_left_subs, nesting is not kept
     right_to_left_subs[d-1] = [tuple(ind2sub(x,(n[d],r[d+1]))[1]) for x in right_to_left_indices_new[d-1]]
@@ -1984,12 +1984,12 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6)
       end
 
       A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
-      δ = (tol/sqrt(d-1))*frobenius(A)
+      δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
 
       if r[i+1] == 1
-        u = reshape(u,length(u),1)
-        v = reshape(v,length(v),1)
+        u = reshape(u,:,1)
+        v = reshape(v,:,1)
       end
   
       left_to_right_indices_new[i], sweep = maxvol!(u,μ,300)
@@ -2010,12 +2010,12 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6)
     end
 
     A = reshape(A,n[1],n[2]*r[3])
-    δ = (tol/sqrt(d-1))*frobenius(A)
+    δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
 
     if r[2] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[1], sweep = maxvol!(u,μ,300)
@@ -2041,7 +2041,7 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6)
 
     if sweeps >= maxsweeps 
 
-      if sum(abs,r - r_temp) == 0
+      if r == r_temp
 
         return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps)
 
@@ -2093,19 +2093,19 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,r::Array{S,1},maxsweeps:
 
   # Initialize the left-to-right indices and sub-indices
 
-  for i = 1:d-1
+  for i in 1:d-1
 
     p = div(n[i+1] - r[i+1], 2)
     left_to_right_indices[i] = [p+1:p+r[i+1];]
 
     if i == 1
     
-      left_to_right_subs[i] = [tuple(ind2sub(x,(r[i],n[i]))[2]) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(ind2sub(x,(n[i],r[i]))[1]) for x in left_to_right_indices[i]]
 
     else
 
-      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
 
     end
   end
@@ -2152,15 +2152,15 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,r::Array{S,1},maxsweeps:
     u,s,v,r[2] = tsvd(A,r[2])
 
     if r[2] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[1], sweep = maxvol!(u,μ,300)
     right_to_left_indices_new[1], sweep = maxvol!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    left_to_right_subs[1] = [tuple(ind2sub(x,(r[1],n[1]))[2]) for x in left_to_right_indices_new[1]]
+    left_to_right_subs[1] = [tuple(ind2sub(x,(n[1],r[1]))[1]) for x in left_to_right_indices_new[1]]
 
     @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
@@ -2178,16 +2178,16 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,r::Array{S,1},maxsweeps:
       u,s,v,r[i+1] = tsvd(A,r[i+1])
 
       if r[i+1] == 1
-        u = reshape(u,length(u),1)
-        v = reshape(v,length(v),1)
+        u = reshape(u,:,1)
+        v = reshape(v,:,1)
       end
   
       left_to_right_indices_new[i], sweep = maxvol!(u,μ,300)
       right_to_left_indices_new[i], sweep = maxvol!(v,μ,300)
 
       # Update left_to_right_subs, keeping the indices nested
-      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices_new[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
 
       @views G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
@@ -2205,16 +2205,16 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,r::Array{S,1},maxsweeps:
     u,s,v,r[d] = tsvd(A,r[d])
 
     if r[d] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[d-1], sweep = maxvol!(u,μ,300)
     right_to_left_indices_new[d-1], sweep = maxvol!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
-    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
+    temp = [ind2sub(x,(n[d-1],r[d-1])) for x in left_to_right_indices_new[d-1]]
+    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][2]]...,temp[i][1]...) for i in eachindex(temp)]
 
     # Update right_to_left_subs, nesting is not kept
     right_to_left_subs[d-1] = [tuple(ind2sub(x,(n[d],r[d+1]))[1]) for x in right_to_left_indices_new[d-1]]
@@ -2240,8 +2240,8 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,r::Array{S,1},maxsweeps:
       u,s,v,r[i+1] = tsvd(A,r[i+1])
 
       if r[i+1] == 1
-        u = reshape(u,length(u),1)
-        v = reshape(v,length(v),1)
+        u = reshape(u,:,1)
+        v = reshape(v,:,1)
       end
   
       left_to_right_indices_new[i], sweep = maxvol!(u,μ,300)
@@ -2265,8 +2265,8 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,r::Array{S,1},maxsweeps:
     u,s,v,r[2] = tsvd(A,r[2])
 
     if r[2] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[1], sweep = maxvol!(u,μ,300)
@@ -2292,7 +2292,7 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,r::Array{S,1},maxsweeps:
 
     if sweeps >= maxsweeps 
 
-      if sum(abs,r - r_temp) == 0
+      if r == r_temp
 
         return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps)
 
@@ -2369,19 +2369,19 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps
 
   # Initialize the left-to-right indices and sub-indicies
 
-  for i = 1:d-1
+  for i in 1:d-1
 
     p = div(n[i] - r[i+1], 2)
     left_to_right_indices[i] = [p+1:p+r[i+1];]
 
     if i == 1
     
-      left_to_right_subs[i] = [tuple(ind2sub(x,(r[i],n[i]))[2]) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(ind2sub(x,(n[i],r[i]))[1]) for x in left_to_right_indices[i]]
 
     else
 
-      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
 
     end
   end
@@ -2425,19 +2425,19 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps
     end
 
     A = reshape(A,n[1],n[2]*r[3])
-    δ = (tol/sqrt(d-1))*frobenius(A)
+    δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
 
     if r[2] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[1], sweep = maxvol_generic!(u,μ,300)
     right_to_left_indices_new[1], sweep = maxvol_generic!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    left_to_right_subs[1] = [tuple(ind2sub(x,(r[1],n[1]))[2]) for x in left_to_right_indices_new[1]]
+    left_to_right_subs[1] = [tuple(ind2sub(x,(n[1],r[1]))[1]) for x in left_to_right_indices_new[1]]
 
     @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
@@ -2452,20 +2452,20 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps
       end
 
       A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
-      δ = (tol/sqrt(d-1))*frobenius(A)
+      δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
 
       if r[i+1] == 1
-        u = reshape(u,length(u),1)
-        v = reshape(v,length(v),1)
+        u = reshape(u,:,1)
+        v = reshape(v,:,1)
       end
   
       left_to_right_indices_new[i], sweep = maxvol_generic!(u,μ,300)
       right_to_left_indices_new[i], sweep = maxvol_generic!(v,μ,300)
 
       # Update left_to_right_subs, keeping the indices nested
-      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices_new[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
 
       @views G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
@@ -2480,20 +2480,20 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps
     end
 
     A = reshape(A,r[d-1]*n[d-1],n[d])
-    δ = (tol/sqrt(d-1))*frobenius(A)
+    δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[d] = tsvd(A,δ)
 
     if r[d] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[d-1], sweep = maxvol_generic!(u,μ,300)
     right_to_left_indices_new[d-1], sweep = maxvol_generic!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
-    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
+    temp = [ind2sub(x,(n[d-1],r[d-1])) for x in left_to_right_indices_new[d-1]]
+    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][2]]...,temp[i][1]...) for i in eachindex(temp)]
 
     # Update right_to_left_subs, nesting is not kept
     right_to_left_subs[d-1] = [tuple(ind2sub(x,(n[d],r[d+1]))[1]) for x in right_to_left_indices_new[d-1]]
@@ -2516,12 +2516,12 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps
       end
 
       A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
-      δ = (tol/sqrt(d-1))*frobenius(A)
+      δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
 
       if r[i+1] == 1
-        u = reshape(u,length(u),1)
-        v = reshape(v,length(v),1)
+        u = reshape(u,:,1)
+        v = reshape(v,:,1)
       end
   
       left_to_right_indices_new[i], sweep = maxvol_generic!(u,μ,300)
@@ -2542,12 +2542,12 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps
     end
 
     A = reshape(A,n[1],n[2]*r[3])
-    δ = (tol/sqrt(d-1))*frobenius(A)
+    δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
 
     if r[2] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[1], sweep = maxvol_generic!(u,μ,300)
@@ -2573,7 +2573,7 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps
 
     if sweeps >= maxsweeps 
 
-      if sum(abs,r - r_temp) == 0
+      if r == r_temp
 
         return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps)
 
@@ -2625,19 +2625,19 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,r::Array{S,1},ma
 
   # Initialize the left-to-right indices and sub-indices
 
-  for i = 1:d-1
+  for i in 1:d-1
 
     p = div(n[i] - r[i+1], 2)
     left_to_right_indices[i] = [p+1:p+r[i+1];]
 
     if i == 1
     
-      left_to_right_subs[i] = [tuple(ind2sub(x,(r[i],n[i]))[2]) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(ind2sub(x,(n[i],r[i]))[1]) for x in left_to_right_indices[i]]
 
     else
 
-      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
 
     end
   end
@@ -2684,15 +2684,15 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,r::Array{S,1},ma
     u,s,v,r[2] = tsvd(A,r[2])
 
     if r[2] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[1], sweep = maxvol_generic!(u,μ,300)
     right_to_left_indices_new[1], sweep = maxvol_generic!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    left_to_right_subs[1] = [tuple(ind2sub(x,(r[1],n[1]))[2]) for x in left_to_right_indices_new[1]]
+    left_to_right_subs[1] = [tuple(ind2sub(x,(n[1],r[1]))[1]) for x in left_to_right_indices_new[1]]
 
     @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
@@ -2710,16 +2710,16 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,r::Array{S,1},ma
       u,s,v,r[i+1] = tsvd(A,r[i+1])
 
       if r[i+1] == 1
-        u = reshape(u,length(u),1)
-        v = reshape(v,length(v),1)
+        u = reshape(u,:,1)
+        v = reshape(v,:,1)
       end
   
       left_to_right_indices_new[i], sweep = maxvol_generic!(u,μ,300)
       right_to_left_indices_new[i], sweep = maxvol_generic!(v,μ,300)
 
       # Update left_to_right_subs, keeping the indices nested
-      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices_new[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
 
       @views G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
@@ -2737,16 +2737,16 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,r::Array{S,1},ma
     u,s,v,r[d] = tsvd(A,r[d])
 
     if r[d] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[d-1], sweep = maxvol_generic!(u,μ,300)
     right_to_left_indices_new[d-1], sweep = maxvol_generic!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
-    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
+    temp = [ind2sub(x,(n[d-1],r[d-1])) for x in left_to_right_indices_new[d-1]]
+    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][2]]...,temp[i][1]...) for i in eachindex(temp)]
 
     # Update right_to_left_subs, nesting is not kept
     right_to_left_subs[d-1] = [tuple(ind2sub(x,(n[d],r[d+1]))[1]) for x in right_to_left_indices_new[d-1]]
@@ -2772,8 +2772,8 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,r::Array{S,1},ma
       u,s,v,r[i+1] = tsvd(A,r[i+1])
 
       if r[i+1] == 1
-        u = reshape(u,length(u),1)
-        v = reshape(v,length(v),1)
+        u = reshape(u,:,1)
+        v = reshape(v,:,1)
       end
   
       left_to_right_indices_new[i], sweep = maxvol_generic!(u,μ,300)
@@ -2797,8 +2797,8 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,r::Array{S,1},ma
     u,s,v,r[2] = tsvd(A,r[2])
 
     if r[2] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[1], sweep = maxvol_generic!(u,μ,300)
@@ -2824,7 +2824,7 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,r::Array{S,1},ma
 
     if sweeps >= maxsweeps 
 
-      if sum(abs,r - r_temp) == 0
+      if r == r_temp
 
         return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps)
 
@@ -2868,7 +2868,7 @@ function TTsvd(f::Function,nodes::NTuple{d,Array{T,1}},tol::T) where {T<:Abstrac
   A = Array{T,d}(undef,n)
   for i in CartesianIndices(A)
     point = zeros(d)
-    for j = 1:d
+    for j in 1:d
       point[j] = nodes[j][i[j]]
     end
     A[i] = f(point)
@@ -2895,7 +2895,7 @@ function TTsvd_threaded(f::Function,nodes::NTuple{d,Array{T,1}},tol::T) where {T
   A = Array{T,d}(undef,n)
   @sync Threads.@threads for i in CartesianIndices(A)
     point = zeros(d)
-    for j = 1:d
+    for j in 1:d
       point[j] = nodes[j][i[j]]
     end
     A[i] = f(point)
@@ -2959,19 +2959,19 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,maxsweep
 
   # Initialize left-to-right indices and sub-indices
 
-  for i = 1:d-1
+  for i in 1:d-1
 
     p = div(n[i] - r[i+1], 2)
     left_to_right_indices[i] = [p+1:p+r[i+1];]
 
     if i == 1
     
-      left_to_right_subs[i] = [tuple(ind2sub(x,(r[i],n[i]))[2]) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(ind2sub(x,(n[i],r[i]))[1]) for x in left_to_right_indices[i]]
 
     else
 
-      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
 
     end
   end
@@ -3010,11 +3010,11 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,maxsweep
     # Solve for the first indices
 
     A = Array{T,3}(undef,(n[1],n[2],r[3]))
-    for k = 1:r[3]
+    for k in 1:r[3]
       point_index[3:end] .= right_to_left_subs[2][k]
       for j in CartesianIndices((1:n[1],1:n[2]))
         point_index[1:2] .= Tuple(j)
-        for m = 1:d
+        for m in 1:d
           point[m] = nodes[m][point_index[m]]
         end
         A[j[1],j[2],k] = f(point)
@@ -3022,19 +3022,19 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,maxsweep
     end
 
     A = reshape(A,n[1],n[2]*r[3])
-    δ = (tol/sqrt(d-1))*frobenius(A)
+    δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
 
     if r[2] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[1], sweep = maxvol!(u,μ,300)
     right_to_left_indices_new[1], sweep = maxvol!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    left_to_right_subs[1] = [tuple(ind2sub(x,(r[1],n[1]))[2]) for x in left_to_right_indices_new[1]]
+    left_to_right_subs[1] = [tuple(ind2sub(x,(n[1],r[1]))[1]) for x in left_to_right_indices_new[1]]
 
     @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
@@ -3043,13 +3043,13 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,maxsweep
     for i = 2:d-2
 
       A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
-      for l = 1:r[i]
+      for l in 1:r[i]
         point_index[1:i-1] .= left_to_right_subs[i-1][l]
-        for k = 1:r[i+2]
+        for k in 1:r[i+2]
           point_index[i+2:end] .= right_to_left_subs[i+1][k]
           for j in CartesianIndices((1:n[i],1:n[i+1]))
             point_index[i:i+1] .= Tuple(j)
-            for m = 1:d
+            for m in 1:d
               point[m] = nodes[m][point_index[m]]
             end
             A[l,j[1],j[2],k] = f(point)
@@ -3058,20 +3058,20 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,maxsweep
       end
 
       A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
-      δ = (tol/sqrt(d-1))*frobenius(A)
+      δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
 
       if r[i+1] == 1
-        u = reshape(u,length(u),1)
-        v = reshape(v,length(v),1)
+        u = reshape(u,:,1)
+        v = reshape(v,:,1)
       end
   
       left_to_right_indices_new[i], sweep = maxvol!(u,μ,300)
       right_to_left_indices_new[i], sweep = maxvol!(v,μ,300)
 
       # Update left_to_right_subs, keeping the indices nested
-      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices_new[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
 
       @views G[i]   = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
@@ -3080,11 +3080,11 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,maxsweep
     # Solve for the final indices
 
     A = Array{T,3}(undef,(r[d-1],n[d-1],n[d]))
-    for k = 1:r[d-1]
+    for k in 1:r[d-1]
       point_index[1:d-2] .= left_to_right_subs[d-2][k]
       for j in CartesianIndices((1:n[d-1],1:n[d]))
         point_index[d-1:d] .= Tuple(j)
-        for m = 1:d
+        for m in 1:d
           point[m] = nodes[m][point_index[m]]
         end
        A[k,j[1],j[2]] = f(point)
@@ -3092,20 +3092,20 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,maxsweep
     end
 
     A = reshape(A,r[d-1]*n[d-1],n[d]*r[d+1])
-    δ = (tol/sqrt(d-1))*frobenius(A)
+    δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[d] = tsvd(A,δ)
 
     if r[d] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[d-1], sweep = maxvol!(u,μ,300)
     right_to_left_indices_new[d-1], sweep = maxvol!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
-    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
+    temp = [ind2sub(x,(n[d-1],r[d-1])) for x in left_to_right_indices_new[d-1]]
+    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][2]]...,temp[i][1]...) for i in eachindex(temp)]
 
     # Update right_to_left_subs, keeping the indices nested
     right_to_left_subs[d-1] = [tuple(ind2sub(x,(n[d],r[d+1]))[1]) for x in right_to_left_indices_new[d-1]]
@@ -3122,13 +3122,13 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,maxsweep
     for i = d-2:-1:2
 
       A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
-      for l = 1:r[i]
+      for l in 1:r[i]
         point_index[1:i-1] .= left_to_right_subs[i-1][l]
-        for k = 1:r[i+2]
+        for k in 1:r[i+2]
           point_index[i+2:end] .= right_to_left_subs[i+1][k]
           for j in CartesianIndices((1:n[i],1:n[i+1]))
             point_index[i:i+1] .= Tuple(j)
-            for m = 1:d
+            for m in 1:d
               point[m] = nodes[m][point_index[m]]
             end
            A[l,j[1],j[2],k] = f(point)
@@ -3137,12 +3137,12 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,maxsweep
       end
     
       A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
-      δ = (tol/sqrt(d-1))*frobenius(A)
+      δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
     
       if r[i+1] == 1
-        u = reshape(u,length(u),1)
-        v = reshape(v,length(v),1)
+        u = reshape(u,:,1)
+        v = reshape(v,:,1)
       end
   
       left_to_right_indices_new[i], sweep = maxvol!(u,μ,300)
@@ -3157,11 +3157,11 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,maxsweep
     # Solve for the first indices
 
     A = Array{T,3}(undef,(n[1],n[2],r[3]))
-    for k = 1:r[3]
+    for k in 1:r[3]
       point_index[3:end] .= right_to_left_subs[2][k]
       for j in CartesianIndices((1:n[1],1:n[2]))
         point_index[1:2] .= Tuple(j)
-        for m = 1:d
+        for m in 1:d
           point[m] = nodes[m][point_index[m]]
         end
         A[j[1],j[2],k] = f(point)
@@ -3169,12 +3169,12 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,maxsweep
     end
     
     A = reshape(A,n[1],n[2]*r[3])
-    δ = (tol/sqrt(d-1))*frobenius(A)
+    δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
     
     if r[2] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[1], sweep = maxvol!(u,μ,300)
@@ -3200,7 +3200,7 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,maxsweep
 
     if sweeps >= maxsweeps 
 
-      if sum(abs,r - r_temp) == 0
+      if r == r_temp
 
         return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps)
 
@@ -3234,11 +3234,11 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,initial:
 
   G = Array{Array{T,3},1}(undef,d)
 
-  left_to_right_indices = deepcopy(initial.left_to_right_ind)
-  right_to_left_indices = deepcopy(initial.right_to_left_ind)
+  left_to_right_indices = copy(initial.left_to_right_ind)
+  right_to_left_indices = copy(initial.right_to_left_ind)
   
-  left_to_right_subs = deepcopy(initial.left_to_right_sub)
-  right_to_left_subs = deepcopy(initial.right_to_left_sub)
+  left_to_right_subs = copy(initial.left_to_right_sub)
+  right_to_left_subs = copy(initial.right_to_left_sub)
   
   r = copy(initial.ranks)
 
@@ -3256,11 +3256,11 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,initial:
     # Solve for the first indices
 
     A = Array{T,3}(undef,(n[1],n[2],r[3]))
-    for k = 1:r[3]
+    for k in 1:r[3]
       point_index[3:end] .= right_to_left_subs[2][k]
       for j in CartesianIndices((1:n[1],1:n[2]))
         point_index[1:2] .= Tuple(j)
-        for m = 1:d
+        for m in 1:d
           point[m] = nodes[m][point_index[m]]
         end
         A[j[1],j[2],k] = f(point)
@@ -3268,19 +3268,19 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,initial:
     end
 
     A = reshape(A,n[1],n[2]*r[3])
-    δ = (tol/sqrt(d-1))*frobenius(A)
+    δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
 
     if r[2] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[1], sweep = maxvol!(u,μ,300)
     right_to_left_indices_new[1], sweep = maxvol!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    left_to_right_subs[1] = [tuple(ind2sub(x,(r[1],n[1]))[2]) for x in left_to_right_indices_new[1]]
+    left_to_right_subs[1] = [tuple(ind2sub(x,(n[1],r[1]))[1]) for x in left_to_right_indices_new[1]]
 
     @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
@@ -3289,13 +3289,13 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,initial:
     for i = 2:d-2
 
       A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
-      for l = 1:r[i]
+      for l in 1:r[i]
         point_index[1:i-1] .= left_to_right_subs[i-1][l]
-        for k = 1:r[i+2]
+        for k in 1:r[i+2]
           point_index[i+2:end] .= right_to_left_subs[i+1][k]
           for j in CartesianIndices((1:n[i],1:n[i+1]))
             point_index[i:i+1] .= Tuple(j)
-            for m = 1:d
+            for m in 1:d
               point[m] = nodes[m][point_index[m]]
             end
             A[l,j[1],j[2],k] = f(point)
@@ -3304,20 +3304,20 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,initial:
       end
 
       A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
-      δ = (tol/sqrt(d-1))*frobenius(A)
+      δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
 
       if r[i+1] == 1
-        u = reshape(u,length(u),1)
-        v = reshape(v,length(v),1)
+        u = reshape(u,:,1)
+        v = reshape(v,:,1)
       end
   
       left_to_right_indices_new[i], sweep = maxvol!(u,μ,300)
       right_to_left_indices_new[i], sweep = maxvol!(v,μ,300)
 
       # Update left_to_right_subs, keeping the indices nested
-      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices_new[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
   
       @views G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
@@ -3326,11 +3326,11 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,initial:
     # Solve for the final indices
 
     A = Array{T,4}(undef,(r[d-1],n[d-1],n[d],r[d+1]))
-    for k = 1:r[d-1]
+    for k in 1:r[d-1]
       point_index[1:d-2] .= left_to_right_subs[d-2][k]
       for j in CartesianIndices((1:n[d-1],1:n[d]))
         point_index[d-1:d] .= Tuple(j)
-        for m = 1:d
+        for m in 1:d
           point[m] = nodes[m][point_index[m]]
         end
         A[k,j[1],j[2],1] = f(point)
@@ -3338,20 +3338,20 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,initial:
     end
 
     A = reshape(A,r[d-1]*n[d-1],n[d])
-    δ = (tol/sqrt(d-1))*frobenius(A)
+    δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[d] = tsvd(A,δ)
 
     if r[d] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[d-1], sweep = maxvol!(u,μ,300)
     right_to_left_indices_new[d-1], sweep = maxvol!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
-    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
+    temp = [ind2sub(x,(n[d-1],r[d-1])) for x in left_to_right_indices_new[d-1]]
+    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][2]]...,temp[i][1]...) for i in eachindex(temp)]
 
     # Update right_to_left_subs, keeping the indices nested
     right_to_left_subs[d-1] = [tuple(ind2sub(x,(n[d],r[d+1]))[1]) for x in right_to_left_indices_new[d-1]]
@@ -3368,13 +3368,13 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,initial:
     for i = d-2:-1:2
 
       A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
-      for l = 1:r[i]
+      for l in 1:r[i]
         point_index[1:i-1] .= left_to_right_subs[i-1][l]
-        for k = 1:r[i+2]
+        for k in 1:r[i+2]
           point_index[i+2:end] .= right_to_left_subs[i+1][k]
           for j in CartesianIndices((1:n[i],1:n[i+1]))
             point_index[i:i+1] .= Tuple(j)
-            for m = 1:d
+            for m in 1:d
               point[m] = nodes[m][point_index[m]]
             end
            A[l,j[1],j[2],k] = f(point)
@@ -3383,12 +3383,12 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,initial:
       end
     
       A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
-      δ = (tol/sqrt(d-1))*frobenius(A)
+      δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
     
       if r[i+1] == 1
-        u = reshape(u,length(u),1)
-        v = reshape(v,length(v),1)
+        u = reshape(u,:,1)
+        v = reshape(v,:,1)
       end
   
       left_to_right_indices_new[i], sweep = maxvol!(u,μ,300)
@@ -3403,11 +3403,11 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,initial:
     # Solve for the first indices
 
     A = Array{T,3}(undef,(n[1],n[2],r[3]))
-    for k = 1:r[3]
+    for k in 1:r[3]
       point_index[3:end] .= right_to_left_subs[2][k]
       for j in CartesianIndices((1:n[1],1:n[2]))
         point_index[1:2] .= Tuple(j)
-        for m = 1:d
+        for m in 1:d
           point[m] = nodes[m][point_index[m]]
         end
         A[j[1],j[2],k] = f(point)
@@ -3415,12 +3415,12 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,initial:
     end
     
     A = reshape(A,n[1],n[2]*r[3])
-    δ = (tol/sqrt(d-1))*frobenius(A)
+    δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
     
     if r[2] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[1], sweep = maxvol!(u,μ,300)
@@ -3446,7 +3446,7 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,initial:
 
     if sweeps >= maxsweeps 
 
-      if sum(abs,r - r_temp) == 0
+      if r == r_temp
 
         return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps)
 
@@ -3480,11 +3480,11 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},initial::ExtendedTens
 
   G = Array{Array{T,3},1}(undef,d)
 
-  left_to_right_indices = deepcopy(initial.left_to_right_ind)
-  right_to_left_indices = deepcopy(initial.right_to_left_ind)
+  left_to_right_indices = copy(initial.left_to_right_ind)
+  right_to_left_indices = copy(initial.right_to_left_ind)
   
-  left_to_right_subs = deepcopy(initial.left_to_right_sub)
-  right_to_left_subs = deepcopy(initial.right_to_left_sub)
+  left_to_right_subs = copy(initial.left_to_right_sub)
+  right_to_left_subs = copy(initial.right_to_left_sub)
   
   r = copy(initial.ranks)
 
@@ -3496,11 +3496,11 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},initial::ExtendedTens
   # Solve for the first indices
 
   A = Array{T,3}(undef,(n[1],n[2],r[3]))
-  for k = 1:r[3]
+  for k in 1:r[3]
     point_index[3:end] .= right_to_left_subs[2][k]
     for j in CartesianIndices((1:n[1],1:n[2]))
       point_index[1:2] .= Tuple(j)
-      for m = 1:d
+      for m in 1:d
         point[m] = nodes[m][point_index[m]]
       end
       A[j[1],j[2],k] = f(point)
@@ -3512,8 +3512,8 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},initial::ExtendedTens
   u,s,v,junk = tsvd(A,r[2])
 
   if r[2] == 1
-    u = reshape(u,length(u),1)
-    v = reshape(v,length(v),1)
+    u = reshape(u,:,1)
+    v = reshape(v,:,1)
   end
 
   @views G[1] = reshape(A[:,right_to_left_indices[1]]/A[left_to_right_indices[1],right_to_left_indices[1]],r[1],n[1],r[2])
@@ -3523,13 +3523,13 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},initial::ExtendedTens
   for i = 2:d-2
 
     A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
-    for l = 1:r[i]
+    for l in 1:r[i]
       point_index[1:i-1] .= left_to_right_subs[i-1][l]
-      for k = 1:r[i+2]
+      for k in 1:r[i+2]
         point_index[i+2:end] .= right_to_left_subs[i+1][k]
         for j in CartesianIndices((1:n[i],1:n[i+1]))
           point_index[i:i+1] .= Tuple(j)
-          for m = 1:d
+          for m in 1:d
             point[m] = nodes[m][point_index[m]]
           end
           A[l,j[1],j[2],k] = f(point)
@@ -3541,8 +3541,8 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},initial::ExtendedTens
     u,s,v,junk = tsvd(A,r[i+1])
 
     if r[i+1] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
   
     @views G[i] = reshape(A[:,right_to_left_indices[i]]/A[left_to_right_indices[i],right_to_left_indices[i]],r[i],n[i],r[i+1])
@@ -3552,11 +3552,11 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},initial::ExtendedTens
   # Solve for the final indices
 
   A = Array{T,4}(undef,(r[d-1],n[d-1],n[d],r[d+1]))
-  for k = 1:r[d-1]
+  for k in 1:r[d-1]
     point_index[1:d-2] .= left_to_right_subs[d-2][k]
     for j in CartesianIndices((1:n[d-1],1:n[d]))
       point_index[d-1:d] .= Tuple(j)
-      for m = 1:d
+      for m in 1:d
         point[m] = nodes[m][point_index[m]]
       end
       A[k,j[1],j[2],1] = f(point)
@@ -3567,8 +3567,8 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},initial::ExtendedTens
   u,s,v,junk = tsvd(A,r[d])
 
   if r[d] == 1
-    u = reshape(u,length(u),1)
-    v = reshape(v,length(v),1)
+    u = reshape(u,:,1)
+    v = reshape(v,:,1)
   end
 
   @views G[d-1] = reshape(A[:,right_to_left_indices[d-1]]/A[left_to_right_indices[d-1],right_to_left_indices[d-1]],r[d-1],n[d-1],r[d])
@@ -3617,19 +3617,19 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Array{S,1},m
 
   # Initialize left-to-right indices and sub-indices
 
-  for i = 1:d-1
+  for i in 1:d-1
 
     p = div(n[i] - r[i+1], 2)
     left_to_right_indices[i] = [p+1:p+r[i+1];]
 
     if i == 1
     
-      left_to_right_subs[i] = [tuple(ind2sub(x,(r[i],n[i]))[2]) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(ind2sub(x,(n[i],r[i]))[1]) for x in left_to_right_indices[i]]
 
     else
 
-      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
 
     end
   end
@@ -3668,11 +3668,11 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Array{S,1},m
     # Solve for the first indices
 
     A = Array{T,3}(undef,(n[1],n[2],r[3]))
-    for k = 1:r[3]
+    for k in 1:r[3]
       point_index[3:end] .= right_to_left_subs[2][k]
       for j in CartesianIndices((1:n[1],1:n[2]))
         point_index[1:2] .= Tuple(j)
-        for m = 1:d
+        for m in 1:d
           point[m] = nodes[m][point_index[m]]
         end
         A[j[1],j[2],k] = f(point)
@@ -3683,15 +3683,15 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Array{S,1},m
     u,s,v,r[2] = tsvd(A,r[2])
 
     if r[2] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[1], sweep = maxvol!(u,μ,300)
     right_to_left_indices_new[1], sweep = maxvol!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    left_to_right_subs[1] = [tuple(ind2sub(x,(r[1],n[1]))[2]) for x in left_to_right_indices_new[1]]
+    left_to_right_subs[1] = [tuple(ind2sub(x,(n[1],r[1]))[1]) for x in left_to_right_indices_new[1]]
 
     @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
@@ -3700,13 +3700,13 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Array{S,1},m
     for i = 2:d-2
 
       A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
-      for l = 1:r[i]
+      for l in 1:r[i]
         point_index[1:i-1] .= left_to_right_subs[i-1][l]
-        for k = 1:r[i+2]
+        for k in 1:r[i+2]
           point_index[i+2:end] .= right_to_left_subs[i+1][k]
           for j in CartesianIndices((1:n[i],1:n[i+1]))
             point_index[i:i+1] .= Tuple(j)
-            for m = 1:d
+            for m in 1:d
               point[m] = nodes[m][point_index[m]]
             end
            A[l,j[1],j[2],k] = f(point)
@@ -3718,16 +3718,16 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Array{S,1},m
       u,s,v,r[i+1] = tsvd(A,r[i+1])
 
       if r[i+1] == 1
-        u = reshape(u,length(u),1)
-        v = reshape(v,length(v),1)
+        u = reshape(u,:,1)
+        v = reshape(v,:,1)
       end
   
       left_to_right_indices_new[i], sweep = maxvol!(u,μ,300)
       right_to_left_indices_new[i], sweep = maxvol!(v,μ,300)
 
       # Update left_to_right_subs, keeping the indices nested
-      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices_new[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
 
       @views G[i]   = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
@@ -3736,11 +3736,11 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Array{S,1},m
     # Solve for the final indices
 
     A = Array{T,3}(undef,(r[d-1],n[d-1],n[d]))
-    for k = 1:r[d-1]
+    for k in 1:r[d-1]
       point_index[1:d-2] .= left_to_right_subs[d-2][k]
       for j in CartesianIndices((1:n[d-1],1:n[d]))
         point_index[d-1:d] .= Tuple(j)
-        for m = 1:d
+        for m in 1:d
           point[m] = nodes[m][point_index[m]]
         end
        A[k,j[1],j[2]] = f(point)
@@ -3751,16 +3751,16 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Array{S,1},m
     u,s,v,r[d] = tsvd(A,r[d])
 
     if r[d] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[d-1], sweep = maxvol!(u,μ,300)
     right_to_left_indices_new[d-1], sweep = maxvol!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
-    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
+    temp = [ind2sub(x,(n[d-1],r[d-1])) for x in left_to_right_indices_new[d-1]]
+    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][2]]...,temp[i][1]...) for i in eachindex(temp)]
 
     # Update right_to_left_subs, keeping the indices nested
     right_to_left_subs[d-1] = [tuple(ind2sub(x,(n[d],r[d+1]))[1]) for x in right_to_left_indices_new[d-1]]
@@ -3777,13 +3777,13 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Array{S,1},m
     for i = d-2:-1:2
 
       A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
-      for l = 1:r[i]
+      for l in 1:r[i]
         point_index[1:i-1] .= left_to_right_subs[i-1][l]
-        for k = 1:r[i+2]
+        for k in 1:r[i+2]
           point_index[i+2:end] .= right_to_left_subs[i+1][k]
           for j in CartesianIndices((1:n[i],1:n[i+1]))
             point_index[i:i+1] .= Tuple(j)
-            for m = 1:d
+            for m in 1:d
               point[m] = nodes[m][point_index[m]]
             end
            A[l,j[1],j[2],k] = f(point)
@@ -3795,8 +3795,8 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Array{S,1},m
       u,s,v,r[i+1] = tsvd(A,r[i+1])
     
       if r[i+1] == 1
-        u = reshape(u,length(u),1)
-        v = reshape(v,length(v),1)
+        u = reshape(u,:,1)
+        v = reshape(v,:,1)
       end
   
       left_to_right_indices_new[i], sweep = maxvol!(u,μ,300)
@@ -3811,11 +3811,11 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Array{S,1},m
     # Solve for the first indices
 
     A = Array{T,3}(undef,(n[1],n[2],r[3]))
-    for k = 1:r[3]
+    for k in 1:r[3]
       point_index[3:end] .= right_to_left_subs[2][k]
       for j in CartesianIndices((1:n[1],1:n[2]))
         point_index[1:2] .= Tuple(j)
-        for m = 1:d
+        for m in 1:d
           point[m] = nodes[m][point_index[m]]
         end
         A[j[1],j[2],k] = f(point)
@@ -3826,8 +3826,8 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Array{S,1},m
     u,s,v,r[2] = tsvd(A,r[2])
     
     if r[2] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[1], sweep = maxvol!(u,μ,300)
@@ -3853,7 +3853,7 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Array{S,1},m
 
     if sweeps >= maxsweeps 
 
-      if sum(abs,r - r_temp) == 0
+      if r == r_temp
 
         return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps)
 
@@ -3931,19 +3931,19 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
 
   # Initialize left-to-right indices and sub-indices
 
-  for i = 1:d-1
+  for i in 1:d-1
 
     p = div(n[i] - r[i+1], 2)
     left_to_right_indices[i] = [p+1:p+r[i+1];]
 
     if i == 1
     
-      left_to_right_subs[i] = [tuple(ind2sub(x,(r[i],n[i]))[2]) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(ind2sub(x,(n[i],r[i]))[1]) for x in left_to_right_indices[i]]
 
     else
 
-      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
 
     end
   end
@@ -3982,11 +3982,11 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
     # Solve for the first indices
 
     A = Array{T,3}(undef,(n[1],n[2],r[3]))
-    for k = 1:r[3]
+    for k in 1:r[3]
       point_index[3:end] .= right_to_left_subs[2][k]
       for j in CartesianIndices((1:n[1],1:n[2]))
         point_index[1:2] .= Tuple(j)
-        for m = 1:d
+        for m in 1:d
           point[m] = nodes[m][point_index[m]]
         end
         A[j[1],j[2],k] = f(point)
@@ -3994,19 +3994,19 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
     end
 
     A = reshape(A,n[1],n[2]*r[3])
-    δ = (tol/sqrt(d-1))*frobenius(A)
+    δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
 
     if r[2] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[1], sweep = maxvol_generic!(u,μ,300)
     right_to_left_indices_new[1], sweep = maxvol_generic!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    left_to_right_subs[1] = [tuple(ind2sub(x,(r[1],n[1]))[2]) for x in left_to_right_indices_new[1]]
+    left_to_right_subs[1] = [tuple(ind2sub(x,(n[1],r[1]))[1]) for x in left_to_right_indices_new[1]]
 
     @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
@@ -4015,13 +4015,13 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
     for i = 2:d-2
 
       A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
-      for l = 1:r[i]
+      for l in 1:r[i]
         point_index[1:i-1] .= left_to_right_subs[i-1][l]
-        for k = 1:r[i+2]
+        for k in 1:r[i+2]
           point_index[i+2:end] .= right_to_left_subs[i+1][k]
           for j in CartesianIndices((1:n[i],1:n[i+1]))
             point_index[i:i+1] .= Tuple(j)
-            for m = 1:d
+            for m in 1:d
               point[m] = nodes[m][point_index[m]]
             end
            A[l,j[1],j[2],k] = f(point)
@@ -4030,20 +4030,20 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
       end
 
       A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
-      δ = (tol/sqrt(d-1))*frobenius(A)
+      δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
 
       if r[i+1] == 1
-        u = reshape(u,length(u),1)
-        v = reshape(v,length(v),1)
+        u = reshape(u,:,1)
+        v = reshape(v,:,1)
       end
   
       left_to_right_indices_new[i], sweep = maxvol_generic!(u,μ,300)
       right_to_left_indices_new[i], sweep = maxvol_generic!(v,μ,300)
 
       # Update left_to_right_subs, keeping the indices nested
-      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices_new[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
   
       @views G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
@@ -4052,11 +4052,11 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
     # Solve for the final indices
 
     A = Array{T,4}(undef,(r[d-1],n[d-1],n[d],r[d+1]))
-    for k = 1:r[d-1]
+    for k in 1:r[d-1]
       point_index[1:d-2] .= left_to_right_subs[d-2][k]
       for j in CartesianIndices((1:n[d-1],1:n[d]))
         point_index[d-1:d] .= Tuple(j)
-        for m = 1:d
+        for m in 1:d
           point[m] = nodes[m][point_index[m]]
         end
        A[k,j[1],j[2],1] = f(point)
@@ -4064,20 +4064,20 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
     end
 
     A = reshape(A,r[d-1]*n[d-1],n[d])
-    δ = (tol/sqrt(d-1))*frobenius(A)
+    δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[d] = tsvd(A,δ)
 
     if r[d] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[d-1], sweep = maxvol_generic!(u,μ,300)
     right_to_left_indices_new[d-1], sweep = maxvol_generic!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
-    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
+    temp = [ind2sub(x,(n[d-1],r[d-1])) for x in left_to_right_indices_new[d-1]]
+    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][2]]...,temp[i][1]...) for i in eachindex(temp)]
 
     # Update right_to_left_subs, keeping the indices nested
     right_to_left_subs[d-1] = [tuple(ind2sub(x,(n[d],r[d+1]))[1]) for x in right_to_left_indices_new[d-1]]
@@ -4094,13 +4094,13 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
     for i = d-2:-1:2
 
       A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
-      for l = 1:r[i]
+      for l in 1:r[i]
         point_index[1:i-1] .= left_to_right_subs[i-1][l]
-        for k = 1:r[i+2]
+        for k in 1:r[i+2]
           point_index[i+2:end] .= right_to_left_subs[i+1][k]
           for j in CartesianIndices((1:n[i],1:n[i+1]))
             point_index[i:i+1] .= Tuple(j)
-            for m = 1:d
+            for m in 1:d
               point[m] = nodes[m][point_index[m]]
             end
            A[l,j[1],j[2],k] = f(point)
@@ -4109,12 +4109,12 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
       end
     
       A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
-      δ = (tol/sqrt(d-1))*frobenius(A)
+      δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
     
       if r[i+1] == 1
-        u = reshape(u,length(u),1)
-        v = reshape(v,length(v),1)
+        u = reshape(u,:,1)
+        v = reshape(v,:,1)
       end
   
       left_to_right_indices_new[i], sweep = maxvol_generic!(u,μ,300)
@@ -4129,11 +4129,11 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
     # Solve for the first indices
 
     A = Array{T,3}(undef,(n[1],n[2],r[3]))
-    for k = 1:r[3]
+    for k in 1:r[3]
       point_index[3:end] .= right_to_left_subs[2][k]
       for j in CartesianIndices((1:n[1],1:n[2]))
         point_index[1:2] .= Tuple(j)
-        for m = 1:d
+        for m in 1:d
           point[m] = nodes[m][point_index[m]]
         end
         A[j[1],j[2],k] = f(point)
@@ -4141,12 +4141,12 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
     end
     
     A = reshape(A,n[1],n[2]*r[3])
-    δ = (tol/sqrt(d-1))*frobenius(A)
+    δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
     
     if r[2] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[1], sweep = maxvol_generic!(u,μ,300)
@@ -4172,7 +4172,7 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
 
     if sweeps >= maxsweeps 
 
-      if sum(abs,r - r_temp) == 0
+      if r == r_temp
 
         return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps)
 
@@ -4206,11 +4206,11 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
 
   G = Array{Array{T,3},1}(undef,d)
 
-  left_to_right_indices = deepcopy(initial.left_to_right_ind)
-  right_to_left_indices = deepcopy(initial.right_to_left_ind)
+  left_to_right_indices = copy(initial.left_to_right_ind)
+  right_to_left_indices = copy(initial.right_to_left_ind)
 
-  left_to_right_subs = deepcopy(initial.left_to_right_sub)
-  right_to_left_subs = deepcopy(initial.right_to_left_sub)
+  left_to_right_subs = copy(initial.left_to_right_sub)
+  right_to_left_subs = copy(initial.right_to_left_sub)
 
   r = copy(initial.ranks)
 
@@ -4228,11 +4228,11 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
     # Solve for the first indices
 
     A = Array{T,3}(undef,(n[1],n[2],r[3]))
-    for k = 1:r[3]
+    for k in 1:r[3]
       point_index[3:end] .= right_to_left_subs[2][k]
       for j in CartesianIndices((1:n[1],1:n[2]))
         point_index[1:2] .= Tuple(j)
-        for m = 1:d
+        for m in 1:d
           point[m] = nodes[m][point_index[m]]
         end
         A[j[1],j[2],k] = f(point)
@@ -4240,19 +4240,19 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
     end
 
     A = reshape(A,n[1],n[2]*r[3])
-    δ = (tol/sqrt(d-1))*frobenius(A)
+    δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
 
     if r[2] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[1], sweep = maxvol_generic!(u,μ,300)
     right_to_left_indices_new[1], sweep = maxvol_generic!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    left_to_right_subs[1] = [tuple(ind2sub(x,(r[1],n[1]))[2]) for x in left_to_right_indices_new[1]]
+    left_to_right_subs[1] = [tuple(ind2sub(x,(n[1],r[1]))[1]) for x in left_to_right_indices_new[1]]
 
     @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
@@ -4261,13 +4261,13 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
     for i = 2:d-2
 
       A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
-      for l = 1:r[i]
+      for l in 1:r[i]
         point_index[1:i-1] .= left_to_right_subs[i-1][l]
-        for k = 1:r[i+2]
+        for k in 1:r[i+2]
           point_index[i+2:end] .= right_to_left_subs[i+1][k]
           for j in CartesianIndices((1:n[i],1:n[i+1]))
             point_index[i:i+1] .= Tuple(j)
-            for m = 1:d
+            for m in 1:d
               point[m] = nodes[m][point_index[m]]
             end
            A[l,j[1],j[2],k] = f(point)
@@ -4276,20 +4276,20 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
       end
 
       A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
-      δ = (tol/sqrt(d-1))*frobenius(A)
+      δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
 
       if r[i+1] == 1
-        u = reshape(u,length(u),1)
-        v = reshape(v,length(v),1)
+        u = reshape(u,:,1)
+        v = reshape(v,:,1)
       end
   
       left_to_right_indices_new[i], sweep = maxvol_generic!(u,μ,300)
       right_to_left_indices_new[i], sweep = maxvol_generic!(v,μ,300)
 
       # Update left_to_right_subs, keeping the indices nested
-      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices_new[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
   
       @views G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
@@ -4298,11 +4298,11 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
     # Solve for the final indices
 
     A = Array{T,4}(undef,(r[d-1],n[d-1],n[d],r[d+1]))
-    for k = 1:r[d-1]
+    for k in 1:r[d-1]
       point_index[1:d-2] .= left_to_right_subs[d-2][k]
       for j in CartesianIndices((1:n[d-1],1:n[d]))
         point_index[d-1:d] .= Tuple(j)
-        for m = 1:d
+        for m in 1:d
           point[m] = nodes[m][point_index[m]]
         end
        A[k,j[1],j[2],1] = f(point)
@@ -4310,20 +4310,20 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
     end
 
     A = reshape(A,r[d-1]*n[d-1],n[d])
-    δ = (tol/sqrt(d-1))*frobenius(A)
+    δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[d] = tsvd(A,δ)
 
     if r[d] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[d-1], sweep = maxvol_generic!(u,μ,300)
     right_to_left_indices_new[d-1], sweep = maxvol_generic!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
-    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
+    temp = [ind2sub(x,(n[d-1],r[d-1])) for x in left_to_right_indices_new[d-1]]
+    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][2]]...,temp[i][1]...) for i in eachindex(temp)]
 
     # Update right_to_left_subs, keeping the indices nested
     right_to_left_subs[d-1] = [tuple(ind2sub(x,(n[d],r[d+1]))[1]) for x in right_to_left_indices_new[d-1]]
@@ -4340,13 +4340,13 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
     for i = d-2:-1:2
 
       A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
-      for l = 1:r[i]
+      for l in 1:r[i]
         point_index[1:i-1] .= left_to_right_subs[i-1][l]
-        for k = 1:r[i+2]
+        for k in 1:r[i+2]
           point_index[i+2:end] .= right_to_left_subs[i+1][k]
           for j in CartesianIndices((1:n[i],1:n[i+1]))
             point_index[i:i+1] .= Tuple(j)
-            for m = 1:d
+            for m in 1:d
               point[m] = nodes[m][point_index[m]]
             end
            A[l,j[1],j[2],k] = f(point)
@@ -4355,12 +4355,12 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
       end
     
       A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
-      δ = (tol/sqrt(d-1))*frobenius(A)
+      δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
     
       if r[i+1] == 1
-        u = reshape(u,length(u),1)
-        v = reshape(v,length(v),1)
+        u = reshape(u,:,1)
+        v = reshape(v,:,1)
       end
   
       left_to_right_indices_new[i], sweep = maxvol_generic!(u,μ,300)
@@ -4375,11 +4375,11 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
     # Solve for the first indices
 
     A = Array{T,3}(undef,(n[1],n[2],r[3]))
-    for k = 1:r[3]
+    for k in 1:r[3]
       point_index[3:end] .= right_to_left_subs[2][k]
       for j in CartesianIndices((1:n[1],1:n[2]))
         point_index[1:2] .= Tuple(j)
-        for m = 1:d
+        for m in 1:d
           point[m] = nodes[m][point_index[m]]
         end
         A[j[1],j[2],k] = f(point)
@@ -4387,12 +4387,12 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
     end
     
     A = reshape(A,n[1],n[2]*r[3])
-    δ = (tol/sqrt(d-1))*frobenius(A)
+    δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
     
     if r[2] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[1], sweep = maxvol_generic!(u,μ,300)
@@ -4418,7 +4418,7 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
 
     if sweeps >= maxsweeps 
 
-      if sum(abs,r - r_temp) == 0
+      if r == r_temp
 
         return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps)
 
@@ -4473,19 +4473,19 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,r::Arra
 
   # Initialize left-to-right indices and sub-indices
 
-  for i = 1:d-1
+  for i in 1:d-1
 
     p = div(n[i] - r[i+1], 2)
     left_to_right_indices[i] = [p+1:p+r[i+1];]
 
     if i == 1
     
-      left_to_right_subs[i] = [tuple(ind2sub(x,(r[i],n[i]))[2]) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(ind2sub(x,(n[i],r[i]))[1]) for x in left_to_right_indices[i]]
 
     else
 
-      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
 
     end
   end
@@ -4524,11 +4524,11 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,r::Arra
     # Solve for the first indices
 
     A = Array{T,3}(undef,(n[1],n[2],r[3]))
-    for k = 1:r[3]
+    for k in 1:r[3]
       point_index[3:end] .= right_to_left_subs[2][k]
       for j in CartesianIndices((1:n[1],1:n[2]))
         point_index[1:2] .= Tuple(j)
-        for m = 1:d
+        for m in 1:d
           point[m] = nodes[m][point_index[m]]
         end
         A[j[1],j[2],k] = f(point)
@@ -4539,15 +4539,15 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,r::Arra
     u,s,v,r[2] = tsvd(A,r[2])
 
     if r[2] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[1], sweep = maxvol_generic!(u,μ,300)
     right_to_left_indices_new[1], sweep = maxvol_generic!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    left_to_right_subs[1] = [tuple(ind2sub(x,(r[1],n[1]))[2]) for x in left_to_right_indices_new[1]]
+    left_to_right_subs[1] = [tuple(ind2sub(x,(n[1],r[1]))[1]) for x in left_to_right_indices_new[1]]
 
     @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
@@ -4556,13 +4556,13 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,r::Arra
     for i = 2:d-2
 
       A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
-      for l = 1:r[i]
+      for l in 1:r[i]
         point_index[1:i-1] .= left_to_right_subs[i-1][l]
-        for k = 1:r[i+2]
+        for k in 1:r[i+2]
           point_index[i+2:end] .= right_to_left_subs[i+1][k]
           for j in CartesianIndices((1:n[i],1:n[i+1]))
             point_index[i:i+1] .= Tuple(j)
-            for m = 1:d
+            for m in 1:d
               point[m] = nodes[m][point_index[m]]
             end
            A[l,j[1],j[2],k] = f(point)
@@ -4574,16 +4574,16 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,r::Arra
       u,s,v,r[i+1] = tsvd(A,r[i+1])
 
       if r[i+1] == 1
-        u = reshape(u,length(u),1)
-        v = reshape(v,length(v),1)
+        u = reshape(u,:,1)
+        v = reshape(v,:,1)
       end
   
       left_to_right_indices_new[i], sweep = maxvol_generic!(u,μ,300)
       right_to_left_indices_new[i], sweep = maxvol_generic!(v,μ,300)
 
       # Update left_to_right_subs, keeping the indices nested
-      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices_new[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
   
       @views G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
@@ -4592,11 +4592,11 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,r::Arra
     # Solve for the final indices
 
     A = Array{T,4}(undef,(r[d-1],n[d-1],n[d],r[d+1]))
-    for k = 1:r[d-1]
+    for k in 1:r[d-1]
       point_index[1:d-2] .= left_to_right_subs[d-2][k]
       for j in CartesianIndices((1:n[d-1],1:n[d]))
         point_index[d-1:d] .= Tuple(j)
-        for m = 1:d
+        for m in 1:d
           point[m] = nodes[m][point_index[m]]
         end
        A[k,j[1],j[2],1] = f(point)
@@ -4607,16 +4607,16 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,r::Arra
     u,s,v,r[d] = tsvd(A,r[d])
 
     if r[d] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[d-1], sweep = maxvol_generic!(u,μ,300)
     right_to_left_indices_new[d-1], sweep = maxvol_generic!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
-    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
+    temp = [ind2sub(x,(n[d-1],r[d-1])) for x in left_to_right_indices_new[d-1]]
+    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][2]]...,temp[i][1]...) for i in eachindex(temp)]
 
     # Update right_to_left_subs, keeping the indices nested
     right_to_left_subs[d-1] = [tuple(ind2sub(x,(n[d],r[d+1]))[1]) for x in right_to_left_indices_new[d-1]]
@@ -4633,13 +4633,13 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,r::Arra
     for i = d-2:-1:2
 
       A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
-      for l = 1:r[i]
+      for l in 1:r[i]
         point_index[1:i-1] .= left_to_right_subs[i-1][l]
-        for k = 1:r[i+2]
+        for k in 1:r[i+2]
           point_index[i+2:end] .= right_to_left_subs[i+1][k]
           for j in CartesianIndices((1:n[i],1:n[i+1]))
             point_index[i:i+1] .= Tuple(j)
-            for m = 1:d
+            for m in 1:d
               point[m] = nodes[m][point_index[m]]
             end
            A[l,j[1],j[2],k] = f(point)
@@ -4651,8 +4651,8 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,r::Arra
       u,s,v,r[i+1] = tsvd(A,r[i+1])
     
       if r[i+1] == 1
-        u = reshape(u,length(u),1)
-        v = reshape(v,length(v),1)
+        u = reshape(u,:,1)
+        v = reshape(v,:,1)
       end
   
       left_to_right_indices_new[i], sweep = maxvol_generic!(u,μ,300)
@@ -4667,11 +4667,11 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,r::Arra
     # Solve for the first indices
 
     A = Array{T,3}(undef,(n[1],n[2],r[3]))
-    for k = 1:r[3]
+    for k in 1:r[3]
       point_index[3:end] .= right_to_left_subs[2][k]
       for j in CartesianIndices((1:n[1],1:n[2]))
         point_index[1:2] .= Tuple(j)
-        for m = 1:d
+        for m in 1:d
           point[m] = nodes[m][point_index[m]]
         end
         A[j[1],j[2],k] = f(point)
@@ -4682,8 +4682,8 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,r::Arra
     u,s,v,r[2] = tsvd(A,r[2])
     
     if r[2] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[1], sweep = maxvol_generic!(u,μ,300)
@@ -4709,7 +4709,7 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,r::Arra
 
     if sweeps >= maxsweeps 
 
-      if sum(abs,r - r_temp) == 0
+      if r == r_temp
 
         return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps)
 
@@ -4788,19 +4788,19 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T
 
   # Initialize left-to-right indices and sub-indices
 
-  for i = 1:d-1
+  for i in 1:d-1
 
     p = div(n[i] - r[i+1], 2)
     left_to_right_indices[i] = [p+1:p+r[i+1];]
 
     if i == 1
     
-      left_to_right_subs[i] = [tuple(ind2sub(x,(r[i],n[i]))[2]) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(ind2sub(x,(n[i],r[i]))[1]) for x in left_to_right_indices[i]]
 
     else
 
-      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
 
     end
   end
@@ -4839,26 +4839,26 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T
     @sync Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
       point_ind = (j[1],j[2],right_to_left_subs[2][j[3]]...)
       p         = Array{T,1}(undef,d)
-      for m = 1:d
+      for m in 1:d
         p[m] = nodes[m][point_ind[m]]
       end
       A[j] = f(p)
     end
 
     A = reshape(A,n[1],n[2]*r[3])
-    δ = (tol/sqrt(d-1))*frobenius(A)
+    δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
 
     if r[2] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[1], sweep = maxvol!(u,μ,300)
     right_to_left_indices_new[1], sweep = maxvol!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    left_to_right_subs[1] = [tuple(ind2sub(x,(r[1],n[1]))[2]) for x in left_to_right_indices_new[1]]
+    left_to_right_subs[1] = [tuple(ind2sub(x,(n[1],r[1]))[1]) for x in left_to_right_indices_new[1]]
 
     @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
@@ -4870,27 +4870,27 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T
       @sync Threads.@threads for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
         point_ind = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
         p         = Array{T,1}(undef,d)
-        for m = 1:d
+        for m in 1:d
           p[m] = nodes[m][point_ind[m]]
         end
         A[j] = f(p)
       end
 
       A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
-      δ = (tol/sqrt(d-1))*frobenius(A)
+      δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
 
       if r[i+1] == 1
-        u = reshape(u,length(u),1)
-        v = reshape(v,length(v),1)
+        u = reshape(u,:,1)
+        v = reshape(v,:,1)
       end
   
       left_to_right_indices_new[i], sweep = maxvol!(u,μ,300)
       right_to_left_indices_new[i], sweep = maxvol!(v,μ,300)
 
       # Update left_to_right_subs, keeping the indices nested
-      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices_new[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
   
       @views G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
@@ -4902,27 +4902,27 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T
     @sync Threads.@threads for j in CartesianIndices((1:r[d-1],1:n[d-1],1:n[d]))
       point_ind = (left_to_right_subs[d-2][j[1]]...,j[2],j[3])
       p         = Array{T,1}(undef,d)
-      for m = 1:d
+      for m in 1:d
         p[m] = nodes[m][point_ind[m]]
       end
      A[j[1],j[2],j[3],1] = f(p)
     end
 
     A = reshape(A,r[d-1]*n[d-1],n[d])
-    δ = (tol/sqrt(d-1))*frobenius(A)
+    δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[d] = tsvd(A,δ)
 
     if r[d] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[d-1], sweep = maxvol!(u,μ,300)
     right_to_left_indices_new[d-1], sweep = maxvol!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
-    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
+    temp = [ind2sub(x,(n[d-1],r[d-1])) for x in left_to_right_indices_new[d-1]]
+    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][2]]...,temp[i][1]...) for i in eachindex(temp)]
 
     # Update right_to_left_subs, keeping the indices nested
     right_to_left_subs[d-1] = [tuple(ind2sub(x,(n[d],r[d+1]))[1]) for x in right_to_left_indices_new[d-1]]
@@ -4942,19 +4942,19 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T
       @sync Threads.@threads for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
         point_ind = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
         p         = Array{T,1}(undef,d)
-        for m = 1:d
+        for m in 1:d
           p[m] = nodes[m][point_ind[m]]
         end
         A[j] = f(p)
       end
 
       A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
-      δ = (tol/sqrt(d-1))*frobenius(A)
+      δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
 
       if r[i+1] == 1
-        u = reshape(u,length(u),1)
-        v = reshape(v,length(v),1)
+        u = reshape(u,:,1)
+        v = reshape(v,:,1)
       end
   
       left_to_right_indices_new[i], sweep = maxvol!(u,μ,300)
@@ -4972,19 +4972,19 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T
     @sync Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
       point_ind = (j[1],j[2],right_to_left_subs[2][j[3]]...)
       p         = Array{T,1}(undef,d)
-      for m = 1:d
+      for m in 1:d
         p[m] = nodes[m][point_ind[m]]
       end
       A[j] = f(p)
     end
 
     A = reshape(A,n[1],n[2]*r[3])
-    δ = (tol/sqrt(d-1))*frobenius(A)
+    δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
 
     if r[2] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[1], sweep = maxvol!(u,μ,300)
@@ -5010,7 +5010,7 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T
 
     if sweeps >= maxsweeps 
 
-      if sum(abs,r - r_temp) == 0
+      if r == r_temp
 
         return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps)
 
@@ -5044,11 +5044,11 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T
 
   G = Array{Array{T,3},1}(undef,d)
 
-  left_to_right_indices = deepcopy(initial.left_to_right_ind)
-  right_to_left_indices = deepcopy(initial.right_to_left_ind)
+  left_to_right_indices = copy(initial.left_to_right_ind)
+  right_to_left_indices = copy(initial.right_to_left_ind)
 
-  left_to_right_subs = deepcopy(initial.left_to_right_sub)
-  right_to_left_subs = deepcopy(initial.right_to_left_sub)
+  left_to_right_subs = copy(initial.left_to_right_sub)
+  right_to_left_subs = copy(initial.right_to_left_sub)
 
   r = copy(initial.ranks)
   
@@ -5066,26 +5066,26 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T
     @sync Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
       point_ind = (j[1],j[2],right_to_left_subs[2][j[3]]...)
       p         = Array{T,1}(undef,d)
-      for m = 1:d
+      for m in 1:d
         p[m] = nodes[m][point_ind[m]]
       end
       A[j] = f(p)
     end
 
     A = reshape(A,n[1],n[2]*r[3])
-    δ = (tol/sqrt(d-1))*frobenius(A)
+    δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
 
     if r[2] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[1], sweep = maxvol!(u,μ,300)
     right_to_left_indices_new[1], sweep = maxvol!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    left_to_right_subs[1] = [tuple(ind2sub(x,(r[1],n[1]))[2]) for x in left_to_right_indices_new[1]]
+    left_to_right_subs[1] = [tuple(ind2sub(x,(n[1],r[1]))[1]) for x in left_to_right_indices_new[1]]
 
     @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
@@ -5097,27 +5097,27 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T
       @sync Threads.@threads for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
         point_ind = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
         p         = Array{T,1}(undef,d)
-        for m = 1:d
+        for m in 1:d
           p[m] = nodes[m][point_ind[m]]
         end
         A[j] = f(p)
       end
 
       A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
-      δ = (tol/sqrt(d-1))*frobenius(A)
+      δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
 
       if r[i+1] == 1
-        u = reshape(u,length(u),1)
-        v = reshape(v,length(v),1)
+        u = reshape(u,:,1)
+        v = reshape(v,:,1)
       end
   
       left_to_right_indices_new[i], sweep = maxvol!(u,μ,300)
       right_to_left_indices_new[i], sweep = maxvol!(v,μ,300)
 
       # Update left_to_right_subs, keeping the indices nested
-      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices_new[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
   
       @views G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
@@ -5129,27 +5129,27 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T
     @sync Threads.@threads for j in CartesianIndices((1:r[d-1],1:n[d-1],1:n[d]))
       point_ind = (left_to_right_subs[d-2][j[1]]...,j[2],j[3])
       p         = Array{T,1}(undef,d)
-      for m = 1:d
+      for m in 1:d
         p[m] = nodes[m][point_ind[m]]
       end
      A[j[1],j[2],j[3],1] = f(p)
     end
 
     A = reshape(A,r[d-1]*n[d-1],n[d])
-    δ = (tol/sqrt(d-1))*frobenius(A)
+    δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[d] = tsvd(A,δ)
 
     if r[d] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[d-1], sweep = maxvol!(u,μ,300)
     right_to_left_indices_new[d-1], sweep = maxvol!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
-    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
+    temp = [ind2sub(x,(n[d-1],r[d-1])) for x in left_to_right_indices_new[d-1]]
+    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][2]]...,temp[i][1]...) for i in eachindex(temp)]
 
     # Update right_to_left_subs, keeping the indices nested
     right_to_left_subs[d-1] = [tuple(ind2sub(x,(n[d],r[d+1]))[1]) for x in right_to_left_indices_new[d-1]]
@@ -5169,19 +5169,19 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T
       @sync Threads.@threads for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
         point_ind = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
         p         = Array{T,1}(undef,d)
-        for m = 1:d
+        for m in 1:d
           p[m] = nodes[m][point_ind[m]]
         end
         A[j] = f(p)
       end
 
       A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
-      δ = (tol/sqrt(d-1))*frobenius(A)
+      δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
 
       if r[i+1] == 1
-        u = reshape(u,length(u),1)
-        v = reshape(v,length(v),1)
+        u = reshape(u,:,1)
+        v = reshape(v,:,1)
       end
   
       left_to_right_indices_new[i], sweep = maxvol!(u,μ,300)
@@ -5199,19 +5199,19 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T
     @sync Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
       point_ind = (j[1],j[2],right_to_left_subs[2][j[3]]...)
       p         = Array{T,1}(undef,d)
-      for m = 1:d
+      for m in 1:d
         p[m] = nodes[m][point_ind[m]]
       end
       A[j] = f(p)
     end
 
     A = reshape(A,n[1],n[2]*r[3])
-    δ = (tol/sqrt(d-1))*frobenius(A)
+    δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
 
     if r[2] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[1], sweep = maxvol!(u,μ,300)
@@ -5237,7 +5237,7 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T
 
     if sweeps >= maxsweeps 
 
-      if sum(abs,r - r_temp) == 0
+      if r == r_temp
 
         return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps)
 
@@ -5271,11 +5271,11 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},initial::Ext
 
   G = Array{Array{T,3},1}(undef,d)
 
-  left_to_right_indices = deepcopy(initial.left_to_right_ind)
-  right_to_left_indices = deepcopy(initial.right_to_left_ind)
+  left_to_right_indices = copy(initial.left_to_right_ind)
+  right_to_left_indices = copy(initial.right_to_left_ind)
 
-  left_to_right_subs = deepcopy(initial.left_to_right_sub)
-  right_to_left_subs = deepcopy(initial.right_to_left_sub)
+  left_to_right_subs = copy(initial.left_to_right_sub)
+  right_to_left_subs = copy(initial.right_to_left_sub)
 
   r = copy(initial.ranks)
   
@@ -5287,7 +5287,7 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},initial::Ext
   @sync Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
     point_ind = (j[1],j[2],right_to_left_subs[2][j[3]]...)
     p         = Array{T,1}(undef,d)
-    for m = 1:d
+    for m in 1:d
       p[m] = nodes[m][point_ind[m]]
     end
     A[j] = f(p)
@@ -5297,8 +5297,8 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},initial::Ext
   u,s,v,junk = tsvd(A,r[2])
   
   if r[2] == 1
-    u = reshape(u,length(u),1)
-    v = reshape(v,length(v),1)
+    u = reshape(u,:,1)
+    v = reshape(v,:,1)
   end
 
   @views G[1] = reshape(A[:,right_to_left_indices[1]]/A[left_to_right_indices[1],right_to_left_indices[1]],r[1],n[1],r[2])
@@ -5311,7 +5311,7 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},initial::Ext
     @sync Threads.@threads for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
       point_ind = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
       p         = Array{T,1}(undef,d)
-      for m = 1:d
+      for m in 1:d
         p[m] = nodes[m][point_ind[m]]
       end
       A[j] = f(p)
@@ -5321,8 +5321,8 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},initial::Ext
     u,s,v,junk = tsvd(A,r[i+1])
 
     if r[i+1] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
   
     @views G[i] = reshape(A[:,right_to_left_indices[i]]/A[left_to_right_indices[i],right_to_left_indices[i]],r[i],n[i],r[i+1])
@@ -5335,7 +5335,7 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},initial::Ext
   @sync Threads.@threads for j in CartesianIndices((1:r[d-1],1:n[d-1],1:n[d]))
     point_ind = (left_to_right_subs[d-2][j[1]]...,j[2],j[3])
     p         = Array{T,1}(undef,d)
-    for m = 1:d
+    for m in 1:d
       p[m] = nodes[m][point_ind[m]]
     end
    A[j[1],j[2],j[3],1] = f(p)
@@ -5345,8 +5345,8 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},initial::Ext
   u,s,v,junk = tsvd(A,r[d])
 
   if r[d] == 1
-    u = reshape(u,length(u),1)
-    v = reshape(v,length(v),1)
+    u = reshape(u,:,1)
+    v = reshape(v,:,1)
   end
 
   @views G[d-1] = reshape(A[:,right_to_left_indices[d-1]]/A[left_to_right_indices[d-1],right_to_left_indices[d-1]],r[d-1],n[d-1],r[d])
@@ -5395,19 +5395,19 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Arr
 
   # Initialize left-to-right indices and sub-indices
 
-  for i = 1:d-1
+  for i in 1:d-1
 
     p = div(n[i] - r[i+1], 2)
     left_to_right_indices[i] = [p+1:p+r[i+1];]
 
     if i == 1
     
-      left_to_right_subs[i] = [tuple(ind2sub(x,(r[i],n[i]))[2]) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(ind2sub(x,(n[i],r[i]))[1]) for x in left_to_right_indices[i]]
 
     else
 
-      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
 
     end
   end
@@ -5446,7 +5446,7 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Arr
     @sync Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
       point_ind =  (j[1],j[2],right_to_left_subs[2][j[3]]...)
       p         = Array{T,1}(undef,d)
-      for m = 1:d
+      for m in 1:d
         p[m] = nodes[m][point_ind[m]]
       end
       A[j] = f(p)
@@ -5456,15 +5456,15 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Arr
     u,s,v,r[2] = tsvd(A,r[2])
 
     if r[2] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[1], sweep = maxvol!(u,μ,300)
     right_to_left_indices_new[1], sweep = maxvol!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    left_to_right_subs[1] = [tuple(ind2sub(x,(r[1],n[1]))[2]) for x in left_to_right_indices_new[1]]
+    left_to_right_subs[1] = [tuple(ind2sub(x,(n[1],r[1]))[1]) for x in left_to_right_indices_new[1]]
 
     @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
@@ -5476,7 +5476,7 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Arr
       @sync Threads.@threads for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
         point_ind = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
         p         = Array{T,1}(undef,d)
-        for m = 1:d
+        for m in 1:d
           p[m] = nodes[m][point_ind[m]]
         end
         A[j] = f(p)
@@ -5486,16 +5486,16 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Arr
       u,s,v,r[i+1] = tsvd(A,r[i+1])
 
       if r[i+1] == 1
-        u = reshape(u,length(u),1)
-        v = reshape(v,length(v),1)
+        u = reshape(u,:,1)
+        v = reshape(v,:,1)
       end
   
       left_to_right_indices_new[i], sweep = maxvol!(u,μ,300)
       right_to_left_indices_new[i], sweep = maxvol!(v,μ,300)
 
       # Update left_to_right_subs, keeping the indices nested
-      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices_new[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
   
       @views G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
@@ -5507,7 +5507,7 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Arr
     @sync Threads.@threads for j in CartesianIndices((1:r[d-1],1:n[d-1],1:n[d]))
       point_ind = (left_to_right_subs[d-2][j[1]]...,j[2],j[3])
       p         = Array{T,1}(undef,d)
-      for m = 1:d
+      for m in 1:d
         p[m] = nodes[m][point_ind[m]]
       end
      A[j[1],j[2],j[3],1] = f(p)
@@ -5517,16 +5517,16 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Arr
     u,s,v,r[d] = tsvd(A,r[d])
 
     if r[d] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[d-1], sweep = maxvol!(u,μ,300)
     right_to_left_indices_new[d-1], sweep = maxvol!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
-    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
+    temp = [ind2sub(x,(n[d-1],r[d-1])) for x in left_to_right_indices_new[d-1]]
+    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][2]]...,temp[i][1]...) for i in eachindex(temp)]
 
     # Update right_to_left_subs, keeping the indices nested
     right_to_left_subs[d-1] = [tuple(ind2sub(x,(n[d],r[d+1]))[1]) for x in right_to_left_indices_new[d-1]]
@@ -5546,7 +5546,7 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Arr
       @sync Threads.@threads for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
         point_ind = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
         p         = Array{T,1}(undef,d)
-        for m = 1:d
+        for m in 1:d
           p[m] = nodes[m][point_ind[m]]
         end
         A[j] = f(p)
@@ -5556,8 +5556,8 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Arr
       u,s,v,r[i+1] = tsvd(A,r[i+1])
 
       if r[i+1] == 1
-        u = reshape(u,length(u),1)
-        v = reshape(v,length(v),1)
+        u = reshape(u,:,1)
+        v = reshape(v,:,1)
       end
   
       left_to_right_indices_new[i], sweep = maxvol!(u,μ,300)
@@ -5575,7 +5575,7 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Arr
     @sync Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
       point_ind = (j[1],j[2],right_to_left_subs[2][j[3]]...)
       p         = Array{T,1}(undef,d)
-      for m = 1:d
+      for m in 1:d
         p[m] = nodes[m][point_ind[m]]
       end
       A[j] = f(p)
@@ -5585,8 +5585,8 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Arr
     u,s,v,r[2] = tsvd(A,r[2])
 
     if r[2] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[1], sweep = maxvol!(u,μ,300)
@@ -5612,7 +5612,7 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Arr
 
     if sweeps >= maxsweeps 
 
-      if sum(abs,r - r_temp) == 0
+      if r == r_temp
 
         return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps)
 
@@ -5690,19 +5690,19 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
 
   # Initialize left-to-right indices and sub-indices
 
-  for i = 1:d-1
+  for i in 1:d-1
 
     p = div(n[i] - r[i+1], 2)
     left_to_right_indices[i] = [p+1:p+r[i+1];]
 
     if i == 1
     
-      left_to_right_subs[i] = [tuple(ind2sub(x,(r[i],n[i]))[2]) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(ind2sub(x,(n[i],r[i]))[1]) for x in left_to_right_indices[i]]
 
     else
 
-      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
 
     end
   end
@@ -5741,26 +5741,26 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
     @sync Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
       point_ind = (j[1],j[2],right_to_left_subs[2][j[3]]...)
       p         = Array{T,1}(undef,d)
-      for m = 1:d
+      for m in 1:d
         p[m] = nodes[m][point_ind[m]]
       end
       A[j] = f(p)
     end
 
     A = reshape(A,n[1],n[2]*r[3])
-    δ = (tol/sqrt(d-1))*frobenius(A)
+    δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
 
     if r[2] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[1], sweep = maxvol_generic!(u,μ,300)
     right_to_left_indices_new[1], sweep = maxvol_generic!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    left_to_right_subs[1] = [tuple(ind2sub(x,(r[1],n[1]))[2]) for x in left_to_right_indices_new[1]]
+    left_to_right_subs[1] = [tuple(ind2sub(x,(n[1],r[1]))[1]) for x in left_to_right_indices_new[1]]
 
     @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
@@ -5772,27 +5772,27 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
       @sync Threads.@threads for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
         point_ind = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
         p         = Array{T,1}(undef,d)
-        for m = 1:d
+        for m in 1:d
           p[m] = nodes[m][point_ind[m]]
         end
         A[j] = f(p)
       end
 
       A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
-      δ = (tol/sqrt(d-1))*frobenius(A)
+      δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
 
       if r[i+1] == 1
-        u = reshape(u,length(u),1)
-        v = reshape(v,length(v),1)
+        u = reshape(u,:,1)
+        v = reshape(v,:,1)
       end
   
       left_to_right_indices_new[i], sweep = maxvol_generic!(u,μ,300)
       right_to_left_indices_new[i], sweep = maxvol_generic!(v,μ,300)
 
       # Update left_to_right_subs, keeping the indices nested
-      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices_new[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
   
       @views G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
@@ -5804,27 +5804,27 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
     @sync Threads.@threads for j in CartesianIndices((1:r[d-1],1:n[d-1],1:n[d]))
       point_ind = (left_to_right_subs[d-2][j[1]]...,j[2],j[3])
       p         = Array{T,1}(undef,d)
-      for m = 1:d
+      for m in 1:d
         p[m] = nodes[m][point_ind[m]]
       end
      A[j[1],j[2],j[3],1] = f(p)
     end
 
     A = reshape(A,r[d-1]*n[d-1],n[d])
-    δ = (tol/sqrt(d-1))*frobenius(A)
+    δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[d] = tsvd(A,δ)
 
     if r[d] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[d-1], sweep = maxvol_generic!(u,μ,300)
     right_to_left_indices_new[d-1], sweep = maxvol_generic!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
-    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
+    temp = [ind2sub(x,(n[d-1],r[d-1])) for x in left_to_right_indices_new[d-1]]
+    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][2]]...,temp[i][1]...) for i in eachindex(temp)]
 
     # Update right_to_left_subs, keeping the indices nested
     right_to_left_subs[d-1] = [tuple(ind2sub(x,(n[d],r[d+1]))[1]) for x in right_to_left_indices_new[d-1]]
@@ -5844,19 +5844,19 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
       @sync Threads.@threads for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
         point_ind = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
         p         = Array{T,1}(undef,d)
-        for m = 1:d
+        for m in 1:d
           p[m] = nodes[m][point_ind[m]]
         end
         A[j] = f(p)
       end
 
       A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
-      δ = (tol/sqrt(d-1))*frobenius(A)
+      δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
 
       if r[i+1] == 1
-        u = reshape(u,length(u),1)
-        v = reshape(v,length(v),1)
+        u = reshape(u,:,1)
+        v = reshape(v,:,1)
       end
   
       left_to_right_indices_new[i], sweep = maxvol_generic!(u,μ,300)
@@ -5874,19 +5874,19 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
     @sync Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
       point_ind = (j[1],j[2],right_to_left_subs[2][j[3]]...)
       p         = Array{T,1}(undef,d)
-      for m = 1:d
+      for m in 1:d
         p[m] = nodes[m][point_ind[m]]
       end
       A[j] = f(p)
     end
 
     A = reshape(A,n[1],n[2]*r[3])
-    δ = (tol/sqrt(d-1))*frobenius(A)
+    δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
 
     if r[2] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[1], sweep = maxvol_generic!(u,μ,300)
@@ -5912,7 +5912,7 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
 
     if sweeps >= maxsweeps 
 
-      if sum(abs,r - r_temp) == 0
+      if r == r_temp
 
         return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps)
 
@@ -5946,11 +5946,11 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
 
   G = Array{Array{T,3},1}(undef,d)
 
-  left_to_right_indices = deepcopy(initial.left_to_right_ind)
-  right_to_left_indices = deepcopy(initial.right_to_left_ind)
+  left_to_right_indices = copy(initial.left_to_right_ind)
+  right_to_left_indices = copy(initial.right_to_left_ind)
 
-  left_to_right_subs = deepcopy(initial.left_to_right_sub)
-  right_to_left_subs = deepcopy(initial.right_to_left_sub)
+  left_to_right_subs = copy(initial.left_to_right_sub)
+  right_to_left_subs = copy(initial.right_to_left_sub)
 
   r = copy(initial.ranks)
   
@@ -5968,26 +5968,26 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
     @sync Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
       point_ind = (j[1],j[2],right_to_left_subs[2][j[3]]...)
       p         = Array{T,1}(undef,d)
-      for m = 1:d
+      for m in 1:d
         p[m] = nodes[m][point_ind[m]]
       end
       A[j] = f(p)
     end
 
     A = reshape(A,n[1],n[2]*r[3])
-    δ = (tol/sqrt(d-1))*frobenius(A)
+    δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
 
     if r[2] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[1], sweep = maxvol_generic!(u,μ,300)
     right_to_left_indices_new[1], sweep = maxvol_generic!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    left_to_right_subs[1] = [tuple(ind2sub(x,(r[1],n[1]))[2]) for x in left_to_right_indices_new[1]]
+    left_to_right_subs[1] = [tuple(ind2sub(x,(n[1],r[1]))[1]) for x in left_to_right_indices_new[1]]
 
     @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
@@ -5999,27 +5999,27 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
       @sync Threads.@threads for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
         point_ind = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
         p         = Array{T,1}(undef,d)
-        for m = 1:d
+        for m in 1:d
           p[m] = nodes[m][point_ind[m]]
         end
         A[j] = f(p)
       end
 
       A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
-      δ = (tol/sqrt(d-1))*frobenius(A)
+      δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
 
       if r[i+1] == 1
-        u = reshape(u,length(u),1)
-        v = reshape(v,length(v),1)
+        u = reshape(u,:,1)
+        v = reshape(v,:,1)
       end
   
       left_to_right_indices_new[i], sweep = maxvol_generic!(u,μ,300)
       right_to_left_indices_new[i], sweep = maxvol_generic!(v,μ,300)
 
       # Update left_to_right_subs, keeping the indices nested
-      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices_new[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
   
       @views G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
@@ -6031,27 +6031,27 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
     @sync Threads.@threads for j in CartesianIndices((1:r[d-1],1:n[d-1],1:n[d]))
       point_ind = (left_to_right_subs[d-2][j[1]]...,j[2],j[3])
       p         = Array{T,1}(undef,d)
-      for m = 1:d
+      for m in 1:d
         p[m] = nodes[m][point_ind[m]]
       end
      A[j[1],j[2],j[3],1] = f(p)
     end
 
     A = reshape(A,r[d-1]*n[d-1],n[d])
-    δ = (tol/sqrt(d-1))*frobenius(A)
+    δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[d] = tsvd(A,δ)
 
     if r[d] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[d-1], sweep = maxvol_generic!(u,μ,300)
     right_to_left_indices_new[d-1], sweep = maxvol_generic!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
-    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
+    temp = [ind2sub(x,(n[d-1],r[d-1])) for x in left_to_right_indices_new[d-1]]
+    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][2]]...,temp[i][1]...) for i in eachindex(temp)]
 
     # Update right_to_left_subs, keeping the indices nested
     right_to_left_subs[d-1] = [tuple(ind2sub(x,(n[d],r[d+1]))[1]) for x in right_to_left_indices_new[d-1]]
@@ -6071,19 +6071,19 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
       @sync Threads.@threads for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
         point_ind = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
         p         = Array{T,1}(undef,d)
-        for m = 1:d
+        for m in 1:d
           p[m] = nodes[m][point_ind[m]]
         end
         A[j] = f(p)
       end
 
       A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
-      δ = (tol/sqrt(d-1))*frobenius(A)
+      δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
 
       if r[i+1] == 1
-        u = reshape(u,length(u),1)
-        v = reshape(v,length(v),1)
+        u = reshape(u,:,1)
+        v = reshape(v,:,1)
       end
   
       left_to_right_indices_new[i], sweep = maxvol_generic!(u,μ,300)
@@ -6101,19 +6101,19 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
     @sync Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
       point_ind = (j[1],j[2],right_to_left_subs[2][j[3]]...)
       p         = Array{T,1}(undef,d)
-      for m = 1:d
+      for m in 1:d
         p[m] = nodes[m][point_ind[m]]
       end
       A[j] = f(p)
     end
 
     A = reshape(A,n[1],n[2]*r[3])
-    δ = (tol/sqrt(d-1))*frobenius(A)
+    δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
 
     if r[2] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[1], sweep = maxvol_generic!(u,μ,300)
@@ -6139,7 +6139,7 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
 
     if sweeps >= maxsweeps 
 
-      if sum(abs,r - r_temp) == 0
+      if r == r_temp
 
         return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps)
 
@@ -6194,19 +6194,19 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
 
   # Initialize left-to-right indices and sub-indices
 
-  for i = 1:d-1
+  for i in 1:d-1
 
     p = div(n[i] - r[i+1], 2)
     left_to_right_indices[i] = [p+1:p+r[i+1];]
 
     if i == 1
     
-      left_to_right_subs[i] = [tuple(ind2sub(x,(r[i],n[i]))[2]) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(ind2sub(x,(n[i],r[i]))[1]) for x in left_to_right_indices[i]]
 
     else
 
-      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
 
     end
   end
@@ -6245,7 +6245,7 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
     @sync Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
       point_ind = (j[1],j[2],right_to_left_subs[2][j[3]]...)
       p         = Array{T,1}(undef,d)
-      for m = 1:d
+      for m in 1:d
         p[m] = nodes[m][point_ind[m]]
       end
       A[j] = f(p)
@@ -6255,15 +6255,15 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
     u,s,v,r[2] = tsvd(A,r[2])
 
     if r[2] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[1], sweep = maxvol_generic!(u,μ,300)
     right_to_left_indices_new[1], sweep = maxvol_generic!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    left_to_right_subs[1] = [tuple(ind2sub(x,(r[1],n[1]))[2]) for x in left_to_right_indices_new[1]]
+    left_to_right_subs[1] = [tuple(ind2sub(x,(n[1],r[1]))[1]) for x in left_to_right_indices_new[1]]
 
     @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
@@ -6275,7 +6275,7 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
       @sync Threads.@threads for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
         point_ind = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
         p         = Array{T,1}(undef,d)
-        for m = 1:d
+        for m in 1:d
           p[m] = nodes[m][point_ind[m]]
         end
         A[j] = f(p)
@@ -6285,16 +6285,16 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
       u,s,v,r[i+1] = tsvd(A,r[i+1])
 
       if r[i+1] == 1
-        u = reshape(u,length(u),1)
-        v = reshape(v,length(v),1)
+        u = reshape(u,:,1)
+        v = reshape(v,:,1)
       end
   
       left_to_right_indices_new[i], sweep = maxvol_generic!(u,μ,300)
       right_to_left_indices_new[i], sweep = maxvol_generic!(v,μ,300)
 
       # Update left_to_right_subs, keeping the indices nested
-      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices_new[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
   
       @views G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
@@ -6306,7 +6306,7 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
     @sync Threads.@threads for j in CartesianIndices((1:r[d-1],1:n[d-1],1:n[d]))
       point_ind = (left_to_right_subs[d-2][j[1]]...,j[2],j[3])
       p         = Array{T,1}(undef,d)
-      for m = 1:d
+      for m in 1:d
         p[m] = nodes[m][point_ind[m]]
       end
      A[j[1],j[2],j[3],1] = f(p)
@@ -6316,16 +6316,16 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
     u,s,v,r[d] = tsvd(A,r[d])
 
     if r[d] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[d-1], sweep = maxvol_generic!(u,μ,300)
     right_to_left_indices_new[d-1], sweep = maxvol_generic!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
-    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
+    temp = [ind2sub(x,(n[d-1],r[d-1])) for x in left_to_right_indices_new[d-1]]
+    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][2]]...,temp[i][1]...) for i in eachindex(temp)]
 
     # Update right_to_left_subs, keeping the indices nested
     right_to_left_subs[d-1] = [tuple(ind2sub(x,(n[d],r[d+1]))[1]) for x in right_to_left_indices_new[d-1]]
@@ -6345,7 +6345,7 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
       @sync Threads.@threads for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
         point_ind = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
         p         = Array{T,1}(undef,d)
-        for m = 1:d
+        for m in 1:d
           p[m] = nodes[m][point_ind[m]]
         end
         A[j] = f(p)
@@ -6355,8 +6355,8 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
       u,s,v,r[i+1] = tsvd(A,r[i+1])
 
       if r[i+1] == 1
-        u = reshape(u,length(u),1)
-        v = reshape(v,length(v),1)
+        u = reshape(u,:,1)
+        v = reshape(v,:,1)
       end
   
       left_to_right_indices_new[i], sweep = maxvol_generic!(u,μ,300)
@@ -6374,7 +6374,7 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
     @sync Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
       point_ind = (j[1],j[2],right_to_left_subs[2][j[3]]...)
       p         = Array{T,1}(undef,d)
-      for m = 1:d
+      for m in 1:d
         p[m] = nodes[m][point_ind[m]]
       end
       A[j] = f(p)
@@ -6384,8 +6384,8 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
     u,s,v,r[2] = tsvd(A,r[2])
 
     if r[2] == 1
-      u = reshape(u,length(u),1)
-      v = reshape(v,length(v),1)
+      u = reshape(u,:,1)
+      v = reshape(v,:,1)
     end
 
     left_to_right_indices_new[1], sweep = maxvol_generic!(u,μ,300)
@@ -6411,7 +6411,7 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
 
     if sweeps >= maxsweeps 
 
-      if sum(abs,r - r_temp) == 0
+      if r == r_temp
 
         return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps)
 
@@ -6483,7 +6483,7 @@ function cheb_nodes(n::S,domain = [1.0,-1.0],T::DataType=Float64) where {S<:Inte
 
   points = [(domain[1] + domain[2]) * T(0.5) for _ in 1:n]
 
-  @inbounds for i = 1:div(n, 2)
+  @inbounds for i in 1:div(n, 2)
     x = -cospi(T(i - 0.5)/n) * (domain[1] - domain[2]) * T(0.5)
     points[i] += x
     points[n-i+1] -= x
@@ -6753,11 +6753,11 @@ function TTcreateCTT(train::DiscreteTensorTrain,nodes::NTuple{d,Array{T,1}},doma
 
   f = Array{Array{Array{T,1},2},1}(undef,d)
 
-  for i = 1:d
+  for i in 1:d
 
     order = size(train.cores[i],2)-1
 
-    f[i] = [cheb_weights(train.cores[i][j,:,k],nodes[i],order,domain[:,i]) for j = 1:train.ranks[i], k = 1:train.ranks[i+1]]
+    f[i] = [cheb_weights(train.cores[i][j,:,k],nodes[i],order,domain[:,i]) for j in 1:train.ranks[i], k in 1:train.ranks[i+1]]
 
   end
 
@@ -6769,9 +6769,9 @@ function TTcreateCTT(train::DiscreteTensorTrain,order::NTuple{d,S},nodes::NTuple
 
   f = Array{Array{Array{T,1},2},1}(undef,d)
 
-  for i = 1:d
+  for i in 1:d
 
-    f[i] = [cheb_weights(train.cores[i][j,:,k],nodes[i],order[i],domain[:,i]) for j = 1:train.ranks[i], k = 1:train.ranks[i+1]]
+    f[i] = [cheb_weights(train.cores[i][j,:,k],nodes[i],order[i],domain[:,i]) for j in 1:train.ranks[i], k in 1:train.ranks[i+1]]
 
   end
 
@@ -6793,7 +6793,7 @@ nodes= legendre_nodes(n,domain,T)
 """
 function legendre_nodes(n::S,domain=[1.0,-1.0],T::DataType=Float64) where {S<:Integer}
 
-  λ, Q = eigen(SymTridiagonal(zeros(T,n), [i / sqrt(T(4i^2 - 1)) for i = 1:n-1]))
+  λ, Q = eigen(SymTridiagonal(zeros(T,n), [i / sqrt(T(4i^2 - 1)) for i in 1:n-1]))
   nodes = (λ .+ 1) * (domain[1] - domain[2]) / 2 .+ domain[2]
 
   return nodes
@@ -6882,7 +6882,7 @@ function legendre_polynomial_deriv(order::S,point::AbstractArray{R,1}) where {S<
   poly[:,1] .= one(R)
   poly_deriv[:,1] .= zero(R)
 
-  @inbounds for j = 1:n
+  @inbounds for j in 1:n
     for i = 2:order+1
       if i == 2
         poly[j,i] = point[j]
@@ -6942,7 +6942,7 @@ function legendre_polynomial_sec_deriv(order::S,point::Array{R,1}) where {S<:Int
   poly_deriv[:,1] .= zero(R)
   poly_sec_deriv[:,1] .= zero(R)
 
-  @inbounds for j = 1:n
+  @inbounds for j in 1:n
     for i = 2:order+1
       if i == 2
         poly[j,i] = point[j]
@@ -7037,11 +7037,11 @@ function TTcreateLTT(train::DiscreteTensorTrain,nodes::NTuple{d,Array{T,1}},doma
 
   f = Array{Array{Array{T,1},2},1}(undef,d)
 
-  for i = 1:d
+  for i in 1:d
 
     order = size(train.cores[i],2)-1
 
-    f[i] = [legendre_weights(train.cores[i][j,:,k],nodes[i],order,domain[:,i]) for j = 1:train.ranks[i], k = 1:train.ranks[i+1]]
+    f[i] = [legendre_weights(train.cores[i][j,:,k],nodes[i],order,domain[:,i]) for j in 1:train.ranks[i], k in 1:train.ranks[i+1]]
 
   end
 
@@ -7053,9 +7053,9 @@ function TTcreateLTT(train::DiscreteTensorTrain,order::NTuple{d,S},nodes::NTuple
 
   f = Array{Array{Array{T,1},2},1}(undef,d)
 
-  for i = 1:d
+  for i in 1:d
 
-    f[i] = [legendre_weights(train.cores[i][j,:,k],nodes[i],order[i],domain[:,i]) for j = 1:train.ranks[i], k = 1:train.ranks[i+1]]
+    f[i] = [legendre_weights(train.cores[i][j,:,k],nodes[i],order[i],domain[:,i]) for j in 1:train.ranks[i], k in 1:train.ranks[i+1]]
 
   end
 
@@ -7088,7 +7088,7 @@ function piecewise_linear_nodes(n::S,domain = [1.0,-1.0],T::DataType=Float64) wh
   else
     inc = T(domain[1]-domain[2])/n
   end
-  @inbounds for i = 1:div(n,2)
+  @inbounds for i in 1:div(n,2)
     nodes[i]     += (i-1-div(n,2))*inc
     nodes[n-i+1] -= (i-1-div(n,2))*inc
   end
@@ -7209,11 +7209,11 @@ function TTcreateFTT(train::DiscreteTensorTrain,nodes::NTuple{d,Array{T,1}},doma
 
   f = Array{Array{Function,2},1}(undef,d)
 
-  for i = 1:d
+  for i in 1:d
 
     order = size(train.cores[i],2)-1
 
-    f[i] = [chebyshev_interp(train.cores[i][j,:,k],nodes[i],order,domain[:,i]) for j = 1:train.ranks[i], k = 1:train.ranks[i+1]]
+    f[i] = [chebyshev_interp(train.cores[i][j,:,k],nodes[i],order,domain[:,i]) for j in 1:train.ranks[i], k in 1:train.ranks[i+1]]
 
   end
 
@@ -7221,13 +7221,13 @@ function TTcreateFTT(train::DiscreteTensorTrain,nodes::NTuple{d,Array{T,1}},doma
 
 end
 
-function TTcreateFTT(train::DiscreteTensorTrain,order::NTuple{d,S},nodes::NTuple{d,Array{T,1}},domain::Array{T,2}) where {T<:AbstractFloat,S<:Integer,d}
+function TTcreateFTT(train::DiscreteTensorTrain,order::NTuple{d,S},nodes::NTuple{d,Array{T,1}},domain::Array{R,2}) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d}
 
   f = Array{Array{Function,2},1}(undef,d)
 
-  for i = 1:d
+  for i in 1:d
 
-    f[i] = [chebyshev_interp(train.cores[i][j,:,k],nodes[i],order[i],domain[:,i]) for j = 1:train.ranks[i], k = 1:train.ranks[i+1]]
+    f[i] = [chebyshev_interp(train.cores[i][j,:,k],nodes[i],order[i],domain[:,i]) for j in 1:train.ranks[i], k in 1:train.ranks[i+1]]
 
   end
 
@@ -7241,11 +7241,11 @@ function TTcreateFTT(train::ChebyshevTensorTrain,domain::Array{T,2}) where {T<:A
 
   f = Array{Array{Function,2},1}(undef,d)
 
-  for i = 1:d
+  for i in 1:d
 
     order = length(train.cores[i][1])-1
 
-    f[i] = [interp(x) = cheb_evaluate(train.cores[i][j,k],x,order,domain[:,i]) for j = 1:train.ranks[i], k = 1:train.ranks[i+1]]
+    f[i] = [interp(x) = cheb_evaluate(train.cores[i][j,k],x,order,domain[:,i]) for j in 1:train.ranks[i], k in 1:train.ranks[i+1]]
 
   end
 
@@ -7257,9 +7257,9 @@ function TTcreateFTT(train::ChebyshevTensorTrain,order::NTuple{d,S},domain::Arra
 
   f = Array{Array{Function,2},1}(undef,d)
 
-  for i = 1:d
+  for i in 1:d
 
-    f[i] = [interp(x) = cheb_evaluate(train.cores[i][j,k],x,order[i],domain[:,i]) for j = 1:train.ranks[i], k = 1:train.ranks[i+1]]
+    f[i] = [interp(x) = cheb_evaluate(train.cores[i][j,k],x,order[i],domain[:,i]) for j in 1:train.ranks[i], k in 1:train.ranks[i+1]]
 
   end
 
@@ -7273,11 +7273,11 @@ function TTcreateFTT(train::LegendreTensorTrain,domain::Array{T,2}) where {T<:Ab
 
   f = Array{Array{Function,2},1}(undef,d)
 
-  for i = 1:d
+  for i in 1:d
 
     order = length(train.cores[i][1])-1
 
-    f[i] = [interp(x) = legendre_evaluate(train.cores[i][j,k],x,order,domain[:,i]) for j = 1:train.ranks[i], k = 1:train.ranks[i+1]]
+    f[i] = [interp(x) = legendre_evaluate(train.cores[i][j,k],x,order,domain[:,i]) for j in 1:train.ranks[i], k in 1:train.ranks[i+1]]
 
   end
 
@@ -7289,9 +7289,9 @@ function TTcreateFTT(train::LegendreTensorTrain,order::NTuple{d,S},domain::Array
 
   f = Array{Array{Function,2},1}(undef,d)
 
-  for i = 1:d
+  for i in 1:d
 
-    f[i] = [interp(x) = legendre_evaluate(train.cores[i][j,k],x,order[i],domain[:,i]) for j = 1:train.ranks[i], k = 1:train.ranks[i+1]]
+    f[i] = [interp(x) = legendre_evaluate(train.cores[i][j,k],x,order[i],domain[:,i]) for j in 1:train.ranks[i], k in 1:train.ranks[i+1]]
 
   end
 
@@ -7299,13 +7299,13 @@ function TTcreateFTT(train::LegendreTensorTrain,order::NTuple{d,S},domain::Array
 
 end
 
-function createFTT(train::PiecewiseTensorTrain,nodes::NTuple{d,Array{T,1}}) where {T<:AbstractFloat,d}
+function TTcreateFTT(train::PiecewiseTensorTrain,nodes::NTuple{d,Array{T,1}}) where {T<:AbstractFloat,d}
 
   f = Array{Array{Function,2},1}(undef,d)
 
-  for i = 1:d
+  for i in 1:d
 
-    f[i] = [piecewise_linear_evaluate(train.cores[i][j,:,k],nodes[i]) for j = 1:train.ranks[i], k = 1:train.ranks[i+1]]
+    f[i] = [piecewise_linear_evaluate(train.cores[i][j,:,k],nodes[i]) for j in 1:train.ranks[i], k in 1:train.ranks[i+1]]
 
   end
 
@@ -7355,7 +7355,7 @@ function TTdecompress(train::DiscreteTensorTrain)
   T = eltype(train.cores[1])
   d = length(train.cores)
 
-  n = Tuple(size(train.cores[i])[2] for i = 1:d)
+  n = Tuple(size(train.cores[i])[2] for i in 1:d)
 
   A = Array{T,d}(undef,n)
   for i in CartesianIndices(A)
@@ -7383,7 +7383,7 @@ function TTdecompress_threaded(train::DiscreteTensorTrain)
   T = eltype(train.cores[1])
   d = length(train.cores)
 
-  n = Tuple(size(train.cores[i])[2] for i = 1:d)
+  n = Tuple(size(train.cores[i])[2] for i in 1:d)
 
   A = Array{T,d}(undef,n)
   @sync Threads.@threads for i in CartesianIndices(A)
@@ -7526,7 +7526,7 @@ function TTderivative(train::ChebyshevTensorTrain,x::AbstractArray{R,1},pos::S,d
 
   d = length(train.cores)
   poly = Array{Array{R,2},1}(undef, d)
-  @inbounds for i = 1:d
+  @inbounds for i in 1:d
     order = length(train.cores[i][1])-1
     if i === pos
       poly[i] = cheb_polynomial_deriv(order, normalize_node(x[i], domain[:, i]))
@@ -7548,7 +7548,7 @@ function TTderivative(train::LegendreTensorTrain,x::AbstractArray{R,1},pos::S,do
 
   d = length(train.cores)
   poly = Array{Array{R,2},1}(undef, d)
-  @inbounds for i = 1:d
+  @inbounds for i in 1:d
     order = length(train.cores[i][1])-1
     if i === pos
       poly[i] = legendre_polynomial_deriv(order, normalize_node(x[i], domain[:, i]))
@@ -7570,7 +7570,7 @@ function TTderivative(train::ChebyshevTensorTrain,x::AbstractArray{R,1},pos1::S,
 
   d = length(train.cores)
   poly = Array{Array{R,2},1}(undef, d)
-  @inbounds for i = 1:d
+  @inbounds for i in 1:d
     order = length(train.cores[i][1])-1
     if i === pos1 && i === pos2
       poly[i] = cheb_polynomial_sec_deriv(order, normalize_node(x[i], domain[:, i]))
@@ -7594,7 +7594,7 @@ function TTderivative(train::LegendreTensorTrain,x::AbstractArray{R,1},pos1::S,p
 
   d = length(train.cores)
   poly = Array{Array{R,2},1}(undef, d)
-  @inbounds for i = 1:d
+  @inbounds for i in 1:d
     order = length(train.cores[i][1])-1
     if i === pos1 && i === pos2
       poly[i] = legendre_polynomial_sec_deriv(order, normalize_node(x[i], domain[:, i]))
@@ -7629,7 +7629,7 @@ function TTgradient(train::ChebyshevTensorTrain,x::AbstractArray{R,1},domain::Ar
 
   gradient = Array{R,2}(undef,1,d)
 
-  @inbounds for i = 1:d
+  @inbounds for i in 1:d
     gradient[i] = TTderivative(train,x,i,domain)
   end
 
@@ -7643,7 +7643,7 @@ function TTgradient(train::LegendreTensorTrain,x::AbstractArray{R,1},domain::Arr
 
   gradient = Array{R,2}(undef,1,d)
 
-  @inbounds for i = 1:d
+  @inbounds for i in 1:d
     gradient[i] = TTderivative(train,x,i,domain)
   end
 
@@ -7666,8 +7666,8 @@ function TThessian(train::ChebyshevTensorTrain,x::AbstractArray{R,1},domain::Arr
 
   hessian = Array{R,2}(undef,d,d)
 
-  @inbounds for i = 1:d
-    @inbounds for j = 1:d
+  @inbounds for i in 1:d
+    @inbounds for j in 1:d
         hessian[i,j] = TTderivative(train,x,i,j,domain)
     end
   end
@@ -7682,8 +7682,8 @@ function TThessian(train::LegendreTensorTrain,x::AbstractArray{R,1},domain::Arra
 
   hessian = Array{R,2}(undef,d,d)
 
-  @inbounds for i = 1:d
-    @inbounds for j = 1:d
+  @inbounds for i in 1:d
+    @inbounds for j in 1:d
         hessian[i,j] = TTderivative(train,x,i,j,domain)
     end
   end
@@ -7709,11 +7709,11 @@ function TTintegrate_GC(train::DiscreteTensorTrain,domain::Union{Array{R,2},Arra
   d = length(train.cores)
 
   integral = fill(T(1.0),1,1)
-  for i = 1:d
+  for i in 1:d
     n = size(train.cores[i])
     term = zeros(n[1],n[3])
     nodes, weights = chebyshev(n[2])
-    for j = 1:n[2]
+    for j in 1:n[2]
       term += train.cores[i][:,j,:]*(1.0-nodes[j]^2.0)^(0.5)*weights[j]
     end
     integral *= term*((domain[1,i]-domain[2,i])/2)
@@ -7742,11 +7742,11 @@ function TTintegrate_GC(train::DiscreteTensorTrain,domain::Union{Array{R,2},Arra
     r = copy(train.ranks[μ+1:end])
 
     integral = fill(T(1.0),1,1)
-    for i = 1:μ
+    for i in 1:μ
       n = size(train.cores[i])
       term = zeros(n[1],n[3])
       nodes, weights = chebyshev(n[2])
-      for j = 1:n[2]
+      for j in 1:n[2]
         term += train.cores[i][:,j,:]*(1.0-nodes[j]^2.0)^(0.5)*weights[j]
       end
       integral *= term*((domain[1,i]-domain[2,i])/2)
@@ -7775,11 +7775,11 @@ function TTintegrate_GL(train::DiscreteTensorTrain,domain::Union{Array{R,2},Arra
   d = length(train.cores)
 
   integral = fill(T(1.0),1,1)
-  for i = 1:d
+  for i in 1:d
     n = size(train.cores[i])
     term = zeros(n[1],n[3])
     nodes, weights = legendre(n[2])
-    for j = 1:n[2]
+    for j in 1:n[2]
       term += train.cores[i][:,j,:]*weights[j]
     end
     integral *= term*((domain[1,i]-domain[2,i])/2)
@@ -7808,11 +7808,11 @@ function TTintegrate_GL(train::DiscreteTensorTrain,domain::Union{Array{R,2},Arra
     r = copy(train.ranks[μ+1:end])
 
     integral = fill(T(1.0),1,1)
-    for i = 1:μ
+    for i in 1:μ
       n = size(train.cores[i])
       term = zeros(n[1],n[3])
       nodes, weights = legendre(n[2])
-      for j = 1:n[2]
+      for j in 1:n[2]
         term += train.cores[i][:,j,:]*weights[j]
       end
       integral *= term*((domain[1,i]-domain[2,i])/2)
@@ -7841,11 +7841,11 @@ function TTintegrate_GH(train::DiscreteTensorTrain) # Integrates over all dimens
   d = length(train.cores)
 
   integral = fill(T(1.0),1,1)
-  for i = 1:d
+  for i in 1:d
     n = size(train.cores[i])
     term = zeros(n[1],n[3])
     nodes, weights = hermite(n[2])
-    for j = 1:n[2]
+    for j in 1:n[2]
       term += train.cores[i][:,j,:]*exp(nodes[j]^2.0)*weights[j]
     end
     integral *= term
@@ -7874,11 +7874,11 @@ function TTintegrate_GH(train::DiscreteTensorTrain,μ::S) where {S<:Integer} # I
     r = copy(train.ranks[μ+1:end])
 
     integral = fill(T(1.0),1,1)
-    for i = 1:μ
+    for i in 1:μ
       n = size(train.cores[i])
       term = zeros(n[1],n[3])
       nodes, weights = hermite(n[2])
-      for j = 1:n[2]
+      for j in 1:n[2]
         term += train.cores[i][:,j,:]*exp(nodes[j]^2.0)*weights[j]
       end
       integral *= term
@@ -7907,7 +7907,7 @@ function TTintegrate_PL(train::DiscreteTensorTrain,domain::Union{Array{R,2},Arra
   d = length(train.cores)
 
   integral = fill(T(1.0),1,1)
-  for i = 1:d
+  for i in 1:d
     term = trapazoidal(train.cores[i],domain[:,i])
     integral *= term
   end
@@ -7935,7 +7935,7 @@ function TTintegrate_PL(train::DiscreteTensorTrain,domain::Union{Array{R,2},Arra
     r = copy(train.ranks[μ+1:end])
 
     integral = fill(T(1.0),1,1)
-    for i = 1:d
+    for i in 1:d
       term = trapazoidal(train.cores[i],domain[:,i])
       integral *= term
     end
@@ -7961,10 +7961,10 @@ function TTintegrate_GC(train::FunctionalTensorTrain,nodes::NTuple{d,Array{T,1}}
   n = length.(nodes)
 
   integral = fill(T(1.0),1,1) 
-  for i = 1:d
+  for i in 1:d
     node, weights = chebyshev(n[i])
     F = zeros(train.ranks[i],train.ranks[i+1])
-    for j = 1:n[i]
+    for j in 1:n[i]
       F += reshape([train.cores[i][k]([nodes[i][j]]) for k in eachindex(train.cores[i])]*(1.0-node[j]^2.0)^(0.5)*weights[j],train.ranks[i],train.ranks[i+1])
     end
     integral *= F*((domain[1,i]-domain[2,i])/2)
@@ -7987,10 +7987,10 @@ function TTintegrate_LC(train::FunctionalTensorTrain,nodes::NTuple{d,Array{T,1}}
   n = length.(nodes)
 
   integral = fill(T(1.0),1,1) 
-  for i = 1:d
+  for i in 1:d
     node, weights = legendre(n[i])
     F = zeros(train.ranks[i],train.ranks[i+1])
-    for j = 1:n[i]
+    for j in 1:n[i]
       F += reshape([train.cores[i][k]([nodes[i][j]]) for k in eachindex(train.cores[i])]*weights[j],train.ranks[i],train.ranks[i+1])
     end
     integral *= F*((domain[1,i]-domain[2,i])/2)
@@ -8013,10 +8013,10 @@ function TTintegrate_GH(train::FunctionalTensorTrain,nodes::NTuple{d,Array{T,1}}
   n = length.(nodes)
 
   integral = fill(T(1.0),1,1) 
-  for i = 1:d
+  for i in 1:d
     node, weights = hermite(n[i])
     F = zeros(train.ranks[i],train.ranks[i+1])
-    for j = 1:n[i]
+    for j in 1:n[i]
       F += reshape([train.cores[i][k]([nodes[i][j]]) for k in eachindex(train.cores[i])]*exp(node[j]^2.0)*weights[j],train.ranks[i],train.ranks[i+1])
     end
     integral *= F
@@ -8046,7 +8046,7 @@ function TTcompute_marginal_GC(train::DiscreteTensorTrain,domain::Array{T,2},ind
       n = size(train.cores[i])
       nodes, weights = chebyshev(n[2])
       term = zeros(n[1], n[3])
-      for j = 1:n[2]
+      for j in 1:n[2]
         @views term += train.cores[i][:, j, :] * (1.0 - nodes[j]^2.0)^(0.5) * weights[j]
       end
       integral = times_dim_3(integral, term) * ((domain[1, i] - domain[2, i]) / 2)
@@ -8058,7 +8058,7 @@ function TTcompute_marginal_GC(train::DiscreteTensorTrain,domain::Array{T,2},ind
       n = size(train.cores[i])
       nodes, weights = chebyshev(n[2])
       term = zeros(n[1], n[3])
-      for j = 1:n[2]
+      for j in 1:n[2]
         @views term += train.cores[i][:, j, :] * (1.0 - nodes[j]^2.0)^(0.5) * weights[j]
       end
       integral = times_dim_1(term, integral) * ((domain[1, i] - domain[2, i]) / 2)
@@ -8070,7 +8070,7 @@ function TTcompute_marginal_GC(train::DiscreteTensorTrain,domain::Array{T,2},ind
       n = size(train.cores[i])
       nodes, weights = chebyshev(n[2])
       term = zeros(n[1], n[3])
-      for j = 1:n[2]
+      for j in 1:n[2]
         @views term += train.cores[i][:, j, :] * (1.0 - nodes[j]^2.0)^(0.5) * weights[j]
       end
       integral = times_dim_3(integral, term) * ((domain[1, i] - domain[2, i]) / 2)
@@ -8079,7 +8079,7 @@ function TTcompute_marginal_GC(train::DiscreteTensorTrain,domain::Array{T,2},ind
       n = size(train.cores[i])
       nodes, weights = chebyshev(n[2])
       term = zeros(n[1], n[3])
-      for j = 1:n[2]
+      for j in 1:n[2]
         @views term += train.cores[i][:, j, :] * (1.0 - nodes[j]^2.0)^(0.5) * weights[j]
       end
       integral = times_dim_1(term, integral) * ((domain[1, i] - domain[2, i]) / 2)
@@ -8107,7 +8107,7 @@ function TTcompute_marginal_GL(train::DiscreteTensorTrain,domain::Array{T,2},ind
       n = size(train.cores[i])
       nodes, weights = chebyshev(n[2])
       term = zeros(n[1], n[3])
-      for j = 1:n[2]
+      for j in 1:n[2]
         @views term += train.cores[i][:, j, :] * weights[j]
       end
       integral = times_dim_3(integral, term) * ((domain[1, i] - domain[2, i]) / 2)
@@ -8119,7 +8119,7 @@ function TTcompute_marginal_GL(train::DiscreteTensorTrain,domain::Array{T,2},ind
       n = size(train.cores[i])
       nodes, weights = chebyshev(n[2])
       term = zeros(n[1], n[3])
-      for j = 1:n[2]
+      for j in 1:n[2]
         @views term += train.cores[i][:, j, :] * weights[j]
       end
       integral = times_dim_1(term, integral) * ((domain[1, i] - domain[2, i]) / 2)
@@ -8131,7 +8131,7 @@ function TTcompute_marginal_GL(train::DiscreteTensorTrain,domain::Array{T,2},ind
       n = size(train.cores[i])
       nodes, weights = chebyshev(n[2])
       term = zeros(n[1], n[3])
-      for j = 1:n[2]
+      for j in 1:n[2]
         @views term += train.cores[i][:, j, :] * weights[j]
       end
       integral = times_dim_3(integral, term) * ((domain[1, i] - domain[2, i]) / 2)
@@ -8140,7 +8140,7 @@ function TTcompute_marginal_GL(train::DiscreteTensorTrain,domain::Array{T,2},ind
       n = size(train.cores[i])
       nodes, weights = chebyshev(n[2])
       term = zeros(n[1], n[3])
-      for j = 1:n[2]
+      for j in 1:n[2]
         @views term += train.cores[i][:, j, :] * weights[j]
       end
       integral = times_dim_1(term, integral) * ((domain[1, i] - domain[2, i]) / 2)
@@ -8168,7 +8168,7 @@ function TTcompute_marginal_GH(train::DiscreteTensorTrain,ind::S) where {S<:Inte
       n = size(train.cores[i])
       nodes, weights = hermite(n[2])
       term = zeros(n[1], n[3])
-      for j = 1:n[2]
+      for j in 1:n[2]
         @views term += train.cores[i][:, j, :]*exp(nodes[j]^2.0)*weights[j]
       end
       integral = times_dim_3(integral, term)
@@ -8180,7 +8180,7 @@ function TTcompute_marginal_GH(train::DiscreteTensorTrain,ind::S) where {S<:Inte
       n = size(train.cores[i])
       nodes, weights = hermite(n[2])
       term = zeros(n[1], n[3])
-      for j = 1:n[2]
+      for j in 1:n[2]
         @views term += train.cores[i][:, j, :]*exp(nodes[j]^2.0)*weights[j]
       end
       integral = times_dim_1(term, integral)
@@ -8192,7 +8192,7 @@ function TTcompute_marginal_GH(train::DiscreteTensorTrain,ind::S) where {S<:Inte
       n = size(train.cores[i])
       nodes, weights = hermite(n[2])
       term = zeros(n[1], n[3])
-      for j = 1:n[2]
+      for j in 1:n[2]
         @views term += train.cores[i][:, j, :]*exp(nodes[j]^2.0)*weights[j]
       end
       integral = times_dim_3(integral, term)
@@ -8201,7 +8201,7 @@ function TTcompute_marginal_GH(train::DiscreteTensorTrain,ind::S) where {S<:Inte
       n = size(train.cores[i])
       nodes, weights = hermite(n[2])
       term = zeros(n[1], n[3])
-      for j = 1:n[2]
+      for j in 1:n[2]
         @views term += train.cores[i][:, j, :]*exp(nodes[j]^2.0)*weights[j]
       end
       integral = times_dim_1(term, integral)
@@ -8268,14 +8268,14 @@ function TTrounding(train::BaseTensorTrain,tol::T) where {T<:AbstractFloat}
   r = copy(train.ranks)
   n = Tuple(size(train.cores[i])[2] for i in 1:d)
 
-  G = deepcopy(train.cores)
+  G = copy(train.cores)
 
   r_new = copy(r)
 
-  for i = 1:d-1
+  for i in 1:d-1
 
     A = reshape(G[i],r_new[i]*n[i],r_new[i+1])
-    δ = (tol/sqrt(d-1))*frobenius(A)
+    δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r_new[i+1] = tsvd(A,δ)
     G[i] = reshape(u,r_new[i],n[i],r_new[i+1])
     G[i+1] = times_dim_1(Matrix(transpose(v*Diagonal(s))),G[i+1])
@@ -8292,14 +8292,14 @@ function TTrounding(train::ExtendedTensorTrain,tol::T) where {T<:AbstractFloat}
   r = copy(train.ranks)
   n = Tuple(size(train.cores[i])[2] for i in 1:d)
 
-  G = deepcopy(train.cores)
+  G = copy(train.cores)
 
   r_new = copy(r)
 
-  for i = 1:d-1
+  for i in 1:d-1
 
     A = reshape(G[i],r_new[i]*n[i],r_new[i+1])
-    δ = (tol/sqrt(d-1))*frobenius(A)
+    δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r_new[i+1] = tsvd(A,δ)
     G[i] = reshape(u,r_new[i],n[i],r_new[i+1])
     G[i+1] = times_dim_1(Matrix(transpose(v*Diagonal(s))),G[i+1])
@@ -8321,7 +8321,7 @@ t = TTmult(s,train)
 """
 function TTmult(train::DiscreteTensorTrain,s::T) where {T<:Real}
 
-  G = deepcopy(train.cores)
+  G = copy(train.cores)
   G[1] = G[1]*s
 
   return BaseTensorTrain(G,train.ranks,train.sweeps)
@@ -8392,10 +8392,10 @@ function TTadd(traina::DiscreteTensorTrain,trainb::DiscreteTensorTrain,anchor="s
     end
   end
 
-  coresa = deepcopy(traina.cores)
+  coresa = copy(traina.cores)
   ra     = copy(traina.ranks)
 
-  coresb = deepcopy(trainb.cores)
+  coresb = copy(trainb.cores)
   rb     = copy(trainb.ranks)
 
   G     = Array{Array{Z,3},1}(undef,da)
@@ -8407,7 +8407,7 @@ function TTadd(traina::DiscreteTensorTrain,trainb::DiscreteTensorTrain,anchor="s
 
   else
 
-    for i = 1:da
+    for i in 1:da
 
       if i == 1
         g = [reshape(coresa[1],ra[1],na[1]*ra[2]) reshape(coresb[1],rb[1],nb[1]*rb[2])]
@@ -8485,10 +8485,10 @@ function TTsubtract(traina::DiscreteTensorTrain,trainb::DiscreteTensorTrain,anch
     end
   end
 
-  coresa = deepcopy(traina.cores)
+  coresa = copy(traina.cores)
   ra     = copy(traina.ranks)
 
-  coresb = deepcopy(trainb.cores)
+  coresb = copy(trainb.cores)
   rb     = copy(trainb.ranks)
 
   G     = Array{Array{Float64,3},1}(undef,da)
@@ -8502,7 +8502,7 @@ function TTsubtract(traina::DiscreteTensorTrain,trainb::DiscreteTensorTrain,anch
 
   else
 
-    for i = 1:da
+    for i in 1:da
 
       if i == 1
         g = [reshape(coresa[1],ra[1],na[1]*ra[2]) reshape(coresb[1],rb[1],nb[1]*rb[2])]
@@ -8537,17 +8537,17 @@ t = TTsquared(train)
 """
 function TTsquared(train::DiscreteTensorTrain)
 
-  T = eltype(train.cores[begin])
+  T = eltype(train.cores[1])
   
   d = length(train.cores)
   r = copy(train.ranks)
-  n = Tuple(size(train.cores[i])[2] for i in 1:d)
+  n = Tuple(size(train.cores[i],2) for i in 1:d)
 
-  G = [zeros(T,r[i]^2,n[i],r[i+1]^2) for i = 1:d]
+  G = [zeros(T,r[i]^2,n[i],r[i+1]^2) for i in 1:d]
   
-  for k = 1:d
-    for i = 1:n[k]
-      G[k][:,i,:] = kron(train.cores[k][:,i,:],train.cores[k][:,i,:])
+  for k in 1:d
+    for i in 1:n[k]
+      @views G[k][:,i,:] = kron(train.cores[k][:,i,:],train.cores[k][:,i,:])
     end
   end
 
@@ -8569,19 +8569,18 @@ function TTpower(train::DiscreteTensorTrain,N::S) where {S<:Integer}
 
   d = length(train.cores)
   r = copy(train.ranks)
-  n = Tuple(size(train.cores[i])[2] for i in 1:d)
+  n = Tuple(size(train.cores[i],2) for i in 1:d)
 
-  G = [zeros(T,r[i]^N,n[i],r[i+1]^N) for i = 1:d]
+  G = [zeros(T,r[i]^N,n[i],r[i+1]^N) for i in 1:d]
   
-  for k = 1:d
-    for i = 1:n[k]
+  for k in 1:d
+    @views for i in 1:n[k]
       A = train.cores[k][:,i,:]
-      for j = 2:N
+      for _ in 2:N
         A = kron(A,train.cores[k][:,i,:])
       end
       G[k][:,i,:] = A
     end
-
   end
 
   return BaseTensorTrain(G,r.^N,0)
@@ -8596,36 +8595,35 @@ Signature
 
 t = TThadamard(train1,train2)
 """
+function TTHadamard(traina::DiscreteTensorTrain,trainb::DiscreteTensorTrain) # Based on the description given in Daas, Ballard, and Benner (2020)
 
-function TThadamard(train1::DiscreteTensorTrain,train2::DiscreteTensorTrain) # Based on the description given in Daas, Ballard, and Benner (2020)
+  da = length(traina.cores)
+  db = length(trainb.cores)
 
-  d1 = length(train1.cores)
-  d2 = length(train1.cores)
+  T = eltype(traina.cores[1])
 
-  T = eltype(train1.cores[1])
-
-  if d1 != d2
+  if da != db
     error("Tensor trains have different numbers of cores")
   end
 
-  for i in 1:d1
-    if size(train1.cores[i])[2] != size(train2.cores[i])[2]
+  for i in 1:da
+    if size(traina.cores[i],2) != size(trainb.cores[i],2)
       error("Tensor trains have different mode lengths for dimension $i")
     end
   end
 
-  d = length(train1.cores)
+  d = length(traina.cores)
 
-  G = Array{Array{T,3},1}(undef,d)
-  for k = 1:d
-    temp = zeros(train1.ranks[k]*train2.ranks[k],size(train1.cores[k])[2],train1.ranks[k+1]*train2.ranks[k+1])
-    for i in axes(train1.cores[k],2)
-      temp[:,i,:] = kron(train1.cores[k][:,i,:],train2.cores[k][:,i,:])
+  G = Vector{Array{T,3}}(undef,d)
+  for k in 1:d
+    temp = zeros(T,traina.ranks[k]*trainb.ranks[k],size(traina.cores[k],2),traina.ranks[k+1]*trainb.ranks[k+1])
+    for i in axes(traina.cores[k],2)
+      @views temp[:,i,:] = kron(traina.cores[k][:,i,:],trainb.cores[k][:,i,:])
     end
     G[k] = temp
   end
   
-  return BaseTensorTrain(G,train1.ranks.*train2.ranks,0)
+  return BaseTensorTrain(G,traina.ranks.*trainb.ranks,0)
 
 end
 
@@ -8637,19 +8635,46 @@ Signature
 
 t = TTexp(train,N,tol)
 """
-function TTexp(train::DiscreteTensorTrain,order::S,tol::T) where {S<:Integer,T<:AbstractFloat}
+function TTexp(train::DiscreteTensorTrain,order::S,tol::T1) where {S<:Integer,T1<:AbstractFloat}
 
-  Z = eltype(train.cores[1])
+  T = eltype(train.cores[1])
 
-  exp_train = TTconstant(one(Z),TTsize(train),train.ranks)
+  exp_train = TTconstant(one(T),TTsize(train),train.ranks)
 
-  for i = 1:order
+  for i in 1:order
     extra_term = TTrounding(TTpower(train,i),tol)
     extra_term = TTmult(Z(1/factorial(big(i))),extra_term)
     exp_train = TTrounding(TTadd(exp_train,extra_term),tol)
   end
 
   return exp_train
+
+end
+
+"""
+Approximate the exponential of a tensor train in tensor train format with scaling for better stability.
+
+Signature
+=========
+
+t = TTexp_scaled(train,N,tol)
+"""
+function TTexp_scaled(train::DiscreteTensorTrain,order::S,tol::T) where {S<:Integer,T<:AbstractFloat}
+    
+  max_val = maximum(abs, train.cores[1])
+  s       = max(0,ceil(Int,log2(max_val)))
+    
+  scaled_train = TTmult(2.0^(-s),train)
+    
+  exp_scaled = TTexp(scaled_train,order,tol)
+    
+  result = exp_scaled
+  for _ in 1:s
+    result = TTHadamard(result,result)
+    result = TTrounding(result,tol)
+  end
+    
+  return result
 
 end
 
@@ -8663,19 +8688,16 @@ Signature
 
 R,Q = rq(A)
 """
-function rq(A::Array{T,2}) where {T<:Real} # not exported
-
-  Q, L = qr(transpose(reverse(A,dims=1)))
-  Q = transpose(Matrix(Q))
-  L = transpose(L)
-  R, Q = reverse(L), reverse(Matrix(Q),dims=1)
-
+function rq(A::AbstractMatrix{T}) where {T<:Real}
+    
+  m, n = size(A)
+    
+  F = qr(reverse(A',dims=1))
+    
+  R = reverse(F.R',dims=2)
+  Q = reverse(Matrix(F.Q)',dims=1)
+    
   return R, Q
-
-  #F = lq(reverse(A,dims=1))
-  #R, Q = reverse(F.L), reverse(Matrix(F.Q),dims=1)
-
-  #return R, Q
 
 end
 
@@ -8689,9 +8711,9 @@ t = TTorthright(train)
 """
 function TTorthright(train::L) where {L<:BaseTensorTrain}  # Tensor train orthogonalisation based on the description given in Chertkov, Ryzhakov, Novikov, and Oseledets (2022), algorthm 3.
 
-  Π = deepcopy(train.cores)
+  Π = copy(train.cores)
   d = length(Π)
-  n = Tuple(size(Π[k])[2] for k = 1:d)
+  n = Tuple(size(Π[k])[2] for k in 1:d)
   r = copy(train.ranks)
   
   for k = d:-1:2
@@ -8707,15 +8729,42 @@ function TTorthright(train::L) where {L<:BaseTensorTrain}  # Tensor train orthog
 
   end
 
-  return RightOrthBaseTensorTrain(Π,train.ranks,train.sweeps)
+  return RightOrthBaseTensorTrain(Π,r,train.sweeps)
+
+end
+
+"""
+Orthogonalize a tensor train from right to left in-place.
+
+Modifies the input tensor train directly. All cores except the first become right-orthogonal.
+"""
+function TTorthright!(train::L) where {L<:BaseTensorTrain}
+
+  d = length(train.cores)
+  n = Tuple(size(train.cores[k], 2) for k in 1:d)
+  r = train.ranks
+    
+  for k in d:-1:2
+ 
+    # Update the k'th core 
+    G = reshape(train.cores[k], r[k], n[k] * r[k+1])
+    R, Q = rq(G)
+    train.cores[k] = reshape(Q, r[k], n[k], r[k+1])
+    # Update the (k-1)'th core
+    G = reshape(train.cores[k-1], r[k-1] * n[k-1], r[k])
+    G = G * R
+    train.cores[k-1] = reshape(G, r[k-1], n[k-1], r[k])
+  end
+    
+  return train
 
 end
 
 function TTorthright(train::L) where {L<:ExtendedTensorTrain}
 
-  Π = deepcopy(train.cores)
+  Π = copy(train.cores)
   d = length(Π)
-  n = Tuple(size(Π[k])[2] for k = 1:d)
+  n = Tuple(size(Π[k])[2] for k in 1:d)
   r = copy(train.ranks)
   
   for k = d:-1:2
@@ -8735,6 +8784,29 @@ function TTorthright(train::L) where {L<:ExtendedTensorTrain}
 
 end
 
+function TTorthright!(train::L) where {L<:ExtendedTensorTrain}
+
+    d = length(train.cores)
+    n = Tuple(size(train.cores[k], 2) for k in 1:d)
+    r = train.ranks
+    
+    for k in d:-1:2
+
+        # Update the k'th core
+        G = reshape(train.cores[k],r[k],n[k]*r[k+1])
+        R, Q = rq(G)
+        train.cores[k] = reshape(Q,r[k],n[k],r[k+1])
+        # Update the (k-1)'th core
+        G = reshape(train.cores[k-1],r[k-1]*n[k-1],r[k])
+        G = G * R
+        train.cores[k-1] = reshape(G,r[k-1],n[k-1],r[k])
+
+    end
+    
+    return RightOrthExtendedTensorTrain(train.cores,r,train.left_to_right_ind,train.right_to_left_ind,train.left_to_right_sub,train.right_to_left_sub,train.sweeps)
+
+end
+
 """
 Left orthogonalise a discrete tensor train.
 
@@ -8745,12 +8817,12 @@ t = TTorthleft(train)
 """
 function TTorthleft(train::L) where {L<:BaseTensorTrain}
 
-  Π = deepcopy(train.cores)
+  Π = copy(train.cores)
   d = length(Π)
-  n = Tuple(size(Π[k])[2] for k = 1:d)
+  n = Tuple(size(Π[k])[2] for k in 1:d)
   r = copy(train.ranks)
   
-  for k = 1:d-1
+  for k in 1:d-1
 
     # Update the k'th core
     G = reshape(Π[k],r[k]*n[k],r[k+1])
@@ -8767,14 +8839,43 @@ function TTorthleft(train::L) where {L<:BaseTensorTrain}
 
 end
 
+"""
+Orthogonalize a tensor train from left to right in-place.
+
+Modifies the input tensor train cores directly. Returns a `LeftOrthBaseTensorTrain`
+wrapping the modified cores.
+"""
+function TTorthleft!(train::L) where {L<:BaseTensorTrain}
+
+  d = length(train.cores)
+  n = Tuple(size(train.cores[k], 2) for k in 1:d)
+  r = train.ranks
+    
+  for k in 1:(d-1)
+
+    # Update the k'th core
+    G = reshape(train.cores[k],r[k]*n[k],r[k+1])
+    Q, R = qr(G)
+    train.cores[k] = reshape(Matrix(Q),r[k],n[k],r[k+1])
+    # Update the (k+1)'th core
+    G = reshape(train.cores[k+1],r[k+1],n[k+1]*r[k+2])
+    G = R * G
+    train.cores[k+1] = reshape(G,r[k+1],n[k+1],r[k+2])
+
+  end
+    
+  return LeftOrthBaseTensorTrain(train.cores, r, train.sweeps)
+
+end
+
 function TTorthleft(train::L) where {L<:ExtendedTensorTrain}
 
-  Π = deepcopy(train.cores)
+  Π = copy(train.cores)
   d = length(Π)
-  n = Tuple(size(Π[k])[2] for k = 1:d)
+  n = Tuple(size(Π[k])[2] for k in 1:d)
   r = copy(train.ranks)
   
-  for k = 1:d-1
+  for k in 1:d-1
 
     # Update the k'th core
     G = reshape(Π[k],r[k]*n[k],r[k+1])
@@ -8792,6 +8893,35 @@ function TTorthleft(train::L) where {L<:ExtendedTensorTrain}
 end
 
 """
+Orthogonalize an extended tensor train from left to right in-place.
+
+Modifies the cores directly and returns a new `LeftOrthExtendedTensorTrain` 
+view of the same data.
+"""
+function TTorthleft!(train::L) where {L<:ExtendedTensorTrain}
+
+    d = length(train.cores)
+    n = Tuple(size(train.cores[k], 2) for k in 1:d)
+    r = train.ranks
+    
+    for k in 1:(d-1)
+
+        # Update the k'th core 
+        G = reshape(train.cores[k], r[k] * n[k], r[k+1])
+        Q, R = qr(G)
+        train.cores[k] = reshape(Matrix(Q), r[k], n[k], r[k+1])
+        # Update the (k+1)'th core
+        G = reshape(train.cores[k+1], r[k+1], n[k+1] * r[k+2])
+        G = R * G
+        train.cores[k+1] = reshape(G, r[k+1], n[k+1], r[k+2])
+
+    end
+    
+    return LeftOrthExtendedTensorTrain(train.cores,r,train.left_to_right_ind,train.right_to_left_ind,train.left_to_right_sub,train.right_to_left_sub,train.sweeps)
+
+end
+
+"""
 Left orthogonalise a train up to core 'μ' and right orthogonalise the remaining cores.
 
 Signature
@@ -8801,12 +8931,12 @@ t = TTorthleftright(train,μ)
 """
 function TTorthleftright(train::L,μ::S) where {L<:BaseTensorTrain,S<:Integer}
 
-  Π = deepcopy(train.cores)
+  Π = copy(train.cores)
   d = length(Π)
-  n = Tuple(size(Π[k])[2] for k = 1:d)
+  n = Tuple(size(Π[k])[2] for k in 1:d)
   r = copy(train.ranks)
   
-  for k = 1:μ-1
+  for k in 1:μ-1
 
     # Update the k'th core
     G = reshape(Π[k],r[k]*n[k],r[k+1])
@@ -8838,12 +8968,12 @@ end
 
 function TTorthleftright(train::L,μ::S) where {L<:ExtendedTensorTrain,S<:Integer}
 
-  Π = deepcopy(train.cores)
+  Π = copy(train.cores)
   d = length(Π)
-  n = Tuple(size(Π[k])[2] for k = 1:d)
+  n = Tuple(size(Π[k])[2] for k in 1:d)
   r = copy(train.ranks)
   
-  for k = 1:μ-1
+  for k in 1:μ-1
 
     # Update the k'th core
     G = reshape(Π[k],r[k]*n[k],r[k+1])
@@ -8917,7 +9047,11 @@ function TTsize(train::DiscreteTensorTrain)
 end
 
 """
-Compute the inner product of two tensor trains.
+Compute the inner product (Frobenius inner product) of two tensor trains.
+
+Returns ⟨A, B⟩ = sum over all indices of A[i₁,...,iₐ] * B[i₁,...,iₐ].
+
+The algorithm contracts cores from left to right, avoiding forming the full tensors.
 
 Signature
 =========
@@ -8929,21 +9063,25 @@ function TTinner_prod(traina::DiscreteTensorTrain,trainb::DiscreteTensorTrain)
   na = TTsize(traina)
   nb = TTsize(trainb)
 
-  if length(na) != length(nb) || sum(na .- nb) != 0
-    error("Tensor trains have incompatible dimensions")
-  end
-
   d = length(na)
 
-  ga = deepcopy(traina.cores)
-  gb = deepcopy(trainb.cores)
+  if d != length(nb)
+    throw(DimensionMismatch("tensor trains have different orders: $d vs $(length(nb))"))
+  end
+  
+  if na != nb
+    throw(DimensionMismatch("tensor trains have incompatible dimensions: $na vs $nb"))
+  end
+ 
+  ga = copy(traina.cores)
+  gb = copy(trainb.cores)
 
   ra = copy(traina.ranks)
   rb = copy(trainb.ranks)
 
-  for i = 1:d-1
+  for i in 1:d-1
 
-    temp = transpose(transpose(reshape(ga[i],ra[i]*na[i],ra[i+1]))*reshape(gb[i],rb[i]*nb[i],rb[i+1]))
+    temp = reshape(gb[i],rb[i]*nb[i],rb[i+1])'*reshape(ga[i],ra[i]*na[i],ra[i+1])
     ga[i+1] = reshape(temp*reshape(ga[i+1],ra[i+1],na[i+1]*ra[i+2]),rb[i+1],na[i+1],ra[i+2])
     ra[i+1] = rb[i+1]
     
@@ -8956,7 +9094,11 @@ function TTinner_prod(traina::DiscreteTensorTrain,trainb::DiscreteTensorTrain)
 end
 
 """
-Compute the inner product of two tensor trains where traina has fewer dimensions than trainb.
+Compute partial inner product of two tensor trains where trainb has more dimensions than traina.
+
+When traina has dimensions (n₁, ..., nₐ) and trainb has dimensions (n₁, ..., nₐ, nₐ₊₁, ..., nᵦ),
+this function contracts over the first da dimensions and returns a tensor train 
+representing the remaining dimensions (nₐ₊₁, ..., nᵦ).
 
 Signature
 =========
@@ -8971,25 +9113,23 @@ function TTinner_prod2(traina::DiscreteTensorTrain,trainb::DiscreteTensorTrain)
   da = length(na)
   db = length(nb)
 
-  if sum(na .- nb[1:da]) != 0
-    error("Tensor trains have incompatible dimensions")
+  if da >= db
+    throw(ArgumentError("traina must have fewer dimensions than trainb: got d = $da, d = $db.  For equal dimensions, use TTinner_prod(traina,trainb)"))
+  end
+    
+  if na != nb[1:da]
+    throw(DimensionMismatch("first $da dimensions must match: traina has $na, trainb has $(nb[1:da])"))
   end
 
-  if length(na) == length(nb)
-    error("Trains have equal dimensions: try using TTinner_prod(traina,trainb)")
-  elseif length(na) > length(nb)
-    error("traina has more dimensions than trainb")
-  end
-
-  ga = deepcopy(traina.cores)
-  gb = deepcopy(trainb.cores)
+  ga = copy(traina.cores)
+  gb = copy(trainb.cores)
 
   ra = copy(traina.ranks)
   rb = copy(trainb.ranks)
 
-  for i = 1:da-1
+  for i in 1:da-1
 
-    temp = transpose(transpose(reshape(ga[i],ra[i]*na[i],ra[i+1]))*reshape(gb[i],rb[i]*nb[i],rb[i+1]))
+    temp = reshape(gb[i],rb[i]*nb[i],rb[i+1])'*reshape(ga[i],ra[i]*na[i],ra[i+1])
     ga[i+1] = reshape(temp*reshape(ga[i+1],ra[i+1],na[i+1]*ra[i+2]),rb[i+1],na[i+1],ra[i+2])
     ra[i+1] = rb[i+1]
     
@@ -8997,7 +9137,7 @@ function TTinner_prod2(traina::DiscreteTensorTrain,trainb::DiscreteTensorTrain)
 
   inner_prod = reshape(ga[da],ra[da]*na[da],ra[da+1])'*reshape(gb[da],rb[da]*nb[da],rb[da+1])
 
-  gc = deepcopy(trainb.cores[da+1:end])
+  gc = copy(trainb.cores[da+1:end])
   rc = [1;rb[da+1:end]]
 
   gc[1] = times_dim_1(inner_prod,gc[1])
@@ -9016,8 +9156,7 @@ xstar, f_xstar, iters = bisection(f,x,tol,maxiters)
 """
 function bisection(f::Function,x::Array{R,1},tol::T,maxiters::S) where {R<:AbstractFloat,T<:AbstractFloat,S<:Integer} # not exported
 
-  b = x[2]
-  a = x[1]
+  a, b = x[1], x[2]
 
   c = (a+b)/2
 
@@ -9025,9 +9164,9 @@ function bisection(f::Function,x::Array{R,1},tol::T,maxiters::S) where {R<:Abstr
   while true
 
     if f(c)*f(b) <= 0.0
-      a, b = c, b
+      a = c
     else
-      a, b = a, c
+      b = c
     end
 
     len = abs(b-a)
@@ -9046,23 +9185,25 @@ function bisection(f::Function,x::Array{R,1},tol::T,maxiters::S) where {R<:Abstr
 end
 
 """
-Use the trapazoidal method to integrate the cores of a discrete tensor train.
+Use the trapezoidal method to integrate the cores of a discrete tensor train.
 
 Signature
 =========
 
-integral = trapazoidal(y,domain)
+integral = trapezoidal(y,domain)
 """
-function trapazoidal(y::AbstractArray{T1,3},domain::Array{T2,1}) where {T1<:AbstractFloat,T2<:AbstractFloat} # not exported
+function trapezoidal(y::AbstractArray{T1,3},domain::Array{T2,1}) where {T1<:AbstractFloat,T2<:AbstractFloat} # not exported
 
   n = size(y)
 
   integral_f = y[:,begin,:]+y[:,end,:]
-  for i = 2:(n[2]-1)
-    integral_f += 2*y[:,i,:]
+  for i in 2:(n[2]-1)
+    integral_f .+= 2*y[:,i,:]
   end
 
-  integral_f = (1/(n[2]-1))*((domain[1]-domain[2])/2)*integral_f
+  h = (domain[1]-domain[2])/(n[2]-1)
+
+  integral_f .*= h/2
 
   return integral_f
 
@@ -9110,44 +9251,46 @@ sample = TTCD_GH(train,N,seed)
 """
 function TTCD_GH(train::DiscreteTensorTrain,N::S,seed::S = 123456) where {S<:Integer} # Based on the descriptions given in Dolgov, Anaya-Izquierdo, Fox, and Scheichl (2020)
 
+  T = eltype(train.cores[1])
+
   d = length(train.cores)
-  Π = deepcopy(train.cores)
+  Π = copy(train.cores)
   n = Tuple(size(Π[i]) for i in 1:d)
   r = copy(train.ranks)
 
   rng = MersenneTwister(seed)
   q = rand(rng,N,d)
-  sample = zeros(N,d)
+  sample = zeros(T,N,d)
 
-  P = Array{Array{Float64,2},1}(undef,d+1)
-  Φ = Array{Array{Float64,2},1}(undef,d+1)
-  Ψ = Array{Array{Float64,2},1}(undef,d)
+  P = Vector{Matrix{T}}(undef,d+1)
+  Φ = Vector{Matrix{T}}(undef,d+1)
+  Ψ = Vector{Matrix{T}}(undef,d)
 
-  nodes   = Array{Array{Float64,1},1}(undef,d)
-  weights = Array{Array{Float64,1},1}(undef,d)
+  nodes   = Vector{Vector{T}}(undef,d)
+  weights = Vector{Vector{T}}(undef,d)
 
-  P[d+1] = [1.0;;]
-  for k = d:-1:1
+  P[d+1] = ones(T,1,1)
+  for k in d:-1:1
     term = zeros(n[k][1],n[k][3])
     nodes[k], weights[k] = hermite(n[k][2])
-    for j = 1:n[k][2]
-      term += Π[k][:,j,:]*exp(nodes[k][j]^2.0)*weights[k][j]
+    for j in 1:n[k][2]
+      term .+= Π[k][:,j,:].*exp(nodes[k][j]^2.0).*weights[k][j]
     end
     P[k] = term*P[k+1]
   end
 
-  Φ[1] = ones(N,1)
-  for k = 1:d
+  Φ[1] = ones(T,N,1)
+  for k in 1:d
     ϕ = zeros(N,n[k][3])
     Ψ[k] = times_dim_3(Π[k],P[k+1])[:,:,1] # [Π[k][:,i,:]*P[k+1] for i in 1:n[k][2]]
-    for l = 1:N
+    for l in 1:N
       p = abs.(Φ[k][l:l,:]*Ψ[k])[:] # p is now a vector with length n[k][2]
       p .= cumsum(p)
       p .= p./p[end]
       f = piecewise_linear_evaluate(p,nodes[k])
       sample[l,k] = invert_cdf(f,q[l,k],nodes[k][begin],nodes[k][end])
-      g = [piecewise_linear_evaluate(Π[k][i,:,j],nodes[k]) for i = 1:r[k], j = 1:r[k+1]]
-      ϕ[l,:] = Φ[k][l,:]'*[g[i,j].(sample[l,k]) for i in axes(g,1),j in axes(g,2)]
+      g = [piecewise_linear_evaluate(Π[k][i,:,j],nodes[k]) for i in 1:r[k], j in 1:r[k+1]]
+      ϕ[l,:] = Φ[k][l,:]'*[g[i,j](sample[l,k]) for i in axes(g,1),j in axes(g,2)]
     end
     Φ[k+1] = ϕ
   end
@@ -9165,10 +9308,12 @@ Signatures
 sample = TTCD_GC(train,N,domain)
 sample = TTCD_GC(train,N,domain,seed)
 """
-function TTCD_GC(train::DiscreteTensorTrain,N::S,domain::Array{T,2},seed::S = 123456) where {T<:AbstractFloat,S<:Integer} # Based on the descriptions given in Dolgov, Anaya-Izquierdo, Fox, and Scheichl (2020)
+function TTCD_GC(train::DiscreteTensorTrain,N::S,domain::Array{T1,2},seed::S = 123456) where {T1<:AbstractFloat,S<:Integer} # Based on the descriptions given in Dolgov, Anaya-Izquierdo, Fox, and Scheichl (2020)
+
+  T = eltype(train.cores[1])
 
   d = length(train.cores)
-  Π = deepcopy(train.cores)
+  Π = copy(train.cores)
   n = Tuple(size(Π[i]) for i in 1:d)
   r = copy(train.ranks)
 
@@ -9176,36 +9321,36 @@ function TTCD_GC(train::DiscreteTensorTrain,N::S,domain::Array{T,2},seed::S = 12
   q = rand(rng,N,d)
   sample = zeros(T,N,d)
 
-  P = Array{Array{T,2},1}(undef,d+1)
-  Φ = Array{Array{T,2},1}(undef,d+1)
-  Ψ = Array{Array{T,2},1}(undef,d)
+  P = Vector{Matrix{T}}(undef,d+1)
+  Φ = Vector{Matrix{T}}(undef,d+1)
+  Ψ = Vector{Matrix{T}}(undef,d)
 
-  nodes   = Array{Array{T,1},1}(undef,d)
-  weights = Array{Array{T,1},1}(undef,d)
+  nodes   = Vector{Vector{T}}(undef,d)
+  weights = Vector{Vector{T}}(undef,d)
 
-  P[d+1] = [1.0;;]
-  for k = d:-1:1
+  P[d+1] = ones(T,1,1)
+  for k in d:-1:1
     term = zeros(n[k][1],n[k][3])
     nodes[k], weights[k] = chebyshev(n[k][2])
-    for j = 1:n[k][2]
-      term += Π[k][:,j,:]*sqrt(1.0-nodes[k][j]^2)*weights[k][j]
+    for j in 1:n[k][2]
+      term .+= Π[k][:,j,:].*sqrt(1.0-nodes[k][j]^2).*weights[k][j]
     end
     P[k] = term*((domain[1,k]-domain[2,k])/2)*P[k+1]
     nodes[k] = (domain[1,k]+domain[2,k])/2 .+ nodes[k]*((domain[1,k]-domain[2,k])/2)
   end
 
-  Φ[1] = ones(N,1)
-  for k = 1:d
+  Φ[1] = ones(T,N,1)
+  for k in 1:d
     ϕ = zeros(N,n[k][3])
     Ψ[k] = times_dim_3(Π[k],P[k+1])[:,:,1] # [Π[k][:,i,:]*P[k+1] for i in 1:n[k][2]]
-    for l = 1:N
+    for l in 1:N
       p = abs.(Φ[k][l:l,:]*Ψ[k])[:] # p is now a vector with length n[k][2]
       p .= cumsum(p)
       p .= p./p[end]
       f = piecewise_linear_evaluate(p,nodes[k])
       sample[l,k] = invert_cdf(f,q[l,k],nodes[k][begin],nodes[k][end])
-      g = [piecewise_linear_evaluate(Π[k][i,:,j],nodes[k]) for i = 1:r[k], j = 1:r[k+1]]
-      ϕ[l,:] = Φ[k][l,:]'*[g[i,j].(sample[l,k]) for i in axes(g,1),j in axes(g,2)]
+      g = [piecewise_linear_evaluate(Π[k][i,:,j],nodes[k]) for i in 1:r[k], j in 1:r[k+1]]
+      ϕ[l,:] = Φ[k][l,:]'*[g[i,j](sample[l,k]) for i in axes(g,1),j in axes(g,2)]
     end
     Φ[k+1] = ϕ
   end
@@ -9223,10 +9368,12 @@ Signatures
 sample = TTCD_GL(train,N,domain)
 sample = TTCD_GL(train,N,domain,seed)
 """
-function TTCD_GL(train::DiscreteTensorTrain,N::S,domain::Array{T,2},seed::S = 123456) where {T<:AbstractFloat,S<:Integer} # Based on the descriptions given in Dolgov, Anaya-Izquierdo, Fox, and Scheichl (2020)
+function TTCD_GL(train::DiscreteTensorTrain,N::S,domain::Array{T1,2},seed::S = 123456) where {T1<:AbstractFloat,S<:Integer} # Based on the descriptions given in Dolgov, Anaya-Izquierdo, Fox, and Scheichl (2020)
+
+  T = eltype(train.cores[1])
 
   d = length(train.cores)
-  Π = deepcopy(train.cores)
+  Π = copy(train.cores)
   n = Tuple(size(Π[i]) for i in 1:d)
   r = copy(train.ranks)
 
@@ -9234,36 +9381,36 @@ function TTCD_GL(train::DiscreteTensorTrain,N::S,domain::Array{T,2},seed::S = 12
   q = rand(rng,N,d)
   sample = zeros(T,N,d)
 
-  P = Array{Array{T,2},1}(undef,d+1)
-  Φ = Array{Array{T,2},1}(undef,d+1)
-  Ψ = Array{Array{T,2},1}(undef,d)
+  P = Vector{Matrix{T}}(undef,d+1)
+  Φ = Vector{Matrix{T}}(undef,d+1)
+  Ψ = Vector{Matrix{T}}(undef,d)
 
-  nodes   = Array{Array{T,1},1}(undef,d)
-  weights = Array{Array{T,1},1}(undef,d)
+  nodes   = Vector{Vector{T}}(undef,d)
+  weights = Vector{Vector{T}}(undef,d)
 
-  P[d+1] = [1.0;;]
-  for k = d:-1:1
+  P[d+1] = ones(T,1,1)
+  for k in d:-1:1
     term = zeros(n[k][1],n[k][3])
     nodes[k], weights[k] = legendre(n[k][2])
-    for j = 1:n[k][2]
-      term += Π[k][:,j,:]*weights[k][j]
+    for j in 1:n[k][2]
+      term .+= Π[k][:,j,:].*weights[k][j]
     end
     P[k] = term*((domain[1,k]-domain[2,k])/2)*P[k+1]
     nodes[k] = (domain[1,k]+domain[2,k])/2 .+ nodes[k]*((domain[1,k]-domain[2,k])/2)
   end
 
-  Φ[1] = ones(N,1)
-  for k = 1:d
+  Φ[1] = ones(T,N,1)
+  for k in 1:d
     ϕ = zeros(N,n[k][3])
     Ψ[k] = times_dim_3(Π[k],P[k+1])[:,:,1] # [Π[k][:,i,:]*P[k+1] for i in 1:n[k][2]]
-    for l = 1:N
+    for l in 1:N
       p = abs.(Φ[k][l:l,:]*Ψ[k])[:] # p is now a vector with length n[k][2]
       p .= cumsum(p)
       p .= p./p[end]
       f = piecewise_linear_evaluate(p,nodes[k])
       sample[l,k] = invert_cdf(f,q[l,k],nodes[k][begin],nodes[k][end])
-      g = [piecewise_linear_evaluate(Π[k][i,:,j],nodes[k]) for i = 1:r[k], j = 1:r[k+1]]
-      ϕ[l,:] = Φ[k][l,:]'*[g[i,j].(sample[l,k]) for i in axes(g,1),j in axes(g,2)]
+      g = [piecewise_linear_evaluate(Π[k][i,:,j],nodes[k]) for i in 1:r[k], j in 1:r[k+1]]
+      ϕ[l,:] = Φ[k][l,:]'*[g[i,j](sample[l,k]) for i in axes(g,1),j in axes(g,2)]
     end
     Φ[k+1] = ϕ
   end
@@ -9281,10 +9428,12 @@ Signatures
 sample = TTCD_PL(train,N,domain)
 sample = TTCD_PL(train,N,domain,seed)
 """
-function TTCD_PL(train::DiscreteTensorTrain,N::S,domain::Array{T,2},seed::S = 123456) where {T<:AbstractFloat,S<:Integer} # Based on the descriptions given in Dolgov, Anaya-Izquierdo, Fox, and Scheichl (2020)
+function TTCD_PL(train::DiscreteTensorTrain,N::S,domain::Array{T1,2},seed::S = 123456) where {T1<:AbstractFloat,S<:Integer} # Based on the descriptions given in Dolgov, Anaya-Izquierdo, Fox, and Scheichl (2020)
+
+  T = eltype(train.cores[1])
 
   d = length(train.cores)
-  Π = deepcopy(train.cores)
+  Π = copy(train.cores)
   n = Tuple(size(Π[i]) for i in 1:d)
   r = copy(train.ranks)
 
@@ -9292,31 +9441,31 @@ function TTCD_PL(train::DiscreteTensorTrain,N::S,domain::Array{T,2},seed::S = 12
   q = rand(rng,N,d)
   sample = zeros(T,N,d)
 
-  P = Array{Array{T,2},1}(undef,d+1)
-  Φ = Array{Array{T,2},1}(undef,d+1)
-  Ψ = Array{Array{T,2},1}(undef,d)
+  P = Vector{Matrix{T}}(undef,d+1)
+  Φ = Vector{Matrix{T}}(undef,d+1)
+  Ψ = Vector{Matrix{T}}(undef,d)
 
-  nodes   = Array{Array{T,1},1}(undef,d)
+  nodes   = Vector{Vector{T}}(undef,d)
 
-  P[d+1] = [1.0;;]
-  for k = d:-1:1
+  P[d+1] = ones(T,1,1)
+  for k in d:-1:1
     nodes[k] = piecewise_linear_nodes(n[k][2],domain[:,k])
     term = trapazoidal(Π[k],nodes[k])
     P[k] = term*P[k+1]
   end
 
-  Φ[1] = ones(N,1)
-  for k = 1:d
+  Φ[1] = ones(T,N,1)
+  for k in 1:d
     ϕ = zeros(N,n[k][3])
     Ψ[k] = times_dim_3(Π[k],P[k+1])[:,:,1] # [Π[k][:,i,:]*P[k+1] for i in 1:n[k][2]]
-    for l = 1:N
+    for l in 1:N
       p = abs.(Φ[k][l:l,:]*Ψ[k])[:] # p is now a vector with length n[k][2]
       p .= cumsum(p)
       p .= p./p[end]
       f = piecewise_linear_evaluate(p,nodes[k])
       sample[l,k] = invert_cdf(f,q[l,k],nodes[k][begin],nodes[k][end])
-      g = [piecewise_linear_evaluate(Π[k][i,:,j],nodes[k]) for i = 1:r[k], j = 1:r[k+1]]
-      ϕ[l,:] = Φ[k][l,:]'*[g[i,j].(sample[l,k]) for i in axes(g,1),j in axes(g,2)]
+      g = [piecewise_linear_evaluate(Π[k][i,:,j],nodes[k]) for i in 1:r[k], j in 1:r[k+1]]
+      ϕ[l,:] = Φ[k][l,:]'*[g[i,j](sample[l,k]) for i in axes(g,1),j in axes(g,2)]
     end
     Φ[k+1] = ϕ
   end
@@ -9517,11 +9666,11 @@ soln = TTextremize(train,K,nodes,state) # state is a vector of floating point nu
 function TTextremize(train::DiscreteTensorTrain,K::S) where {S<:Integer} # Based on the description given in Chertkov, Ryzhakov, Novikov, and Oseledets (2022), algorthm 1.
 
   orth_train = TTorthright(train)  
-  Π = deepcopy(orth_train.cores)
+  Π = copy(orth_train.cores)
   
   d = length(Π)
   r = copy(orth_train.ranks)
-  n = Tuple(size(Π[i])[2] for i = 1:d)
+  n = Tuple(size(Π[i])[2] for i in 1:d)
 
   Q = Π[1][1,:,:]
   ind = topK(Q,K)
@@ -9547,11 +9696,11 @@ end
 
 function TTextremize(train::Union{RightOrthBaseTensorTrain,RightOrthExtendedTensorTrain},K::S) where {S<:Integer} # Based on the description given in Chertkov, Ryzhakov, Novikov, and Oseledets (2022), algorthm 1.
 
-  Π = deepcopy(train.cores)
+  Π = copy(train.cores)
   
   d = length(Π)
   r = copy(train.ranks)
-  n = Tuple(size(Π[i])[2] for i = 1:d)
+  n = Tuple(size(Π[i])[2] for i in 1:d)
 
   Q = Π[1][1,:,:]
   ind = topK(Q,K)
@@ -9578,12 +9727,12 @@ end
 function TTextremize(train::DiscreteTensorTrain,K::S,state::Array{S,1}) where {S<:Integer}
 
   orth_train = TTorthright(train)  
-  Π = deepcopy(orth_train.cores)
+  Π = copy(orth_train.cores)
   
   d = length(Π)
   ds = length(state)
   r = copy(orth_train.ranks)
-  n = Tuple(size(Π[i])[2] for i = 1:d)
+  n = Tuple(size(Π[i])[2] for i in 1:d)
 
   if ds == d
     return state
@@ -9618,12 +9767,12 @@ end
 
 function TTextremize(train::Union{RightOrthBaseTensorTrain,RightOrthExtendedTensorTrain},K::S,state::Array{S,1}) where {S<:Integer}
 
-  Π = deepcopy(train.cores)
+  Π = copy(train.cores)
   
   d = length(Π)
   ds = length(state)
   r = copy(train.ranks)
-  n = Tuple(size(Π[i])[2] for i = 1:d)
+  n = Tuple(size(Π[i])[2] for i in 1:d)
 
   if ds == d
     return state
@@ -9734,7 +9883,7 @@ end
 
 function TToptimize(train::DiscreteTensorTrain,K::S,nodes::NTuple{ds,Array{T,1}},state::Array{T,1},tol=1e-12) where {S<:Integer,T<:AbstractFloat,ds}
 
-  state_index = [findfirst(x->x==state[i],nodes[i]) for i = 1:ds]
+  state_index = [findfirst(x->x==state[i],nodes[i]) for i in 1:ds]
 
   (imax, imin), (ymax, ymin) = TToptimize(train,K,state_index,tol)
 
@@ -9742,8 +9891,7 @@ function TToptimize(train::DiscreteTensorTrain,K::S,nodes::NTuple{ds,Array{T,1}}
 
 end
 
-
-function update_left(X::Array{T,2},x::Array{T,1},n::S,r::S,ind::Array{S,1}) where {T<:AbstractFloat,S<:Integer}
+function update_left(X::AbstractArray{T,2},x::AbstractVector{T},n::S,r::S,ind::Array{S,1}) where {T<:AbstractFloat,S<:Integer}
 
   W₁ = kron(ones(r),x)
   W₂ = kron(X,ones(n))
@@ -9752,7 +9900,7 @@ function update_left(X::Array{T,2},x::Array{T,1},n::S,r::S,ind::Array{S,1}) wher
 
 end
 
-function update_right(X::Array{T,2},x::Array{T,1},n::S,r::S,ind::Array{S,1}) where {T<:AbstractFloat,S<:Integer}
+function update_right(X::AbstractArray{T,2},x::AbstractVector{T},n::S,r::S,ind::Array{S,1}) where {T<:AbstractFloat,S<:Integer}
 
   W₁ = kron(ones(n),X)
   W₂ = kron(x,ones(r))
@@ -9804,7 +9952,7 @@ function TTOpt(f::Function,nodes::NTuple{d,Array{T,1}},rmax::S,sweeps::S,seed::S
   θₘᵢₙ = Array{T,1}(undef,d)
   Jₘᵢₙ = Inf
 
-  for k = 1:sweeps
+  for k in 1:sweeps
 
     # Iterate right to left
   
@@ -9896,7 +10044,7 @@ function TTOpt(f::Function,nodes::NTuple{d,Array{T,1}},rmax::S,sweeps::S,seed::S
 
   end
 
-  θᵢₙ = [findmin(abs.(nodes[i] .- θₘᵢₙ[i]))[2] for i = 1:d]
+  θᵢₙ = [findmin(abs.(nodes[i] .- θₘᵢₙ[i]))[2] for i in 1:d]
 
   return  θₘᵢₙ, θᵢₙ, Jₘᵢₙ
 
@@ -9904,7 +10052,7 @@ end
 
 function TTOpt(f::Function,nodes::NTuple{d,Array{T,1}},ranks::Array{S,1},sweeps::S,seed::S=123456) where {T<:AbstractFloat,S<:Integer,d} # Based on Algorithm A1 as described in Sozykin, Chertkov, Schutski, Phan, Cichocki, and Oseledets (2022)
 
-Random.seed!(seed)
+  Random.seed!(seed)
 
   if length(ranks) != d+1
     error{"ranks must have length d+1"}
@@ -9940,7 +10088,7 @@ Random.seed!(seed)
   θₘᵢₙ = Array{T,1}(undef,d)
   Jₘᵢₙ = Inf
 
-  for k = 1:sweeps
+  for k in 1:sweeps
 
     # Iterate right to left
   
@@ -10007,7 +10155,7 @@ Random.seed!(seed)
     W2 = kron(nodes[1],ones(r[1]))
     X[1] = W2[ind,:]
   
-    # Treat dimension 2 to d-1
+    # Treat dimensions 2 to d-1
   
     for i = 2:d-1
   
@@ -10032,7 +10180,7 @@ Random.seed!(seed)
 
   end
 
-  θᵢₙ = [findmin(abs.(nodes[i] .- θₘᵢₙ[i]))[2] for i = 1:d]
+  θᵢₙ = [findmin(abs.(nodes[i] .- θₘᵢₙ[i]))[2] for i in 1:d]
 
   return  θₘᵢₙ, θᵢₙ, Jₘᵢₙ
 
@@ -10044,47 +10192,34 @@ Reverse the cores in a discrete tensor train (reversing the order of the variabl
 Signature
 =========
 
-t = Ttreverse(train)
+t = TTreverse_indices(train)
 """
 function TTreverse_indices(train::DiscreteTensorTrain)
 
   d     = length(train.cores)
-  cores = train.cores
-  r     = train.ranks
-  n     = Tuple(size(G[i])[2] for i = 1:d)
 
-  G = similar(cores)
-  new_r = copy(r)
+  G     = similar(train.cores)
+  ranks = copy(train.ranks)
 
-  for i in d:-1:1
-    temp = zeros(r[i+1],n[i],r[i])
-    for j in CartesianIndices(cores[i])
-      temp[j[3],j[2],j[1]] = cores[i][j]
-    end
-    G[1+abs(i-d)]     = temp
-    new_r[1+abs(i-d)] = r[i+1]
+  for i in 1:d
+    G[d+1-i]     = permutedims(train.cores[i],(3,2,1))
+    ranks[d+1-i] = train.ranks[i+1]
   end
 
-  return BaseTensorTrain(G,new_r,0)
+  return BaseTensorTrain(G,ranks,0)
 
 end
 
-function TTderivative(train::DiscreteTensorTrain,nodes::AbstractArray{R,1},ind::S) where {R<:Real,S<:Integer}
+function TTderivative(train::DiscreteTensorTrain,nodes::AbstractVector{R},ind::S) where {R<:Real,S<:Integer}
 
-  G = deepcopy(train.cores)
+  G = copy(train.cores)
   n = size(G[ind])
 
-  for i in 1:n[1]
-    for k in 1:n[3]
-      for j in 1:n[2]
-        if j == 1
-          G[ind][i,j,k] = (train.cores[ind][i,j+1,k] - train.cores[ind][i,j,k])/(nodes[j+1] - nodes[j])
-        elseif j == n[2]
-          G[ind][i,j,k] = (train.cores[ind][i,j,k] - train.cores[ind][i,j-1,k])/(nodes[j] - nodes[j-1])
-        else
-          G[ind][i,j,k] = (train.cores[ind][i,j+1,k] - train.cores[ind][i,j-1,k])/(nodes[j+1] - nodes[j-1])
-        end
-      end
+  for i in 1:n[1], k in 1:n[3]
+    G[ind][i,1,k] = (train.cores[ind][i,2,k] - train.cores[ind][i,1,k])/(nodes[2] - nodes[1])
+    G[ind][i,end,k] = (train.cores[ind][i,end,k] - train.cores[ind][i,end-1,k])/(nodes[end] - nodes[end-1])
+    for j in 2:(n[2]-1)
+      G[ind][i,j,k] = (train.cores[ind][i,j+1,k] - train.cores[ind][i,j-1,k])/(nodes[j+1] - nodes[j-1])
     end
   end
 
@@ -10094,7 +10229,7 @@ end
 
 function TTgradient(train::DiscreteTensorTrain,nodes::NTuple{d,AbstractArray{T,1}},point::Array{T,1}) where {T<:AbstractFloat,d}
 
-  point_index = [findfirst(x->x==point[i],nodes[i]) for i = 1:d]
+  point_index = [findfirst(x->x==point[i],nodes[i]) for i in 1:d]
 
   grad = [TTevaluate(TTderivative(train,nodes[i],i),point_index) for i in 1:d]
 
@@ -10104,7 +10239,7 @@ end
 
 function TThessian(train::DiscreteTensorTrain,nodes::NTuple{d,AbstractArray{T,1}},point::Array{T,1}) where {T<:AbstractFloat,d}
 
-  point_index = [findfirst(x->x==point[i],nodes[i]) for i = 1:d]
+  point_index = [findfirst(x->x==point[i],nodes[i]) for i in 1:d]
 
   hess = [TTevaluate(TTderivative(TTderivative(train,nodes[i],i),nodes[j],j),point_index) for i in 1:d, j in 1:d]
 
@@ -10127,7 +10262,7 @@ function TTnewton(train::DiscreteTensorTrain,nodes::NTuple{d,AbstractArray{T,1}}
   iters = 0
   len = Inf
 
-  point_index     = [findmin(abs.(new_point[i] .- nodes[i]))[2] for i = 1:d]
+  point_index     = [findmin(abs.(new_point[i] .- nodes[i]))[2] for i in 1:d]
   new_point_index = similar(point_index)
 
   while true
@@ -10166,9 +10301,9 @@ function TTnewton(train::DiscreteTensorTrain,nodes::NTuple{d,AbstractArray{T,1}}
     error()
   end
 
-  state_index = [findfirst(x->x==state[i],nodes[i]) for i = 1:ds]
+  state_index = [findfirst(x->x==state[i],nodes[i]) for i in 1:ds]
 
-  g = deepcopy(train.cores)
+  g = copy(train.cores)
 
   new_g = Array{Array{T,3},1}(undef,dx)
 
@@ -10203,7 +10338,7 @@ function TTnewton(train::ContinuousTensorTrain,nodes::NTuple{d,AbstractArray{T,1
   iters = 0
   len = Inf
 
-  point_index     = [findfirst(x->x==point[i],nodes[i]) for i = 1:d]
+  point_index     = [findfirst(x->x==point[i],nodes[i]) for i in 1:d]
   new_point_index = similar(point_index)
 
   while true
@@ -10246,7 +10381,7 @@ new_point, point_index, f_new_point, iters = TTnewton_stap(train,nodes,state,poi
 function TTnewton_step(train::DiscreteTensorTrain,nodes::NTuple{d,AbstractArray{T,1}},point::AbstractArray{R,1}) where {R<:Real,T<:AbstractFloat,d}
 
   new_point   = copy(point)
-  point_index = [findmin(abs.(new_point[i] .- nodes[i]))[2] for i = 1:d]
+  point_index = [findmin(abs.(new_point[i] .- nodes[i]))[2] for i in 1:d]
 
   grad = [TTevaluate(TTderivative(train,nodes[i],i),point_index) for i in 1:d]
   hess = [TTevaluate(TTderivative(TTderivative(train,nodes[i],i),nodes[j],j),point_index) for i in 1:d, j in 1:d]
@@ -10271,9 +10406,9 @@ function TTnewton_step(train::DiscreteTensorTrain,nodes::NTuple{d,AbstractArray{
     error()
   end
 
-  state_index = [findfirst(x->x==state[i],nodes[i]) for i = 1:ds]
+  state_index = [findfirst(x->x==state[i],nodes[i]) for i in 1:ds]
 
-  g = deepcopy(train.cores)
+  g = copy(train.cores)
 
   new_g = Array{Array{T,3},1}(undef,dx)
 
@@ -10315,7 +10450,7 @@ function TTdescent(train::DiscreteTensorTrain,nodes::NTuple{d,AbstractArray{T,1}
   iters = 0
   len = Inf
 
-  point_index     = [findmin(abs.(new_point[i] .- nodes[i]))[2] for i = 1:d]
+  point_index     = [findmin(abs.(new_point[i] .- nodes[i]))[2] for i in 1:d]
   new_point_index = similar(point_index)
 
   while true
@@ -10353,9 +10488,9 @@ function TTdescent(train::DiscreteTensorTrain,nodes::NTuple{d,AbstractArray{T,1}
     error()
   end
 
-  state_index = [findfirst(x->x==state[i],nodes[i]) for i = 1:ds]
+  state_index = [findfirst(x->x==state[i],nodes[i]) for i in 1:ds]
 
-  g = deepcopy(train.cores)
+  g = copy(train.cores)
 
   new_g = Array{Array{T,3},1}(undef,dx)
 
@@ -10393,7 +10528,7 @@ function TTdescent(train::ContinuousTensorTrain,nodes::NTuple{d,AbstractArray{T,
   iters = 0
   len = Inf
 
-  point_index     = [findfirst(x->x==point[i],nodes[i]) for i = 1:d]
+  point_index     = [findfirst(x->x==point[i],nodes[i]) for i in 1:d]
   new_point_index = similar(point_index)
 
   while true
@@ -10437,7 +10572,7 @@ new_point, point_index, f_new_point, iters = TTdescent_stap(train,nodes,state,po
 function TTdescent_step(train::DiscreteTensorTrain,nodes::NTuple{d,AbstractArray{T,1}},point::AbstractArray{R,1},α::T=0.001) where {R<:Real,T<:AbstractFloat,d}
 
   new_point   = copy(point)
-  point_index = [findmin(abs.(new_point[i] .- nodes[i]))[2] for i = 1:d]
+  point_index = [findmin(abs.(new_point[i] .- nodes[i]))[2] for i in 1:d]
 
   grad = [TTevaluate(TTderivative(train,nodes[i],i),point_index) for i in 1:d]
 
@@ -10461,9 +10596,9 @@ function TTdescent_step(train::DiscreteTensorTrain,nodes::NTuple{d,AbstractArray
     error()
   end
 
-  state_index = [findfirst(x->x==state[i],nodes[i]) for i = 1:ds]
+  state_index = [findfirst(x->x==state[i],nodes[i]) for i in 1:ds]
 
-  g = deepcopy(train.cores)
+  g = copy(train.cores)
 
   new_g = Array{Array{T,3},1}(undef,dx)
 
@@ -10497,7 +10632,7 @@ function TTOpt(train::ExtendedTensorTrain,nodes::NTuple{d,AbstractArray{T,1}}) w
   f_opt = -Inf
   point_index_opt = Array{Int,1}(undef,d)
 
-  for i = 1:d-1
+  for i in 1:d-1
     for x in train.left_to_right_sub[i]
       for y in train.right_to_left_sub[i]
         point_index = (x...,y...)
@@ -10510,7 +10645,7 @@ function TTOpt(train::ExtendedTensorTrain,nodes::NTuple{d,AbstractArray{T,1}}) w
     end
   end
 
-  point_opt = [nodes[i][point_index_opt[i]] for i = 1:d]
+  point_opt = [nodes[i][point_index_opt[i]] for i in 1:d]
 
   return point_opt, point_index_opt, f_opt
 
