@@ -19,7 +19,8 @@ export BaseTensorTrain,
        FunctionalTensorTrain
 
 export TTconstant,
-       TTrandom,
+       TTrand,
+       TTrandn,
        TTChebyshev,
        TTLegendre,
        TTsvd,
