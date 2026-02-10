@@ -78,7 +78,7 @@ where `p` is the desired integer power.
 
 To take the Hadamard product of two tensor trains:
 ```julia
-new_train = TThadamard(train_a,train_b)
+new_train = TTHadamard(train_a,train_b)
 ```
 
 Most of the algebraic operations described above cause the resulting tensor train to have expanded ranks.  To reduce the ranks it is often usful to perform a rounding operation:
