@@ -21,11 +21,12 @@ train = TTconstant(value,n,r)
 ```
 where `n` is a tuple containing `d` positive integers specifying the number of points (or nodes) along each dimension and `r` is either an integer or a `d+1` vector of integers, with first and last elements equaling `1`, specifying the ranks.
 
-A random discrete tensor train with elements drawn from a continuous uniform density can be initialized through:
+A random discrete tensor train with elements drawn from a continuous uniform density or a standard normal density can be initialized through:
 ```julia
-train = TTrandom(n,r)
+train = TTrand(n,r)
+train = TTrandn(n,r)
 ```
-where, again, `n` is a tuple of `d` positive integers and `r` is either an integer or a `d+1` vector of integers whose first and last elements equal `1`.
+respectively, where, again, `n` is a tuple of `d` positive integers and `r` is either an integer or a `d+1` vector of integers whose first and last elements equal `1`.
 
 Once constructed, tensor trains can be made left- or right-orthogonal using:
 ```julia
