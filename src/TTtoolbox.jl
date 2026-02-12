@@ -781,12 +781,12 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6) where {T
 
     if i == 1
     
-      left_to_right_subs[i] = [tuple(ind2sub(x,(n[i],r[i]))[1]) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(ind2sub(x,(r[i],n[i]))[2]) for x in left_to_right_indices[i]]
 
     else
 
-      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
 
     end
   end
@@ -842,7 +842,7 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6) where {T
     right_to_left_indices_new[1], sweep = maxvol!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    left_to_right_subs[1] = [tuple(ind2sub(x,(n[1],r[1]))[1]) for x in left_to_right_indices_new[1]]
+    left_to_right_subs[1] = [tuple(ind2sub(x,(r[1],n[1]))[2]) for x in left_to_right_indices_new[1]]
 
     @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
@@ -869,8 +869,8 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6) where {T
       right_to_left_indices_new[i], sweep = maxvol!(v,μ,300)
 
       # Update left_to_right_subs, keeping the indices nested
-      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices_new[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
 
       @views G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
@@ -897,8 +897,8 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6) where {T
     right_to_left_indices_new[d-1], sweep = maxvol!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    temp = [ind2sub(x,(n[d-1],r[d-1])) for x in left_to_right_indices_new[d-1]]
-    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][2]]...,temp[i][1]...) for i in eachindex(temp)]
+    temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
+    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
 
     # Update right_to_left_subs, nesting is not kept
     right_to_left_subs[d-1] = [tuple(ind2sub(x,(n[d],r[d+1]))[1]) for x in right_to_left_indices_new[d-1]]
@@ -1036,12 +1036,12 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,r::Array{S,1},maxsweeps::S = 6) w
 
     if i == 1
     
-      left_to_right_subs[i] = [tuple(ind2sub(x,(n[i],r[i]))[1]) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(ind2sub(x,(r[i],n[i]))[2]) for x in left_to_right_indices[i]]
 
     else
 
-      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
 
     end
   end
@@ -1096,7 +1096,7 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,r::Array{S,1},maxsweeps::S = 6) w
     right_to_left_indices_new[1], sweep = maxvol!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    left_to_right_subs[1] = [tuple(ind2sub(x,(n[1],r[1]))[1]) for x in left_to_right_indices_new[1]]
+    left_to_right_subs[1] = [tuple(ind2sub(x,(r[1],n[1]))[2]) for x in left_to_right_indices_new[1]]
 
     @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
@@ -1122,8 +1122,8 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,r::Array{S,1},maxsweeps::S = 6) w
       right_to_left_indices_new[i], sweep = maxvol!(v,μ,300)
 
       # Update left_to_right_subs, keeping the indices nested
-      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices_new[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
 
       @views G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
@@ -1149,8 +1149,8 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,r::Array{S,1},maxsweeps::S = 6) w
     right_to_left_indices_new[d-1], sweep = maxvol!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    temp = [ind2sub(x,(n[d-1],r[d-1])) for x in left_to_right_indices_new[d-1]]
-    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][2]]...,temp[i][1]...) for i in eachindex(temp)]
+    temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
+    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
 
     # Update right_to_left_subs, nesting is not kept
     right_to_left_subs[d-1] = [tuple(ind2sub(x,(n[d],r[d+1]))[1]) for x in right_to_left_indices_new[d-1]]
@@ -1312,12 +1312,12 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps::S = 6) 
 
     if i == 1
     
-      left_to_right_subs[i] = [tuple(ind2sub(x,(n[i],r[i]))[1]) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(ind2sub(x,(r[i],n[i]))[2]) for x in left_to_right_indices[i]]
 
     else
 
-      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
 
     end
   end
@@ -1373,7 +1373,7 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps::S = 6) 
     right_to_left_indices_new[1], sweep = maxvol_generic!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    left_to_right_subs[1] = [tuple(ind2sub(x,(n[1],r[1]))[1]) for x in left_to_right_indices_new[1]]
+    left_to_right_subs[1] = [tuple(ind2sub(x,(r[1],n[1]))[2]) for x in left_to_right_indices_new[1]]
 
     @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
@@ -1400,8 +1400,8 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps::S = 6) 
       right_to_left_indices_new[i], sweep = maxvol_generic!(v,μ,300)
 
       # Update left_to_right_subs, keeping the indices nested
-      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices_new[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
 
       @views G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
@@ -1428,8 +1428,8 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps::S = 6) 
     right_to_left_indices_new[d-1], sweep = maxvol_generic!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    temp = [ind2sub(x,(n[d-1],r[d-1])) for x in left_to_right_indices_new[d-1]]
-    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][2]]...,temp[i][1]...) for i in eachindex(temp)]
+    temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
+    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
 
     # Update right_to_left_subs, nesting is not kept
     right_to_left_subs[d-1] = [tuple(ind2sub(x,(n[d],r[d+1]))[1]) for x in right_to_left_indices_new[d-1]]
@@ -1568,12 +1568,12 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,r::Array{S,1},maxsweeps::
 
     if i == 1
     
-      left_to_right_subs[i] = [tuple(ind2sub(x,(n[i],r[i]))[1]) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(ind2sub(x,(r[i],n[i]))[2]) for x in left_to_right_indices[i]]
 
     else
 
-      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
 
     end
   end
@@ -1628,7 +1628,7 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,r::Array{S,1},maxsweeps::
     right_to_left_indices_new[1], sweep = maxvol_generic!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    left_to_right_subs[1] = [tuple(ind2sub(x,(n[1],r[1]))[1]) for x in left_to_right_indices_new[1]]
+    left_to_right_subs[1] = [tuple(ind2sub(x,(r[1],n[1]))[2]) for x in left_to_right_indices_new[1]]
 
     @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
@@ -1654,8 +1654,8 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,r::Array{S,1},maxsweeps::
       right_to_left_indices_new[i], sweep = maxvol_generic!(v,μ,300)
 
       # Update left_to_right_subs, keeping the indices nested
-      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices_new[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
 
       @views G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
@@ -1681,8 +1681,8 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,r::Array{S,1},maxsweeps::
     right_to_left_indices_new[d-1], sweep = maxvol_generic!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    temp = [ind2sub(x,(n[d-1],r[d-1])) for x in left_to_right_indices_new[d-1]]
-    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][2]]...,temp[i][1]...) for i in eachindex(temp)]
+    temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
+    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
 
     # Update right_to_left_subs, nesting is not kept
     right_to_left_subs[d-1] = [tuple(ind2sub(x,(n[d],r[d+1]))[1]) for x in right_to_left_indices_new[d-1]]
@@ -1844,12 +1844,12 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6)
 
     if i == 1
     
-      left_to_right_subs[i] = [tuple(ind2sub(x,(n[i],r[i]))[1]) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(ind2sub(x,(r[i],n[i]))[2]) for x in left_to_right_indices[i]]
 
     else
 
-      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
 
     end
   end
@@ -1905,7 +1905,7 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6)
     right_to_left_indices_new[1], sweep = maxvol!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    left_to_right_subs[1] = [tuple(ind2sub(x,(n[1],r[1]))[1]) for x in left_to_right_indices_new[1]]
+    left_to_right_subs[1] = [tuple(ind2sub(x,(r[1],n[1]))[2]) for x in left_to_right_indices_new[1]]
 
     @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
@@ -1932,8 +1932,8 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6)
       right_to_left_indices_new[i], sweep = maxvol!(v,μ,300)
 
       # Update left_to_right_subs, keeping the indices nested
-      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices_new[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
 
       @views G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
@@ -1960,8 +1960,8 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6)
     right_to_left_indices_new[d-1], sweep = maxvol!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    temp = [ind2sub(x,(n[d-1],r[d-1])) for x in left_to_right_indices_new[d-1]]
-    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][2]]...,temp[i][1]...) for i in eachindex(temp)]
+    temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
+    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
 
     # Update right_to_left_subs, nesting is not kept
     right_to_left_subs[d-1] = [tuple(ind2sub(x,(n[d],r[d+1]))[1]) for x in right_to_left_indices_new[d-1]]
@@ -2100,12 +2100,12 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,r::Array{S,1},maxsweeps:
 
     if i == 1
     
-      left_to_right_subs[i] = [tuple(ind2sub(x,(n[i],r[i]))[1]) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(ind2sub(x,(r[i],n[i]))[2]) for x in left_to_right_indices[i]]
 
     else
 
-      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
 
     end
   end
@@ -2160,7 +2160,7 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,r::Array{S,1},maxsweeps:
     right_to_left_indices_new[1], sweep = maxvol!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    left_to_right_subs[1] = [tuple(ind2sub(x,(n[1],r[1]))[1]) for x in left_to_right_indices_new[1]]
+    left_to_right_subs[1] = [tuple(ind2sub(x,(r[1],n[1]))[2]) for x in left_to_right_indices_new[1]]
 
     @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
@@ -2186,8 +2186,8 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,r::Array{S,1},maxsweeps:
       right_to_left_indices_new[i], sweep = maxvol!(v,μ,300)
 
       # Update left_to_right_subs, keeping the indices nested
-      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices_new[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
 
       @views G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
@@ -2213,8 +2213,8 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,r::Array{S,1},maxsweeps:
     right_to_left_indices_new[d-1], sweep = maxvol!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    temp = [ind2sub(x,(n[d-1],r[d-1])) for x in left_to_right_indices_new[d-1]]
-    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][2]]...,temp[i][1]...) for i in eachindex(temp)]
+    temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
+    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
 
     # Update right_to_left_subs, nesting is not kept
     right_to_left_subs[d-1] = [tuple(ind2sub(x,(n[d],r[d+1]))[1]) for x in right_to_left_indices_new[d-1]]
@@ -2376,12 +2376,12 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps
 
     if i == 1
     
-      left_to_right_subs[i] = [tuple(ind2sub(x,(n[i],r[i]))[1]) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(ind2sub(x,(r[i],n[i]))[2]) for x in left_to_right_indices[i]]
 
     else
 
-      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
 
     end
   end
@@ -2437,7 +2437,7 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps
     right_to_left_indices_new[1], sweep = maxvol_generic!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    left_to_right_subs[1] = [tuple(ind2sub(x,(n[1],r[1]))[1]) for x in left_to_right_indices_new[1]]
+    left_to_right_subs[1] = [tuple(ind2sub(x,(r[1],n[1]))[2]) for x in left_to_right_indices_new[1]]
 
     @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
@@ -2464,8 +2464,8 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps
       right_to_left_indices_new[i], sweep = maxvol_generic!(v,μ,300)
 
       # Update left_to_right_subs, keeping the indices nested
-      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices_new[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
 
       @views G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
@@ -2492,8 +2492,8 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps
     right_to_left_indices_new[d-1], sweep = maxvol_generic!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    temp = [ind2sub(x,(n[d-1],r[d-1])) for x in left_to_right_indices_new[d-1]]
-    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][2]]...,temp[i][1]...) for i in eachindex(temp)]
+    temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
+    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
 
     # Update right_to_left_subs, nesting is not kept
     right_to_left_subs[d-1] = [tuple(ind2sub(x,(n[d],r[d+1]))[1]) for x in right_to_left_indices_new[d-1]]
@@ -2632,12 +2632,12 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,r::Array{S,1},ma
 
     if i == 1
     
-      left_to_right_subs[i] = [tuple(ind2sub(x,(n[i],r[i]))[1]) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(ind2sub(x,(r[i],n[i]))[2]) for x in left_to_right_indices[i]]
 
     else
 
-      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
 
     end
   end
@@ -2692,7 +2692,7 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,r::Array{S,1},ma
     right_to_left_indices_new[1], sweep = maxvol_generic!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    left_to_right_subs[1] = [tuple(ind2sub(x,(n[1],r[1]))[1]) for x in left_to_right_indices_new[1]]
+    left_to_right_subs[1] = [tuple(ind2sub(x,(r[1],n[1]))[2]) for x in left_to_right_indices_new[1]]
 
     @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
@@ -2718,8 +2718,8 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,r::Array{S,1},ma
       right_to_left_indices_new[i], sweep = maxvol_generic!(v,μ,300)
 
       # Update left_to_right_subs, keeping the indices nested
-      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices_new[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
 
       @views G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
@@ -2745,8 +2745,8 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,r::Array{S,1},ma
     right_to_left_indices_new[d-1], sweep = maxvol_generic!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    temp = [ind2sub(x,(n[d-1],r[d-1])) for x in left_to_right_indices_new[d-1]]
-    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][2]]...,temp[i][1]...) for i in eachindex(temp)]
+    temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
+    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
 
     # Update right_to_left_subs, nesting is not kept
     right_to_left_subs[d-1] = [tuple(ind2sub(x,(n[d],r[d+1]))[1]) for x in right_to_left_indices_new[d-1]]
@@ -2966,12 +2966,12 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,maxsweep
 
     if i == 1
     
-      left_to_right_subs[i] = [tuple(ind2sub(x,(n[i],r[i]))[1]) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(ind2sub(x,(r[i],n[i]))[2]) for x in left_to_right_indices[i]]
 
     else
 
-      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
 
     end
   end
@@ -3034,7 +3034,7 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,maxsweep
     right_to_left_indices_new[1], sweep = maxvol!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    left_to_right_subs[1] = [tuple(ind2sub(x,(n[1],r[1]))[1]) for x in left_to_right_indices_new[1]]
+    left_to_right_subs[1] = [tuple(ind2sub(x,(r[1],n[1]))[2]) for x in left_to_right_indices_new[1]]
 
     @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
@@ -3070,8 +3070,8 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,maxsweep
       right_to_left_indices_new[i], sweep = maxvol!(v,μ,300)
 
       # Update left_to_right_subs, keeping the indices nested
-      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices_new[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
 
       @views G[i]   = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
@@ -3104,8 +3104,8 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,maxsweep
     right_to_left_indices_new[d-1], sweep = maxvol!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    temp = [ind2sub(x,(n[d-1],r[d-1])) for x in left_to_right_indices_new[d-1]]
-    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][2]]...,temp[i][1]...) for i in eachindex(temp)]
+    temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
+    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
 
     # Update right_to_left_subs, keeping the indices nested
     right_to_left_subs[d-1] = [tuple(ind2sub(x,(n[d],r[d+1]))[1]) for x in right_to_left_indices_new[d-1]]
@@ -3280,7 +3280,7 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,initial:
     right_to_left_indices_new[1], sweep = maxvol!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    left_to_right_subs[1] = [tuple(ind2sub(x,(n[1],r[1]))[1]) for x in left_to_right_indices_new[1]]
+    left_to_right_subs[1] = [tuple(ind2sub(x,(r[1],n[1]))[2]) for x in left_to_right_indices_new[1]]
 
     @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
@@ -3316,8 +3316,8 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,initial:
       right_to_left_indices_new[i], sweep = maxvol!(v,μ,300)
 
       # Update left_to_right_subs, keeping the indices nested
-      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices_new[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
   
       @views G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
@@ -3350,8 +3350,8 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,initial:
     right_to_left_indices_new[d-1], sweep = maxvol!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    temp = [ind2sub(x,(n[d-1],r[d-1])) for x in left_to_right_indices_new[d-1]]
-    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][2]]...,temp[i][1]...) for i in eachindex(temp)]
+    temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
+    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
 
     # Update right_to_left_subs, keeping the indices nested
     right_to_left_subs[d-1] = [tuple(ind2sub(x,(n[d],r[d+1]))[1]) for x in right_to_left_indices_new[d-1]]
@@ -3624,12 +3624,12 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Array{S,1},m
 
     if i == 1
     
-      left_to_right_subs[i] = [tuple(ind2sub(x,(n[i],r[i]))[1]) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(ind2sub(x,(r[i],n[i]))[2]) for x in left_to_right_indices[i]]
 
     else
 
-      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
 
     end
   end
@@ -3691,7 +3691,7 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Array{S,1},m
     right_to_left_indices_new[1], sweep = maxvol!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    left_to_right_subs[1] = [tuple(ind2sub(x,(n[1],r[1]))[1]) for x in left_to_right_indices_new[1]]
+    left_to_right_subs[1] = [tuple(ind2sub(x,(r[1],n[1]))[2]) for x in left_to_right_indices_new[1]]
 
     @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
@@ -3726,8 +3726,8 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Array{S,1},m
       right_to_left_indices_new[i], sweep = maxvol!(v,μ,300)
 
       # Update left_to_right_subs, keeping the indices nested
-      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices_new[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
 
       @views G[i]   = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
@@ -3759,8 +3759,8 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Array{S,1},m
     right_to_left_indices_new[d-1], sweep = maxvol!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    temp = [ind2sub(x,(n[d-1],r[d-1])) for x in left_to_right_indices_new[d-1]]
-    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][2]]...,temp[i][1]...) for i in eachindex(temp)]
+    temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
+    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
 
     # Update right_to_left_subs, keeping the indices nested
     right_to_left_subs[d-1] = [tuple(ind2sub(x,(n[d],r[d+1]))[1]) for x in right_to_left_indices_new[d-1]]
@@ -3938,12 +3938,12 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
 
     if i == 1
     
-      left_to_right_subs[i] = [tuple(ind2sub(x,(n[i],r[i]))[1]) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(ind2sub(x,(r[i],n[i]))[2]) for x in left_to_right_indices[i]]
 
     else
 
-      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
 
     end
   end
@@ -4006,7 +4006,7 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
     right_to_left_indices_new[1], sweep = maxvol_generic!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    left_to_right_subs[1] = [tuple(ind2sub(x,(n[1],r[1]))[1]) for x in left_to_right_indices_new[1]]
+    left_to_right_subs[1] = [tuple(ind2sub(x,(r[1],n[1]))[2]) for x in left_to_right_indices_new[1]]
 
     @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
@@ -4042,8 +4042,8 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
       right_to_left_indices_new[i], sweep = maxvol_generic!(v,μ,300)
 
       # Update left_to_right_subs, keeping the indices nested
-      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices_new[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
   
       @views G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
@@ -4076,8 +4076,8 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
     right_to_left_indices_new[d-1], sweep = maxvol_generic!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    temp = [ind2sub(x,(n[d-1],r[d-1])) for x in left_to_right_indices_new[d-1]]
-    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][2]]...,temp[i][1]...) for i in eachindex(temp)]
+    temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
+    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
 
     # Update right_to_left_subs, keeping the indices nested
     right_to_left_subs[d-1] = [tuple(ind2sub(x,(n[d],r[d+1]))[1]) for x in right_to_left_indices_new[d-1]]
@@ -4252,7 +4252,7 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
     right_to_left_indices_new[1], sweep = maxvol_generic!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    left_to_right_subs[1] = [tuple(ind2sub(x,(n[1],r[1]))[1]) for x in left_to_right_indices_new[1]]
+    left_to_right_subs[1] = [tuple(ind2sub(x,(r[1],n[1]))[2]) for x in left_to_right_indices_new[1]]
 
     @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
@@ -4288,8 +4288,8 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
       right_to_left_indices_new[i], sweep = maxvol_generic!(v,μ,300)
 
       # Update left_to_right_subs, keeping the indices nested
-      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices_new[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
   
       @views G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
@@ -4322,8 +4322,8 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
     right_to_left_indices_new[d-1], sweep = maxvol_generic!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    temp = [ind2sub(x,(n[d-1],r[d-1])) for x in left_to_right_indices_new[d-1]]
-    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][2]]...,temp[i][1]...) for i in eachindex(temp)]
+    temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
+    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
 
     # Update right_to_left_subs, keeping the indices nested
     right_to_left_subs[d-1] = [tuple(ind2sub(x,(n[d],r[d+1]))[1]) for x in right_to_left_indices_new[d-1]]
@@ -4480,12 +4480,12 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,r::Arra
 
     if i == 1
     
-      left_to_right_subs[i] = [tuple(ind2sub(x,(n[i],r[i]))[1]) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(ind2sub(x,(r[i],n[i]))[2]) for x in left_to_right_indices[i]]
 
     else
 
-      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
 
     end
   end
@@ -4547,7 +4547,7 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,r::Arra
     right_to_left_indices_new[1], sweep = maxvol_generic!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    left_to_right_subs[1] = [tuple(ind2sub(x,(n[1],r[1]))[1]) for x in left_to_right_indices_new[1]]
+    left_to_right_subs[1] = [tuple(ind2sub(x,(r[1],n[1]))[2]) for x in left_to_right_indices_new[1]]
 
     @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
@@ -4582,8 +4582,8 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,r::Arra
       right_to_left_indices_new[i], sweep = maxvol_generic!(v,μ,300)
 
       # Update left_to_right_subs, keeping the indices nested
-      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices_new[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
   
       @views G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
@@ -4615,8 +4615,8 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,r::Arra
     right_to_left_indices_new[d-1], sweep = maxvol_generic!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    temp = [ind2sub(x,(n[d-1],r[d-1])) for x in left_to_right_indices_new[d-1]]
-    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][2]]...,temp[i][1]...) for i in eachindex(temp)]
+    temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
+    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
 
     # Update right_to_left_subs, keeping the indices nested
     right_to_left_subs[d-1] = [tuple(ind2sub(x,(n[d],r[d+1]))[1]) for x in right_to_left_indices_new[d-1]]
@@ -4795,12 +4795,12 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T
 
     if i == 1
     
-      left_to_right_subs[i] = [tuple(ind2sub(x,(n[i],r[i]))[1]) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(ind2sub(x,(r[i],n[i]))[2]) for x in left_to_right_indices[i]]
 
     else
 
-      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
 
     end
   end
@@ -4858,7 +4858,7 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T
     right_to_left_indices_new[1], sweep = maxvol!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    left_to_right_subs[1] = [tuple(ind2sub(x,(n[1],r[1]))[1]) for x in left_to_right_indices_new[1]]
+    left_to_right_subs[1] = [tuple(ind2sub(x,(r[1],n[1]))[2]) for x in left_to_right_indices_new[1]]
 
     @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
@@ -4889,8 +4889,8 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T
       right_to_left_indices_new[i], sweep = maxvol!(v,μ,300)
 
       # Update left_to_right_subs, keeping the indices nested
-      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices_new[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
   
       @views G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
@@ -4921,8 +4921,8 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T
     right_to_left_indices_new[d-1], sweep = maxvol!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    temp = [ind2sub(x,(n[d-1],r[d-1])) for x in left_to_right_indices_new[d-1]]
-    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][2]]...,temp[i][1]...) for i in eachindex(temp)]
+    temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
+    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
 
     # Update right_to_left_subs, keeping the indices nested
     right_to_left_subs[d-1] = [tuple(ind2sub(x,(n[d],r[d+1]))[1]) for x in right_to_left_indices_new[d-1]]
@@ -5085,7 +5085,7 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T
     right_to_left_indices_new[1], sweep = maxvol!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    left_to_right_subs[1] = [tuple(ind2sub(x,(n[1],r[1]))[1]) for x in left_to_right_indices_new[1]]
+    left_to_right_subs[1] = [tuple(ind2sub(x,(r[1],n[1]))[2]) for x in left_to_right_indices_new[1]]
 
     @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
@@ -5116,8 +5116,8 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T
       right_to_left_indices_new[i], sweep = maxvol!(v,μ,300)
 
       # Update left_to_right_subs, keeping the indices nested
-      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices_new[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
   
       @views G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
@@ -5148,8 +5148,8 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T
     right_to_left_indices_new[d-1], sweep = maxvol!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    temp = [ind2sub(x,(n[d-1],r[d-1])) for x in left_to_right_indices_new[d-1]]
-    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][2]]...,temp[i][1]...) for i in eachindex(temp)]
+    temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
+    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
 
     # Update right_to_left_subs, keeping the indices nested
     right_to_left_subs[d-1] = [tuple(ind2sub(x,(n[d],r[d+1]))[1]) for x in right_to_left_indices_new[d-1]]
@@ -5402,12 +5402,12 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Arr
 
     if i == 1
     
-      left_to_right_subs[i] = [tuple(ind2sub(x,(n[i],r[i]))[1]) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(ind2sub(x,(r[i],n[i]))[2]) for x in left_to_right_indices[i]]
 
     else
 
-      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
 
     end
   end
@@ -5464,7 +5464,7 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Arr
     right_to_left_indices_new[1], sweep = maxvol!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    left_to_right_subs[1] = [tuple(ind2sub(x,(n[1],r[1]))[1]) for x in left_to_right_indices_new[1]]
+    left_to_right_subs[1] = [tuple(ind2sub(x,(r[1],n[1]))[2]) for x in left_to_right_indices_new[1]]
 
     @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
@@ -5494,8 +5494,8 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Arr
       right_to_left_indices_new[i], sweep = maxvol!(v,μ,300)
 
       # Update left_to_right_subs, keeping the indices nested
-      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices_new[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
   
       @views G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
@@ -5525,8 +5525,8 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Arr
     right_to_left_indices_new[d-1], sweep = maxvol!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    temp = [ind2sub(x,(n[d-1],r[d-1])) for x in left_to_right_indices_new[d-1]]
-    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][2]]...,temp[i][1]...) for i in eachindex(temp)]
+    temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
+    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
 
     # Update right_to_left_subs, keeping the indices nested
     right_to_left_subs[d-1] = [tuple(ind2sub(x,(n[d],r[d+1]))[1]) for x in right_to_left_indices_new[d-1]]
@@ -5697,12 +5697,12 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
 
     if i == 1
     
-      left_to_right_subs[i] = [tuple(ind2sub(x,(n[i],r[i]))[1]) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(ind2sub(x,(r[i],n[i]))[2]) for x in left_to_right_indices[i]]
 
     else
 
-      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
 
     end
   end
@@ -5760,7 +5760,7 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
     right_to_left_indices_new[1], sweep = maxvol_generic!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    left_to_right_subs[1] = [tuple(ind2sub(x,(n[1],r[1]))[1]) for x in left_to_right_indices_new[1]]
+    left_to_right_subs[1] = [tuple(ind2sub(x,(r[1],n[1]))[2]) for x in left_to_right_indices_new[1]]
 
     @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
@@ -5791,8 +5791,8 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
       right_to_left_indices_new[i], sweep = maxvol_generic!(v,μ,300)
 
       # Update left_to_right_subs, keeping the indices nested
-      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices_new[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
   
       @views G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
@@ -5823,8 +5823,8 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
     right_to_left_indices_new[d-1], sweep = maxvol_generic!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    temp = [ind2sub(x,(n[d-1],r[d-1])) for x in left_to_right_indices_new[d-1]]
-    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][2]]...,temp[i][1]...) for i in eachindex(temp)]
+    temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
+    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
 
     # Update right_to_left_subs, keeping the indices nested
     right_to_left_subs[d-1] = [tuple(ind2sub(x,(n[d],r[d+1]))[1]) for x in right_to_left_indices_new[d-1]]
@@ -5987,7 +5987,7 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
     right_to_left_indices_new[1], sweep = maxvol_generic!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    left_to_right_subs[1] = [tuple(ind2sub(x,(n[1],r[1]))[1]) for x in left_to_right_indices_new[1]]
+    left_to_right_subs[1] = [tuple(ind2sub(x,(r[1],n[1]))[2]) for x in left_to_right_indices_new[1]]
 
     @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
@@ -6018,8 +6018,8 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
       right_to_left_indices_new[i], sweep = maxvol_generic!(v,μ,300)
 
       # Update left_to_right_subs, keeping the indices nested
-      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices_new[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
   
       @views G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
@@ -6050,8 +6050,8 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
     right_to_left_indices_new[d-1], sweep = maxvol_generic!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    temp = [ind2sub(x,(n[d-1],r[d-1])) for x in left_to_right_indices_new[d-1]]
-    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][2]]...,temp[i][1]...) for i in eachindex(temp)]
+    temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
+    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
 
     # Update right_to_left_subs, keeping the indices nested
     right_to_left_subs[d-1] = [tuple(ind2sub(x,(n[d],r[d+1]))[1]) for x in right_to_left_indices_new[d-1]]
@@ -6201,12 +6201,12 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
 
     if i == 1
     
-      left_to_right_subs[i] = [tuple(ind2sub(x,(n[i],r[i]))[1]) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(ind2sub(x,(r[i],n[i]))[2]) for x in left_to_right_indices[i]]
 
     else
 
-      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
 
     end
   end
@@ -6263,7 +6263,7 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
     right_to_left_indices_new[1], sweep = maxvol_generic!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    left_to_right_subs[1] = [tuple(ind2sub(x,(n[1],r[1]))[1]) for x in left_to_right_indices_new[1]]
+    left_to_right_subs[1] = [tuple(ind2sub(x,(r[1],n[1]))[2]) for x in left_to_right_indices_new[1]]
 
     @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
@@ -6293,8 +6293,8 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
       right_to_left_indices_new[i], sweep = maxvol_generic!(v,μ,300)
 
       # Update left_to_right_subs, keeping the indices nested
-      temp = [ind2sub(x,(n[i],r[i])) for x in left_to_right_indices_new[i]]
-      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][2]]...,temp[j][1]...) for j in eachindex(temp)]
+      temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
+      left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
   
       @views G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
@@ -6324,8 +6324,8 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
     right_to_left_indices_new[d-1], sweep = maxvol_generic!(v,μ,300)
 
     # Update left_to_right_subs, keeping the indices nested
-    temp = [ind2sub(x,(n[d-1],r[d-1])) for x in left_to_right_indices_new[d-1]]
-    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][2]]...,temp[i][1]...) for i in eachindex(temp)]
+    temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
+    left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
 
     # Update right_to_left_subs, keeping the indices nested
     right_to_left_subs[d-1] = [tuple(ind2sub(x,(n[d],r[d+1]))[1]) for x in right_to_left_indices_new[d-1]]
@@ -8688,16 +8688,17 @@ Signature
 
 R,Q = rq(A)
 """
-function rq(A::AbstractMatrix{T}) where {T<:Real}
-    
-  m, n = size(A)
-    
-  F = qr(reverse(A',dims=1))
-    
-  R = reverse(F.R',dims=2)
-  Q = reverse(Matrix(F.Q)',dims=1)
-    
-  return R, Q
+function rq(A::AbstractMatrix{T}) where {T<:Real} # not exported
+
+  n = size(A)
+
+  if n[1] > n[2]
+    error("Expected fat matrix for RQ decomposition, got matrix with size $n")
+  end
+
+  q,r = qr(A')
+
+  return r', Matrix(q)'
 
 end
 
@@ -8724,7 +8725,7 @@ function TTorthright(train::L) where {L<:BaseTensorTrain}  # Tensor train orthog
     Π[k] = reshape(Q,r[k],n[k],r[k+1])
     # Update the (k-1)'th core
     G = reshape(Π[k-1],r[k-1]*n[k-1],r[k])
-    G = G*R
+    G .= G*R
     Π[k-1] = reshape(G,r[k-1],n[k-1],r[k])
 
   end
@@ -8752,7 +8753,7 @@ function TTorthright!(train::L) where {L<:BaseTensorTrain}
     train.cores[k] = reshape(Q, r[k], n[k], r[k+1])
     # Update the (k-1)'th core
     G = reshape(train.cores[k-1], r[k-1] * n[k-1], r[k])
-    G = G * R
+    G .= G * R
     train.cores[k-1] = reshape(G, r[k-1], n[k-1], r[k])
   end
     
@@ -8775,7 +8776,7 @@ function TTorthright(train::L) where {L<:ExtendedTensorTrain}
     Π[k] = reshape(Q,r[k],n[k],r[k+1])
     # Update the (k-1)'th core
     G = reshape(Π[k-1],r[k-1]*n[k-1],r[k])
-    G = G*R
+    G .= G*R
     Π[k-1] = reshape(G,r[k-1],n[k-1],r[k])
 
   end
@@ -8798,7 +8799,7 @@ function TTorthright!(train::L) where {L<:ExtendedTensorTrain}
         train.cores[k] = reshape(Q,r[k],n[k],r[k+1])
         # Update the (k-1)'th core
         G = reshape(train.cores[k-1],r[k-1]*n[k-1],r[k])
-        G = G * R
+        G .= G * R
         train.cores[k-1] = reshape(G,r[k-1],n[k-1],r[k])
 
     end
@@ -8829,8 +8830,8 @@ function TTorthleft(train::L) where {L<:BaseTensorTrain}
     Q, R = qr(G)
     Π[k] = reshape(Matrix(Q),r[k],n[k],r[k+1])
     # Update the (k+1)'th core
-    G = reshape(Π[k+1],r[k+1]*n[k+1],r[k+2])
-    G = G*R
+    G = reshape(Π[k+1],r[k+1],n[k+1]*r[k+2])
+    G .= R*G
     Π[k+1] = reshape(G,r[k+1],n[k+1],r[k+2])
 
   end
@@ -8858,8 +8859,8 @@ function TTorthleft!(train::L) where {L<:BaseTensorTrain}
     Q, R = qr(G)
     train.cores[k] = reshape(Matrix(Q),r[k],n[k],r[k+1])
     # Update the (k+1)'th core
-    G = reshape(train.cores[k+1],r[k+1],n[k+1]*r[k+2])
-    G = R * G
+    G = reshape(Π[k+1],r[k+1],n[k+1]*r[k+2])
+    G .= R*G
     train.cores[k+1] = reshape(G,r[k+1],n[k+1],r[k+2])
 
   end
@@ -8882,8 +8883,8 @@ function TTorthleft(train::L) where {L<:ExtendedTensorTrain}
     Q, R = qr(G)
     Π[k] = reshape(Matrix(Q),r[k],n[k],r[k+1])
     # Update the (k+1)'th core
-    G = reshape(Π[k+1],r[k+1]*n[k+1],r[k+2])
-    G = G*R
+    G = reshape(Π[k+1],r[k+1],n[k+1]*r[k+2])
+    G .= R*G
     Π[k+1] = reshape(G,r[k+1],n[k+1],r[k+2])
 
   end
@@ -8911,8 +8912,8 @@ function TTorthleft!(train::L) where {L<:ExtendedTensorTrain}
         Q, R = qr(G)
         train.cores[k] = reshape(Matrix(Q), r[k], n[k], r[k+1])
         # Update the (k+1)'th core
-        G = reshape(train.cores[k+1], r[k+1], n[k+1] * r[k+2])
-        G = R * G
+        G = reshape(Π[k+1],r[k+1],n[k+1]*r[k+2])
+        G .= R*G
         train.cores[k+1] = reshape(G, r[k+1], n[k+1], r[k+2])
 
     end
