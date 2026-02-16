@@ -625,6 +625,153 @@ end
 #### Functions to compute discrete tensor trains from an array
 
 """
+Tensor compression of the dense d-dimensional array, A.
+
+Signatures
+==========
+
+t = TTals(A,r,tol)
+t = TTals(A,r,tol,maxsweeps)
+t = TTals(A,r,tol,maxsweeps,seed)
+"""
+function TTals(A::AbstractArray{T,d},r::S,tol::T1,maxsweeps::S=100,seed::S=123456) where{T<:AbstractFloat,T1<:AbstractFloat,S<:Integer,d}
+
+  if d == 1
+    return BaseTensorTrain([reshape(A,1,length(A),1)],[1,1],0)
+  end
+
+  Random.seed!(seed)
+
+  N = size(A)
+
+  train = TTrand(N,r,T)
+  cores = copy(train.cores)
+  r     = copy(train.ranks)
+
+  len = [Inf for _ in 1:d]
+
+  sweeps = 0
+
+  while sweeps < maxsweeps
+
+    for p = d:-1:1 # p is the core we are solving for
+
+      M = copy(A)
+
+      for i = 1:p-1 # sweep left-to-right left-orthogonalising the first p-1 cores
+
+        M = reshape(M,r[i]*N[i],prod(N[i+1:end]))
+        G = cores[i]
+        n = size(G)
+        G = reshape(G,n[1]*n[2],n[3])
+        Q,R = qr(G)
+        cores[i]   = reshape(Matrix(Q),n)
+        cores[i+1] = times_dim_1(R,cores[i+1])
+        M = Matrix(Q)'M
+
+      end
+
+      for i in d:-1:p+1 # sweep right-to-left right-orthogonalising the last p+1 cores
+
+        M = reshape(M,r[p]*prod(N[p:i-1]),N[i]*r[i+1])
+        G = cores[i]
+        n = size(G)
+        G = reshape(G,n[1],n[2]*n[3])
+        R,Q = rq(G)
+        cores[i]   = reshape(Matrix(Q),n)
+        cores[i-1] = times_dim_3(cores[i-1],R)
+        M = M*Matrix(Q)'
+
+      end
+
+      new_core = reshape(M,r[p],N[p],r[p+1])
+      len[p]   = norm(new_core-cores[p])
+      cores[p] = new_core
+
+    end
+
+    sweeps += 1
+
+    if maximum(len) <= tol
+      break
+    end
+
+  end
+
+  return BaseTensorTrain(cores,r,sweeps)
+
+end
+
+function TTals(A::AbstractArray{T,d},r::Array{S,1},tol::T1,maxsweeps::S=100,seed::S=123456) where{T<:AbstractFloat,T1<:AbstractFloat,S<:Integer,d}
+
+  if d == 1
+    return BaseTensorTrain([reshape(A,1,length(A),1)],[1,1],0)
+  end
+
+  Random.seed!(seed)
+
+  N = size(A)
+
+  train = TTrand(N,r,T)
+  cores = copy(train.cores)
+  r     = copy(train.ranks)
+
+  len = [Inf for _ in 1:d]
+
+  sweeps = 0
+
+  while sweeps < maxsweeps
+
+    for p = d:-1:1 # p is the core we are solving for
+
+      M = copy(A)
+      N = size(M)
+
+      for i = 1:p-1 # sweep left-to-right left-orthogonalising the first p-1 cores
+
+        M = reshape(M,r[i]*N[i],prod(N[i+1:end]))
+        G = cores[i]
+        n = size(G)
+        G = reshape(G,n[1]*n[2],n[3])
+        Q, R = qr(G)
+        cores[i]   = reshape(Matrix(Q),n)
+        cores[i+1] = times_dim_1(R,cores[i+1])
+        M = Matrix(Q)'M
+
+      end
+
+      for i in d:-1:p+1 # sweep right-to-left right-orthogonalising the last p+1 cores
+
+        M = reshape(M,r[p]*prod(N[p:i-1]),N[i]*r[i+1])
+        G = cores[i]
+        n = size(G)
+        G = reshape(G,n[1],n[2]*n[3])
+        R, Q = rq(G)
+        cores[i]   = reshape(Matrix(Q),n)
+        cores[i-1] = times_dim_3(cores[i-1],R)
+        M = M*Matrix(Q)'
+
+      end
+
+      new_core = reshape(M,r[p],N[p],r[p+1])
+      len[p] = norm(new_core-cores[p])
+      cores[p] = new_core
+
+    end
+
+    sweeps += 1
+
+    if maximum(len) <= tol
+      break
+    end
+
+  end
+
+  return BaseTensorTrain(cores,r,sweeps)
+
+end
+
+"""
 Tensor compression of the dense d-dimensional array, A. 
 
 Signatures
@@ -2852,6 +2999,35 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,r::S,maxsweeps::
 end
 
 #### Functions to compute discrete tensor trains from a function
+
+"""
+Compute a discrete tensor train based on the function 'f' that populates the array.
+
+Signature
+=========
+
+t = TTals(f,nodes,r,tol)
+t = TTals(f,nodes,r,tol,maxsweeps)
+t = TTals(f,nodes,r,tol,maxsweeps,seed)
+"""
+function TTals(f::Function,nodes::NTuple{d,Array{T,1}},r::S,tol::T,maxsweeps::S=100,seed::S=123456) where {T<:AbstractFloat,S<:Integer,d}
+
+  n = length.(nodes)
+
+  A = Array{T,d}(undef,n)
+  for i in CartesianIndices(A)
+    point = zeros(d)
+    for j in 1:d
+      point[j] = nodes[j][i[j]]
+    end
+    A[i] = f(point)
+  end
+
+  train = TTals(A,r,tol,maxsweeps,seed)
+
+  return train
+
+end
 
 """
 Compute a discrete tensor train based on the function 'f' that populates the array.
