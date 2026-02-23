@@ -967,6 +967,11 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6) where {T
 
   r_temp = similar(r)
 
+  # Pre-allocate supercores; resize only when ranks change between sweeps
+  A_first = Array{T,3}(undef, n[1], n[2], r[3])
+  A_last  = Array{T,3}(undef, r[d-1], n[d-1], n[d])
+  A_mid   = d >= 4 ? [Array{T,4}(undef, r[i], n[i], n[i+1], r[i+2]) for i in 2:d-2] : Array{T,4}[]
+  
   sweeps = 0
   while true
 
@@ -974,13 +979,16 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6) where {T
 
     # Solve for the first indices
 
-    A = Array{T,3}(undef,(n[1],n[2],r[3]))
-    for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
-      point_index = (j[1],j[2],right_to_left_subs[2][j[3]]...)
-      A[j] = B[CartesianIndex(point_index)]
+    if size(A_first,3) != r[3]
+      A_first = Array{T,3}(undef,n[1],n[2],r[3])
     end
 
-    A = reshape(A,n[1],n[2]*r[3])
+    for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
+      point_index = (j[1],j[2],right_to_left_subs[2][j[3]]...)
+      A_first[j] = B[CartesianIndex(point_index)]
+    end
+
+    A = reshape(A_first,n[1],n[2]*r[3])
     δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
 
@@ -996,13 +1004,16 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6) where {T
   
     for i = 2:d-2
 
-      A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
-      for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
-        point_index = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
-        A[j] = B[CartesianIndex(point_index)]
+      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+        A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
-      A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
+      for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
+        point_index = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
+        A_mid[j] = B[CartesianIndex(point_index)]
+      end
+
+      A = reshape(A_mid,r[i]*n[i],r[i+2]*n[i+1])
       δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
   
@@ -1019,13 +1030,16 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6) where {T
 
     # Solve for the final indices
 
-    A = Array{T,3}(undef,(r[d-1],n[d-1],n[d]))
-    for j in CartesianIndices((1:r[d-1],1:n[d-1],1:n[d]))
-      point_index = (left_to_right_subs[d-2][j[1]]...,j[2],j[3])
-      A[j] = B[CartesianIndex(point_index)]
+    if size(A_last,3) != r[d-1]
+      A_last = Array{T,3}(undef,(r[d-1],n[d-1],n[d]))
     end
 
-    A = reshape(A,r[d-1]*n[d-1],n[d])
+    for j in CartesianIndices((1:r[d-1],1:n[d-1],1:n[d]))
+      point_index = (left_to_right_subs[d-2][j[1]]...,j[2],j[3])
+      A_last[j] = B[CartesianIndex(point_index)]
+    end
+
+    A = reshape(A_last,r[d-1]*n[d-1],n[d])
     δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[d] = tsvd(A,δ)
 
@@ -1036,7 +1050,7 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6) where {T
     temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
     left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
 
-    # Update right_to_left_subs
+    # Update right_to_left_subs, keeping the indices nested
     right_to_left_subs[d-1] = [tuple(x) for x in right_to_left_indices_new[d-1]]
 
     @views G[d-1] = reshape(A[:,right_to_left_indices_new[d-1]]/A[left_to_right_indices_new[d-1],right_to_left_indices_new[d-1]],r[d-1],n[d-1],r[d])
@@ -1050,13 +1064,16 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6) where {T
   
     for i = d-2:-1:2
 
-      A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
-      for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
-        point_index = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
-        A[j] = B[CartesianIndex(point_index)]
+      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+        A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
-      A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
+      for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
+        point_index = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
+        A_mid[j] = B[CartesianIndex(point_index)]
+      end
+
+      A = reshape(A_mid,r[i]*n[i],r[i+2]*n[i+1])
       δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
   
@@ -1071,13 +1088,16 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6) where {T
 
     # Solve for the first indices
 
-    A = Array{T,3}(undef,(n[1],n[2],r[3]))
-    for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
-      point_index = (j[1],j[2],right_to_left_subs[2][j[3]]...)
-      A[j] = B[CartesianIndex(point_index)]
+    if size(A_first,3) != r[3]
+      A_first = Array{T,3}(undef,n[1],n[2],r[3])
     end
 
-    A = reshape(A,n[1],n[2]*r[3])
+    for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
+      point_index = (j[1],j[2],right_to_left_subs[2][j[3]]...)
+      A_first[j] = B[CartesianIndex(point_index)]
+    end
+
+    A = reshape(A_first,n[1],n[2]*r[3])
     δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
 
@@ -1122,7 +1142,7 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,r::Array{S,1},maxsweeps::S = 6) w
   # When d ≤ 2
 
   if d <= 2
-    return TTsvd(b,r)
+    return TTsvd(B,r)
   end
 
   # When d ≥ 3
@@ -1184,6 +1204,11 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,r::Array{S,1},maxsweeps::S = 6) w
 
   r_temp = similar(r)
 
+  # Pre-allocate supercores; resize only when ranks change between sweeps
+  A_first = Array{T,3}(undef, n[1], n[2], r[3])
+  A_last  = Array{T,3}(undef, r[d-1], n[d-1], n[d])
+  A_mid   = d >= 4 ? [Array{T,4}(undef, r[i], n[i], n[i+1], r[i+2]) for i in 2:d-2] : Array{T,4}[]
+  
   sweeps = 0
   while true
 
@@ -1191,13 +1216,16 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,r::Array{S,1},maxsweeps::S = 6) w
 
     # Solve for the first indices
 
-    A = Array{T,3}(undef,(n[1],n[2],r[3]))
-    for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
-      point_index = (j[1],j[2],right_to_left_subs[2][j[3]]...)
-      A[j] = B[CartesianIndex(point_index)]
+    if size(A_first,3) != r[3]
+      A_first = Array{T,3}(undef,n[1],n[2],r[3])
     end
 
-    A = reshape(A,n[1],n[2]*r[3])
+    for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
+      point_index = (j[1],j[2],right_to_left_subs[2][j[3]]...)
+      A_first[j] = B[CartesianIndex(point_index)]
+    end
+
+    A = reshape(A_first,n[1],n[2]*r[3])
     u,s,v,r[2] = tsvd(A,r[2])
 
     left_to_right_indices_new[1], _ = maxvol!(u,μ,300)
@@ -1212,13 +1240,16 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,r::Array{S,1},maxsweeps::S = 6) w
   
     for i = 2:d-2
 
-      A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+        A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      end
+
       for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
         point_index = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
-        A[j] = B[CartesianIndex(point_index)]
+        A_mid[j] = B[CartesianIndex(point_index)]
       end
-  
-      A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
+
+      A = reshape(A_mid,r[i]*n[i],r[i+2]*n[i+1])
       u,s,v,r[i+1] = tsvd(A,r[i+1])
   
       left_to_right_indices_new[i], _ = maxvol!(u,μ,300)
@@ -1234,13 +1265,16 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,r::Array{S,1},maxsweeps::S = 6) w
 
     # Solve for the final indices
 
-    A = Array{T,3}(undef,(r[d-1],n[d-1],n[d]))
-    for j in CartesianIndices((1:r[d-1],1:n[d-1],1:n[d]))
-      point_index = (left_to_right_subs[d-2][j[1]]...,j[2],j[3])
-      A[j] = B[CartesianIndex(point_index)]
+    if size(A_last,3) != r[d-1]
+      A_last = Array{T,3}(undef,(r[d-1],n[d-1],n[d]))
     end
 
-    A = reshape(A,r[d-1]*n[d-1],n[d])
+    for j in CartesianIndices((1:r[d-1],1:n[d-1],1:n[d]))
+      point_index = (left_to_right_subs[d-2][j[1]]...,j[2],j[3])
+      A_last[j] = B[CartesianIndex(point_index)]
+    end
+
+    A = reshape(A_last,r[d-1]*n[d-1],n[d])
     u,s,v,r[d] = tsvd(A,r[d])
 
     left_to_right_indices_new[d-1], _ = maxvol!(u,μ,300)
@@ -1250,7 +1284,7 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,r::Array{S,1},maxsweeps::S = 6) w
     temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
     left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
 
-    # Update right_to_left_subs, nesting is not kept
+    # Update right_to_left_subs, keeping the indices nested
     right_to_left_subs[d-1] = [tuple(x) for x in right_to_left_indices_new[d-1]]
 
     @views G[d-1] = reshape(A[:,right_to_left_indices_new[d-1]]/A[left_to_right_indices_new[d-1],right_to_left_indices_new[d-1]],r[d-1],n[d-1],r[d])
@@ -1264,13 +1298,16 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,r::Array{S,1},maxsweeps::S = 6) w
   
     for i = d-2:-1:2
 
-      A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
-      for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
-        point_index = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
-        A[j] = B[CartesianIndex(point_index)]
+      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+        A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
-      A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
+      for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
+        point_index = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
+        A_mid[j] = B[CartesianIndex(point_index)]
+      end
+
+      A = reshape(A_mid,r[i]*n[i],r[i+2]*n[i+1])
       u,s,v,r[i+1] = tsvd(A,r[i+1])
   
       left_to_right_indices_new[i], _ = maxvol!(u,μ,300)
@@ -1284,13 +1321,16 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,r::Array{S,1},maxsweeps::S = 6) w
 
     # Solve for the first indices
 
-    A = Array{T,3}(undef,(n[1],n[2],r[3]))
-    for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
-      point_index = (j[1],j[2],right_to_left_subs[2][j[3]]...)
-      A[j] = B[CartesianIndex(point_index)]
+    if size(A_first,3) != r[3]
+      A_first = Array{T,3}(undef,n[1],n[2],r[3])
     end
 
-    A = reshape(A,n[1],n[2]*r[3])
+    for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
+      point_index = (j[1],j[2],right_to_left_subs[2][j[3]]...)
+      A_first[j] = B[CartesianIndex(point_index)]
+    end
+
+    A = reshape(A_first,n[1],n[2]*r[3])
     u,s,v,r[2] = tsvd(A,r[2])
 
     left_to_right_indices_new[1], _ = maxvol!(u,μ,300)
@@ -1422,6 +1462,11 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps::S = 6) 
 
   r_temp = similar(r)
 
+  # Pre-allocate supercores; resize only when ranks change between sweeps
+  A_first = Array{T,3}(undef, n[1], n[2], r[3])
+  A_last  = Array{T,3}(undef, r[d-1], n[d-1], n[d])
+  A_mid   = d >= 4 ? [Array{T,4}(undef, r[i], n[i], n[i+1], r[i+2]) for i in 2:d-2] : Array{T,4}[]
+  
   sweeps = 0
   while true
 
@@ -1429,13 +1474,16 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps::S = 6) 
 
     # Solve for the first indices
 
-    A = Array{T,3}(undef,(n[1],n[2],r[3]))
-    for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
-      point_index = (j[1],j[2],right_to_left_subs[2][j[3]]...)
-      A[j] = B[CartesianIndex(point_index)]
+    if size(A_first,3) != r[3]
+      A_first = Array{T,3}(undef,n[1],n[2],r[3])
     end
 
-    A = reshape(A,n[1],n[2]*r[3])
+    for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
+      point_index = (j[1],j[2],right_to_left_subs[2][j[3]]...)
+      A_first[j] = B[CartesianIndex(point_index)]
+    end
+
+    A = reshape(A_first,n[1],n[2]*r[3])
     δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
 
@@ -1445,19 +1493,22 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps::S = 6) 
     # Update left_to_right_subs, keeping the indices nested
     left_to_right_subs[1] = [tuple(x) for x in left_to_right_indices_new[1]]
 
-    G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
+    @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
     # Solve for the interior indices
   
     for i = 2:d-2
 
-      A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
-      for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
-        point_index = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
-        A[j] = B[CartesianIndex(point_index)]
+      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+        A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
-      A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
+      for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
+        point_index = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
+        A_mid[j] = B[CartesianIndex(point_index)]
+      end
+
+      A = reshape(A_mid,r[i]*n[i],r[i+2]*n[i+1])
       δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
   
@@ -1468,19 +1519,22 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps::S = 6) 
       temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
       left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
 
-      G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
+      @views G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
     end
 
     # Solve for the final indices
 
-    A = Array{T,3}(undef,(r[d-1],n[d-1],n[d]))
-    for j in CartesianIndices((1:r[d-1],1:n[d-1],1:n[d]))
-      point_index = (left_to_right_subs[d-2][j[1]]...,j[2],j[3])
-      A[j] = B[CartesianIndex(point_index)]
+    if size(A_last,3) != r[d-1]
+      A_last = Array{T,3}(undef,(r[d-1],n[d-1],n[d]))
     end
 
-    A = reshape(A,r[d-1]*n[d-1],n[d])
+    for j in CartesianIndices((1:r[d-1],1:n[d-1],1:n[d]))
+      point_index = (left_to_right_subs[d-2][j[1]]...,j[2],j[3])
+      A_last[j] = B[CartesianIndex(point_index)]
+    end
+
+    A = reshape(A_last,r[d-1]*n[d-1],n[d])
     δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[d] = tsvd(A,δ)
 
@@ -1491,7 +1545,7 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps::S = 6) 
     temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
     left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
 
-    # Update right_to_left_subs, nesting is not kept
+    # Update right_to_left_subs, keeping the indices nested
     right_to_left_subs[d-1] = [tuple(x) for x in right_to_left_indices_new[d-1]]
 
     @views G[d-1] = reshape(A[:,right_to_left_indices_new[d-1]]/A[left_to_right_indices_new[d-1],right_to_left_indices_new[d-1]],r[d-1],n[d-1],r[d])
@@ -1505,13 +1559,16 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps::S = 6) 
   
     for i = d-2:-1:2
 
-      A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
-      for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
-        point_index = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
-        A[j] = B[CartesianIndex(point_index)]
+      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+        A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
-      A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
+      for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
+        point_index = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
+        A_mid[j] = B[CartesianIndex(point_index)]
+      end
+
+      A = reshape(A_mid,r[i]*n[i],r[i+2]*n[i+1])
       δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
   
@@ -1526,13 +1583,16 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps::S = 6) 
 
     # Solve for the first indices
 
-    A = Array{T,3}(undef,(n[1],n[2],r[3]))
-    for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
-      point_index = (j[1],j[2],right_to_left_subs[2][j[3]]...)
-      A[j] = B[CartesianIndex(point_index)]
+    if size(A_first,3) != r[3]
+      A_first = Array{T,3}(undef,n[1],n[2],r[3])
     end
 
-    A = reshape(A,n[1],n[2]*r[3])
+    for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
+      point_index = (j[1],j[2],right_to_left_subs[2][j[3]]...)
+      A_first[j] = B[CartesianIndex(point_index)]
+    end
+
+    A = reshape(A_first,n[1],n[2]*r[3])
     δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
 
@@ -1577,7 +1637,7 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,r::Array{S,1},maxsweeps::
   # When d ≤ 2
 
   if d <= 2
-    return TTsvd(b,r)
+    return TTsvd(B,r)
   end
 
   # When d ≥ 3
@@ -1640,6 +1700,11 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,r::Array{S,1},maxsweeps::
 
   r_temp = similar(r)
 
+  # Pre-allocate supercores; resize only when ranks change between sweeps
+  A_first = Array{T,3}(undef, n[1], n[2], r[3])
+  A_last  = Array{T,3}(undef, r[d-1], n[d-1], n[d])
+  A_mid   = d >= 4 ? [Array{T,4}(undef, r[i], n[i], n[i+1], r[i+2]) for i in 2:d-2] : Array{T,4}[]
+  
   sweeps = 0
   while true
 
@@ -1647,13 +1712,16 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,r::Array{S,1},maxsweeps::
 
     # Solve for the first indices
 
-    A = Array{T,3}(undef,(n[1],n[2],r[3]))
-    for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
-      point_index = (j[1],j[2],right_to_left_subs[2][j[3]]...)
-      A[j] = B[CartesianIndex(point_index)]
+    if size(A_first,3) != r[3]
+      A_first = Array{T,3}(undef,n[1],n[2],r[3])
     end
 
-    A = reshape(A,n[1],n[2]*r[3])
+    for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
+      point_index = (j[1],j[2],right_to_left_subs[2][j[3]]...)
+      A_first[j] = B[CartesianIndex(point_index)]
+    end
+
+    A = reshape(A_first,n[1],n[2]*r[3])
     u,s,v,r[2] = tsvd(A,r[2])
 
     left_to_right_indices_new[1], _ = maxvol_generic!(u,μ,300)
@@ -1662,19 +1730,22 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,r::Array{S,1},maxsweeps::
     # Update left_to_right_subs, keeping the indices nested
     left_to_right_subs[1] = [tuple(x) for x in left_to_right_indices_new[1]]
 
-    G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
+    @views G[1] = reshape(A[:,right_to_left_indices_new[1]]/A[left_to_right_indices_new[1],right_to_left_indices_new[1]],r[1],n[1],r[2])
 
     # Solve for the interior indices
   
     for i = 2:d-2
 
-      A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+        A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      end
+
       for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
         point_index = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
-        A[j] = B[CartesianIndex(point_index)]
+        A_mid[j] = B[CartesianIndex(point_index)]
       end
-  
-      A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
+
+      A = reshape(A_mid,r[i]*n[i],r[i+2]*n[i+1])
       u,s,v,r[i+1] = tsvd(A,r[i+1])
   
       left_to_right_indices_new[i], _ = maxvol_generic!(u,μ,300)
@@ -1684,19 +1755,22 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,r::Array{S,1},maxsweeps::
       temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
       left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
 
-      G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
+      @views G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
     end
 
     # Solve for the final indices
 
-    A = Array{T,3}(undef,(r[d-1],n[d-1],n[d]))
-    for j in CartesianIndices((1:r[d-1],1:n[d-1],1:n[d]))
-      point_index = (left_to_right_subs[d-2][j[1]]...,j[2],j[3])
-      A[j] = B[CartesianIndex(point_index)]
+    if size(A_last,3) != r[d-1]
+      A_last = Array{T,3}(undef,(r[d-1],n[d-1],n[d]))
     end
 
-    A = reshape(A,r[d-1]*n[d-1],n[d])
+    for j in CartesianIndices((1:r[d-1],1:n[d-1],1:n[d]))
+      point_index = (left_to_right_subs[d-2][j[1]]...,j[2],j[3])
+      A_last[j] = B[CartesianIndex(point_index)]
+    end
+
+    A = reshape(A_last,r[d-1]*n[d-1],n[d])
     u,s,v,r[d] = tsvd(A,r[d])
 
     left_to_right_indices_new[d-1], _ = maxvol_generic!(u,μ,300)
@@ -1706,7 +1780,7 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,r::Array{S,1},maxsweeps::
     temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
     left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
 
-    # Update right_to_left_subs, nesting is not kept
+    # Update right_to_left_subs, keeping the indices nested
     right_to_left_subs[d-1] = [tuple(x) for x in right_to_left_indices_new[d-1]]
 
     @views G[d-1] = reshape(A[:,right_to_left_indices_new[d-1]]/A[left_to_right_indices_new[d-1],right_to_left_indices_new[d-1]],r[d-1],n[d-1],r[d])
@@ -1720,13 +1794,16 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,r::Array{S,1},maxsweeps::
   
     for i = d-2:-1:2
 
-      A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
-      for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
-        point_index = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
-        A[j] = B[CartesianIndex(point_index)]
+      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+        A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
-      A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
+      for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
+        point_index = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
+        A_mid[j] = B[CartesianIndex(point_index)]
+      end
+
+      A = reshape(A_mid,r[i]*n[i],r[i+2]*n[i+1])
       u,s,v,r[i+1] = tsvd(A,r[i+1])
   
       left_to_right_indices_new[i], _ = maxvol_generic!(u,μ,300)
@@ -1740,13 +1817,16 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,r::Array{S,1},maxsweeps::
 
     # Solve for the first indices
 
-    A = Array{T,3}(undef,(n[1],n[2],r[3]))
-    for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
-      point_index = (j[1],j[2],right_to_left_subs[2][j[3]]...)
-      A[j] = B[CartesianIndex(point_index)]
+    if size(A_first,3) != r[3]
+      A_first = Array{T,3}(undef,n[1],n[2],r[3])
     end
 
-    A = reshape(A,n[1],n[2]*r[3])
+    for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
+      point_index = (j[1],j[2],right_to_left_subs[2][j[3]]...)
+      A_first[j] = B[CartesianIndex(point_index)]
+    end
+
+    A = reshape(A_first,n[1],n[2]*r[3])
     u,s,v,r[2] = tsvd(A,r[2])
 
     left_to_right_indices_new[1], _ = maxvol_generic!(u,μ,300)
@@ -1878,6 +1958,11 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6)
 
   r_temp = similar(r)
 
+  # Pre-allocate supercores; resize only when ranks change between sweeps
+  A_first = Array{T,3}(undef, n[1], n[2], r[3])
+  A_last  = Array{T,3}(undef, r[d-1], n[d-1], n[d])
+  A_mid   = d >= 4 ? [Array{T,4}(undef, r[i], n[i], n[i+1], r[i+2]) for i in 2:d-2] : Array{T,4}[]
+  
   sweeps = 0
   while true
 
@@ -1885,13 +1970,16 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6)
 
     # Solve for the first indices
 
-    A = Array{T,3}(undef,(n[1],n[2],r[3]))
-    Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
-      point_index = (j[1],j[2],right_to_left_subs[2][j[3]]...)
-      A[j] = B[CartesianIndex(point_index)]
+    if size(A_first,3) != r[3]
+      A_first = Array{T,3}(undef,n[1],n[2],r[3])
     end
 
-    A = reshape(A,n[1],n[2]*r[3])
+    Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
+      point_index = (j[1],j[2],right_to_left_subs[2][j[3]]...)
+      A_first[j] = B[CartesianIndex(point_index)]
+    end
+
+    A = reshape(A_first,n[1],n[2]*r[3])
     δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
 
@@ -1907,13 +1995,16 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6)
   
     for i = 2:d-2
 
-      A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
-      Threads.@threads for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
-        point_index = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
-        A[j] = B[CartesianIndex(point_index)]
+      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+        A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
-      A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
+      Threads.@threads for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
+        point_index = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
+        A_mid[j] = B[CartesianIndex(point_index)]
+      end
+
+      A = reshape(A_mid,r[i]*n[i],r[i+2]*n[i+1])
       δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
   
@@ -1930,13 +2021,16 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6)
 
     # Solve for the final indices
 
-    A = Array{T,3}(undef,(r[d-1],n[d-1],n[d]))
-    Threads.@threads for j in CartesianIndices((1:r[d-1],1:n[d-1],1:n[d]))
-      point_index = (left_to_right_subs[d-2][j[1]]...,j[2],j[3])
-      A[j] = B[CartesianIndex(point_index)]
+    if size(A_last,3) != r[d-1]
+      A_last = Array{T,3}(undef,(r[d-1],n[d-1],n[d]))
     end
 
-    A = reshape(A,r[d-1]*n[d-1],n[d])
+    Threads.@threads for j in CartesianIndices((1:r[d-1],1:n[d-1],1:n[d]))
+      point_index = (left_to_right_subs[d-2][j[1]]...,j[2],j[3])
+      A_last[j] = B[CartesianIndex(point_index)]
+    end
+
+    A = reshape(A_last,r[d-1]*n[d-1],n[d])
     δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[d] = tsvd(A,δ)
 
@@ -1947,7 +2041,7 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6)
     temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
     left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
 
-    # Update right_to_left_subs, nesting is not kept
+    # Update right_to_left_subs
     right_to_left_subs[d-1] = [tuple(x) for x in right_to_left_indices_new[d-1]]
 
     @views G[d-1] = reshape(A[:,right_to_left_indices_new[d-1]]/A[left_to_right_indices_new[d-1],right_to_left_indices_new[d-1]],r[d-1],n[d-1],r[d])
@@ -1961,20 +2055,23 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6)
   
     for i = d-2:-1:2
 
-      A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
-      Threads.@threads for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
-        point_index = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
-        A[j] = B[CartesianIndex(point_index)]
+      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+        A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
-      A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
+      Threads.@threads for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
+        point_index = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
+        A_mid[j] = B[CartesianIndex(point_index)]
+      end
+
+      A = reshape(A_mid,r[i]*n[i],r[i+2]*n[i+1])
       δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
   
       left_to_right_indices_new[i], _ = maxvol!(u,μ,300)
       right_to_left_indices_new[i], _ = maxvol!(v,μ,300)
   
-      # Update right_to_left_subs, nesting is not kept
+      # Update right_to_left_subs
       temp = [ind2sub(x,(n[i+1],r[i+2])) for x in right_to_left_indices_new[i]]
       right_to_left_subs[i] = [tuple(temp[j][1]...,right_to_left_subs[i+1][temp[j][2]]...) for j in eachindex(temp)]
 
@@ -1982,20 +2079,23 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6)
 
     # Solve for the first indices
 
-    A = Array{T,3}(undef,(n[1],n[2],r[3]))
-    Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
-      point_index = (j[1],j[2],right_to_left_subs[2][j[3]]...)
-      A[j] = B[CartesianIndex(point_index)]
+    if size(A_first,3) != r[3]
+      A_first = Array{T,3}(undef,n[1],n[2],r[3])
     end
 
-    A = reshape(A,n[1],n[2]*r[3])
+    Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
+      point_index = (j[1],j[2],right_to_left_subs[2][j[3]]...)
+      A_first[j] = B[CartesianIndex(point_index)]
+    end
+
+    A = reshape(A_first,n[1],n[2]*r[3])
     δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
 
     left_to_right_indices_new[1], _ = maxvol!(u,μ,300)
     right_to_left_indices_new[1], _ = maxvol!(v,μ,300)
 
-    # Update right_to_left_subs, nesting is not kept
+    # Update right_to_left_subs
     temp = [ind2sub(x,(n[2],r[3])) for x in right_to_left_indices_new[1]]
     right_to_left_subs[1] = [tuple(temp[j][1]...,right_to_left_subs[2][temp[j][2]]...) for j in eachindex(temp)]
 
@@ -2033,7 +2133,7 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,r::Array{S,1},maxsweeps:
   # When d ≤ 2
 
   if d <= 2
-    return TTsvd(b,r)
+    return TTsvd(B,r)
   end
 
   # When d ≥ 3
@@ -2096,6 +2196,11 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,r::Array{S,1},maxsweeps:
 
   r_temp = similar(r)
 
+  # Pre-allocate supercores; resize only when ranks change between sweeps
+  A_first = Array{T,3}(undef, n[1], n[2], r[3])
+  A_last  = Array{T,3}(undef, r[d-1], n[d-1], n[d])
+  A_mid   = d >= 4 ? [Array{T,4}(undef, r[i], n[i], n[i+1], r[i+2]) for i in 2:d-2] : Array{T,4}[]
+  
   sweeps = 0
   while true
 
@@ -2103,13 +2208,16 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,r::Array{S,1},maxsweeps:
 
     # Solve for the first indices
 
-    A = Array{T,3}(undef,(n[1],n[2],r[3]))
-    Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
-      point_index = (j[1],j[2],right_to_left_subs[2][j[3]]...)
-      A[j] = B[CartesianIndex(point_index)]
+    if size(A_first,3) != r[3]
+      A_first = Array{T,3}(undef,n[1],n[2],r[3])
     end
 
-    A = reshape(A,n[1],n[2]*r[3])
+    Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
+      point_index = (j[1],j[2],right_to_left_subs[2][j[3]]...)
+      A_first[j] = B[CartesianIndex(point_index)]
+    end
+
+    A = reshape(A_first,n[1],n[2]*r[3])
     u,s,v,r[2] = tsvd(A,r[2])
 
     left_to_right_indices_new[1], _ = maxvol!(u,μ,300)
@@ -2124,13 +2232,16 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,r::Array{S,1},maxsweeps:
   
     for i = 2:d-2
 
-      A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+        A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      end
+
       Threads.@threads for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
         point_index = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
-        A[j] = B[CartesianIndex(point_index)]
+        A_mid[j] = B[CartesianIndex(point_index)]
       end
-  
-      A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
+
+      A = reshape(A_mid,r[i]*n[i],r[i+2]*n[i+1])
       u,s,v,r[i+1] = tsvd(A,r[i+1])
   
       left_to_right_indices_new[i], _ = maxvol!(u,μ,300)
@@ -2146,13 +2257,16 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,r::Array{S,1},maxsweeps:
 
     # Solve for the final indices
 
-    A = Array{T,3}(undef,(r[d-1],n[d-1],n[d]))
-    Threads.@threads for j in CartesianIndices((1:r[d-1],1:n[d-1],1:n[d]))
-      point_index = (left_to_right_subs[d-2][j[1]]...,j[2],j[3])
-      A[j] = B[CartesianIndex(point_index)]
+    if size(A_last,3) != r[d-1]
+      A_last = Array{T,3}(undef,(r[d-1],n[d-1],n[d]))
     end
 
-    A = reshape(A,r[d-1]*n[d-1],n[d])
+    Threads.@threads for j in CartesianIndices((1:r[d-1],1:n[d-1],1:n[d]))
+      point_index = (left_to_right_subs[d-2][j[1]]...,j[2],j[3])
+      A_last[j] = B[CartesianIndex(point_index)]
+    end
+
+    A = reshape(A_last,r[d-1]*n[d-1],n[d])
     u,s,v,r[d] = tsvd(A,r[d])
 
     left_to_right_indices_new[d-1], _ = maxvol!(u,μ,300)
@@ -2162,7 +2276,7 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,r::Array{S,1},maxsweeps:
     temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
     left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
 
-    # Update right_to_left_subs, nesting is not kept
+    # Update right_to_left_subs
     right_to_left_subs[d-1] = [tuple(x) for x in right_to_left_indices_new[d-1]]
 
     @views G[d-1] = reshape(A[:,right_to_left_indices_new[d-1]]/A[left_to_right_indices_new[d-1],right_to_left_indices_new[d-1]],r[d-1],n[d-1],r[d])
@@ -2176,19 +2290,22 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,r::Array{S,1},maxsweeps:
   
     for i = d-2:-1:2
 
-      A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
-      Threads.@threads for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
-        point_index = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
-        A[j] = B[CartesianIndex(point_index)]
+      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+        A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
-      A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
+      Threads.@threads for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
+        point_index = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
+        A_mid[j] = B[CartesianIndex(point_index)]
+      end
+
+      A = reshape(A_mid,r[i]*n[i],r[i+2]*n[i+1])
       u,s,v,r[i+1] = tsvd(A,r[i+1])
   
       left_to_right_indices_new[i], _ = maxvol!(u,μ,300)
       right_to_left_indices_new[i], _ = maxvol!(v,μ,300)
   
-      # Update right_to_left_subs, nesting is not kept
+      # Update right_to_left_subs
       temp = [ind2sub(x,(n[i+1],r[i+2])) for x in right_to_left_indices_new[i]]
       right_to_left_subs[i] = [tuple(temp[j][1]...,right_to_left_subs[i+1][temp[j][2]]...) for j in eachindex(temp)]
 
@@ -2196,19 +2313,22 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,r::Array{S,1},maxsweeps:
 
     # Solve for the first indices
 
-    A = Array{T,3}(undef,(n[1],n[2],r[3]))
-    Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
-      point_index = (j[1],j[2],right_to_left_subs[2][j[3]]...)
-      A[j] = B[CartesianIndex(point_index)]
+    if size(A_first,3) != r[3]
+      A_first = Array{T,3}(undef,n[1],n[2],r[3])
     end
 
-    A = reshape(A,n[1],n[2]*r[3])
+    Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
+      point_index = (j[1],j[2],right_to_left_subs[2][j[3]]...)
+      A_first[j] = B[CartesianIndex(point_index)]
+    end
+
+    A = reshape(A_first,n[1],n[2]*r[3])
     u,s,v,r[2] = tsvd(A,r[2])
 
     left_to_right_indices_new[1], _ = maxvol!(u,μ,300)
     right_to_left_indices_new[1], _ = maxvol!(v,μ,300)
 
-    # Update right_to_left_subs, nesting is not kept
+    # Update right_to_left_subs
     temp = [ind2sub(x,(n[2],r[3])) for x in right_to_left_indices_new[1]]
     right_to_left_subs[1] = [tuple(temp[j][1]...,right_to_left_subs[2][temp[j][2]]...) for j in eachindex(temp)]
 
@@ -2334,6 +2454,11 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps
 
   r_temp = similar(r)
 
+  # Pre-allocate supercores; resize only when ranks change between sweeps
+  A_first = Array{T,3}(undef, n[1], n[2], r[3])
+  A_last  = Array{T,3}(undef, r[d-1], n[d-1], n[d])
+  A_mid   = d >= 4 ? [Array{T,4}(undef, r[i], n[i], n[i+1], r[i+2]) for i in 2:d-2] : Array{T,4}[]
+  
   sweeps = 0
   while true
 
@@ -2341,13 +2466,16 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps
 
     # Solve for the first indices
 
-    A = Array{T,3}(undef,(n[1],n[2],r[3]))
-    Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
-      point_index = (j[1],j[2],right_to_left_subs[2][j[3]]...)
-      A[j] = B[CartesianIndex(point_index)]
+    if size(A_first,3) != r[3]
+      A_first = Array{T,3}(undef,n[1],n[2],r[3])
     end
 
-    A = reshape(A,n[1],n[2]*r[3])
+    Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
+      point_index = (j[1],j[2],right_to_left_subs[2][j[3]]...)
+      A_first[j] = B[CartesianIndex(point_index)]
+    end
+
+    A = reshape(A_first,n[1],n[2]*r[3])
     δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
 
@@ -2363,13 +2491,16 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps
   
     for i = 2:d-2
 
-      A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
-      Threads.@threads for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
-        point_index = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
-        A[j] = B[CartesianIndex(point_index)]
+      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+        A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
-      A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
+      Threads.@threads for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
+        point_index = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
+        A_mid[j] = B[CartesianIndex(point_index)]
+      end
+
+      A = reshape(A_mid,r[i]*n[i],r[i+2]*n[i+1])
       δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
   
@@ -2386,13 +2517,16 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps
 
     # Solve for the final indices
 
-    A = Array{T,3}(undef,(r[d-1],n[d-1],n[d]))
-    Threads.@threads for j in CartesianIndices((1:r[d-1],1:n[d-1],1:n[d]))
-      point_index = (left_to_right_subs[d-2][j[1]]...,j[2],j[3])
-      A[j] = B[CartesianIndex(point_index)]
+    if size(A_last,3) != r[d-1]
+      A_last = Array{T,3}(undef,(r[d-1],n[d-1],n[d]))
     end
 
-    A = reshape(A,r[d-1]*n[d-1],n[d])
+    Threads.@threads for j in CartesianIndices((1:r[d-1],1:n[d-1],1:n[d]))
+      point_index = (left_to_right_subs[d-2][j[1]]...,j[2],j[3])
+      A_last[j] = B[CartesianIndex(point_index)]
+    end
+
+    A = reshape(A_last,r[d-1]*n[d-1],n[d])
     δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[d] = tsvd(A,δ)
 
@@ -2403,7 +2537,7 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps
     temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
     left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
 
-    # Update right_to_left_subs, nesting is not kept
+    # Update right_to_left_subs
     right_to_left_subs[d-1] = [tuple(x) for x in right_to_left_indices_new[d-1]]
 
     @views G[d-1] = reshape(A[:,right_to_left_indices_new[d-1]]/A[left_to_right_indices_new[d-1],right_to_left_indices_new[d-1]],r[d-1],n[d-1],r[d])
@@ -2417,20 +2551,23 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps
   
     for i = d-2:-1:2
 
-      A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
-      Threads.@threads for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
-        point_index = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
-        A[j] = B[CartesianIndex(point_index)]
+      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+        A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
-      A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
+      Threads.@threads for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
+        point_index = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
+        A_mid[j] = B[CartesianIndex(point_index)]
+      end
+
+      A = reshape(A_mid,r[i]*n[i],r[i+2]*n[i+1])
       δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
   
       left_to_right_indices_new[i], _ = maxvol_generic!(u,μ,300)
       right_to_left_indices_new[i], _ = maxvol_generic!(v,μ,300)
   
-      # Update right_to_left_subs, nesting is not kept
+      # Update right_to_left_subs
       temp = [ind2sub(x,(n[i+1],r[i+2])) for x in right_to_left_indices_new[i]]
       right_to_left_subs[i] = [tuple(temp[j][1]...,right_to_left_subs[i+1][temp[j][2]]...) for j in eachindex(temp)]
 
@@ -2438,20 +2575,23 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps
 
     # Solve for the first indices
 
-    A = Array{T,3}(undef,(n[1],n[2],r[3]))
-    Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
-      point_index = (j[1],j[2],right_to_left_subs[2][j[3]]...)
-      A[j] = B[CartesianIndex(point_index)]
+    if size(A_first,3) != r[3]
+      A_first = Array{T,3}(undef,n[1],n[2],r[3])
     end
 
-    A = reshape(A,n[1],n[2]*r[3])
+    Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
+      point_index = (j[1],j[2],right_to_left_subs[2][j[3]]...)
+      A_first[j] = B[CartesianIndex(point_index)]
+    end
+
+    A = reshape(A_first,n[1],n[2]*r[3])
     δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
 
     left_to_right_indices_new[1], _ = maxvol_generic!(u,μ,300)
     right_to_left_indices_new[1], _ = maxvol_generic!(v,μ,300)
 
-    # Update right_to_left_subs, nesting is not kept
+    # Update right_to_left_subs
     temp = [ind2sub(x,(n[2],r[3])) for x in right_to_left_indices_new[1]]
     right_to_left_subs[1] = [tuple(temp[j][1]...,right_to_left_subs[2][temp[j][2]]...) for j in eachindex(temp)]
 
@@ -2489,7 +2629,7 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,r::Array{S,1},ma
   # When d ≤ 2
 
   if d <= 2
-    return TTsvd(b,r)
+    return TTsvd(B,r)
   end
 
   # When d ≥ 3
@@ -2552,6 +2692,11 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,r::Array{S,1},ma
 
   r_temp = similar(r)
 
+  # Pre-allocate supercores; resize only when ranks change between sweeps
+  A_first = Array{T,3}(undef, n[1], n[2], r[3])
+  A_last  = Array{T,3}(undef, r[d-1], n[d-1], n[d])
+  A_mid   = d >= 4 ? [Array{T,4}(undef, r[i], n[i], n[i+1], r[i+2]) for i in 2:d-2] : Array{T,4}[]
+  
   sweeps = 0
   while true
 
@@ -2559,13 +2704,16 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,r::Array{S,1},ma
 
     # Solve for the first indices
 
-    A = Array{T,3}(undef,(n[1],n[2],r[3]))
-    Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
-      point_index = (j[1],j[2],right_to_left_subs[2][j[3]]...)
-      A[j] = B[CartesianIndex(point_index)]
+    if size(A_first,3) != r[3]
+      A_first = Array{T,3}(undef,n[1],n[2],r[3])
     end
 
-    A = reshape(A,n[1],n[2]*r[3])
+    Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
+      point_index = (j[1],j[2],right_to_left_subs[2][j[3]]...)
+      A_first[j] = B[CartesianIndex(point_index)]
+    end
+
+    A = reshape(A_first,n[1],n[2]*r[3])
     u,s,v,r[2] = tsvd(A,r[2])
 
     left_to_right_indices_new[1], _ = maxvol_generic!(u,μ,300)
@@ -2580,13 +2728,16 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,r::Array{S,1},ma
   
     for i = 2:d-2
 
-      A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+        A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      end
+
       Threads.@threads for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
         point_index = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
-        A[j] = B[CartesianIndex(point_index)]
+        A_mid[j] = B[CartesianIndex(point_index)]
       end
-  
-      A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
+
+      A = reshape(A_mid,r[i]*n[i],r[i+2]*n[i+1])
       u,s,v,r[i+1] = tsvd(A,r[i+1])
   
       left_to_right_indices_new[i], _ = maxvol_generic!(u,μ,300)
@@ -2602,13 +2753,16 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,r::Array{S,1},ma
 
     # Solve for the final indices
 
-    A = Array{T,3}(undef,(r[d-1],n[d-1],n[d]))
-    Threads.@threads for j in CartesianIndices((1:r[d-1],1:n[d-1],1:n[d]))
-      point_index = (left_to_right_subs[d-2][j[1]]...,j[2],j[3])
-      A[j] = B[CartesianIndex(point_index)]
+    if size(A_last,3) != r[d-1]
+      A_last = Array{T,3}(undef,(r[d-1],n[d-1],n[d]))
     end
 
-    A = reshape(A,r[d-1]*n[d-1],n[d])
+    Threads.@threads for j in CartesianIndices((1:r[d-1],1:n[d-1],1:n[d]))
+      point_index = (left_to_right_subs[d-2][j[1]]...,j[2],j[3])
+      A_last[j] = B[CartesianIndex(point_index)]
+    end
+
+    A = reshape(A_last,r[d-1]*n[d-1],n[d])
     u,s,v,r[d] = tsvd(A,r[d])
 
     left_to_right_indices_new[d-1], _ = maxvol_generic!(u,μ,300)
@@ -2618,7 +2772,7 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,r::Array{S,1},ma
     temp = [ind2sub(x,(r[d-1],n[d-1])) for x in left_to_right_indices_new[d-1]]
     left_to_right_subs[d-1] = [tuple(left_to_right_subs[d-2][temp[i][1]]...,temp[i][2]...) for i in eachindex(temp)]
 
-    # Update right_to_left_subs, nesting is not kept
+    # Update right_to_left_subs
     right_to_left_subs[d-1] = [tuple(x) for x in right_to_left_indices_new[d-1]]
 
     @views G[d-1] = reshape(A[:,right_to_left_indices_new[d-1]]/A[left_to_right_indices_new[d-1],right_to_left_indices_new[d-1]],r[d-1],n[d-1],r[d])
@@ -2632,19 +2786,22 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,r::Array{S,1},ma
   
     for i = d-2:-1:2
 
-      A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
-      Threads.@threads for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
-        point_index = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
-        A[j] = B[CartesianIndex(point_index)]
+      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+        A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
-      A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
+      Threads.@threads for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
+        point_index = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
+        A_mid[j] = B[CartesianIndex(point_index)]
+      end
+
+      A = reshape(A_mid,r[i]*n[i],r[i+2]*n[i+1])
       u,s,v,r[i+1] = tsvd(A,r[i+1])
   
       left_to_right_indices_new[i], _ = maxvol_generic!(u,μ,300)
       right_to_left_indices_new[i], _ = maxvol_generic!(v,μ,300)
   
-      # Update right_to_left_subs, nesting is not kept
+      # Update right_to_left_subs
       temp = [ind2sub(x,(n[i+1],r[i+2])) for x in right_to_left_indices_new[i]]
       right_to_left_subs[i] = [tuple(temp[j][1]...,right_to_left_subs[i+1][temp[j][2]]...) for j in eachindex(temp)]
 
@@ -2652,19 +2809,22 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,r::Array{S,1},ma
 
     # Solve for the first indices
 
-    A = Array{T,3}(undef,(n[1],n[2],r[3]))
-    Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
-      point_index = (j[1],j[2],right_to_left_subs[2][j[3]]...)
-      A[j] = B[CartesianIndex(point_index)]
+    if size(A_first,3) != r[3]
+      A_first = Array{T,3}(undef,n[1],n[2],r[3])
     end
 
-    A = reshape(A,n[1],n[2]*r[3])
+    Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
+      point_index = (j[1],j[2],right_to_left_subs[2][j[3]]...)
+      A_first[j] = B[CartesianIndex(point_index)]
+    end
+
+    A = reshape(A_first,n[1],n[2]*r[3])
     u,s,v,r[2] = tsvd(A,r[2])
 
     left_to_right_indices_new[1], _ = maxvol_generic!(u,μ,300)
     right_to_left_indices_new[1], _ = maxvol_generic!(v,μ,300)
 
-    # Update right_to_left_subs, nesting is not kept
+    # Update right_to_left_subs
     temp = [ind2sub(x,(n[2],r[3])) for x in right_to_left_indices_new[1]]
     right_to_left_subs[1] = [tuple(temp[j][1]...,right_to_left_subs[2][temp[j][2]]...) for j in eachindex(temp)]
 
@@ -2793,7 +2953,6 @@ t = DMRGcross(f,nodes,μ,tol)
 t = DMRGcross(f,nodes,μ,tol,maxsweeps)
 t = DMRGcross(f,nodes,μ,tol,initial)
 t = DMRGcross(f,nodes,μ,tol,initial,maxsweeps)
-t = DMRGcross(f,nodes,initial)
 t = DMRGcross(f,nodes,μ,r)
 t = DMRGcross(f,nodes,μ,r,maxsweeps)
 """
@@ -2878,6 +3037,11 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,maxsweep
   point_index = Array{S,1}(undef,d)
   point       = Array{T,1}(undef,d)
 
+  # Pre-allocate supercores; resize only when ranks change between sweeps
+  A_first = Array{T,3}(undef, n[1], n[2], r[3])
+  A_last  = Array{T,3}(undef, r[d-1], n[d-1], n[d])
+  A_mid   = d >= 4 ? [Array{T,4}(undef, r[i], n[i], n[i+1], r[i+2]) for i in 2:d-2] : Array{T,4}[]
+
   sweeps = 0
   while true
 
@@ -2885,7 +3049,10 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,maxsweep
 
     # Solve for the first indices
 
-    A = Array{T,3}(undef,(n[1],n[2],r[3]))
+    if size(A_first,3) != r[3]
+      A_first = Array{T,3}(undef,n[1],n[2],r[3])
+    end
+
     for k = 1:r[3]
       point_index[3:end] .= right_to_left_subs[2][k]
       for j in CartesianIndices((1:n[1],1:n[2]))
@@ -2893,11 +3060,11 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,maxsweep
         for m = 1:d
           point[m] = nodes[m][point_index[m]]
         end
-        A[j[1],j[2],k] = f(point)
+        A_first[j[1],j[2],k] = f(point)
       end
     end
 
-    A = reshape(A,n[1],n[2]*r[3])
+    A = reshape(A_first,n[1],n[2]*r[3])
     δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
 
@@ -2913,7 +3080,10 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,maxsweep
     
     for i = 2:d-2
 
-      A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+        A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      end
+
       for l = 1:r[i]
         point_index[1:i-1] .= left_to_right_subs[i-1][l]
         for k = 1:r[i+2]
@@ -2923,12 +3093,12 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,maxsweep
             for m = 1:d
               point[m] = nodes[m][point_index[m]]
             end
-            A[l,j[1],j[2],k] = f(point)
+            A_mid[l,j[1],j[2],k] = f(point)
           end
         end
       end
 
-      A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
+      A = reshape(A_mid,r[i]*n[i],r[i+2]*n[i+1])
       δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
   
@@ -2945,7 +3115,10 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,maxsweep
 
     # Solve for the final indices
 
-    A = Array{T,3}(undef,(r[d-1],n[d-1],n[d]))
+    if size(A_last,3) != r[d-1]
+      A_last = Array{T,3}(undef,(r[d-1],n[d-1],n[d]))
+    end
+
     for k = 1:r[d-1]
       point_index[1:d-2] .= left_to_right_subs[d-2][k]
       for j in CartesianIndices((1:n[d-1],1:n[d]))
@@ -2953,11 +3126,11 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,maxsweep
         for m = 1:d
           point[m] = nodes[m][point_index[m]]
         end
-       A[k,j[1],j[2]] = f(point)
+       A_last[k,j[1],j[2]] = f(point)
       end
     end
 
-    A = reshape(A,r[d-1]*n[d-1],n[d]*r[d+1])
+    A = reshape(A_last,r[d-1]*n[d-1],n[d]*r[d+1])
     δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[d] = tsvd(A,δ)
 
@@ -2982,7 +3155,10 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,maxsweep
     
     for i = d-2:-1:2
 
-      A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+        A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      end
+
       for l = 1:r[i]
         point_index[1:i-1] .= left_to_right_subs[i-1][l]
         for k = 1:r[i+2]
@@ -2992,12 +3168,12 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,maxsweep
             for m = 1:d
               point[m] = nodes[m][point_index[m]]
             end
-           A[l,j[1],j[2],k] = f(point)
+            A_mid[l,j[1],j[2],k] = f(point)
           end
         end
       end
     
-      A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
+      A = reshape(A_mid,r[i]*n[i],r[i+2]*n[i+1])
       δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
       
@@ -3012,7 +3188,10 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,maxsweep
     
     # Solve for the first indices
 
-    A = Array{T,3}(undef,(n[1],n[2],r[3]))
+    if size(A_first,3) != r[3]
+      A_first = Array{T,3}(undef,n[1],n[2],r[3])
+    end
+
     for k = 1:r[3]
       point_index[3:end] .= right_to_left_subs[2][k]
       for j in CartesianIndices((1:n[1],1:n[2]))
@@ -3020,11 +3199,11 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,maxsweep
         for m = 1:d
           point[m] = nodes[m][point_index[m]]
         end
-        A[j[1],j[2],k] = f(point)
+        A_first[j[1],j[2],k] = f(point)
       end
     end
     
-    A = reshape(A,n[1],n[2]*r[3])
+    A = reshape(A_first,n[1],n[2]*r[3])
     δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
     
@@ -3086,14 +3265,22 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,initial:
   point_index = Array{S,1}(undef,d)
   point       = Array{T,1}(undef,d)
 
+  # Pre-allocate supercores; resize only when ranks change between sweeps
+  A_first = Array{T,3}(undef, n[1], n[2], r[3])
+  A_last  = Array{T,3}(undef, r[d-1], n[d-1], n[d])
+  A_mid   = d >= 4 ? [Array{T,4}(undef, r[i], n[i], n[i+1], r[i+2]) for i in 2:d-2] : Array{T,4}[]
+
   sweeps = 0
   while true
 
-    # Sweep from left to right, keeping the indices nested
+    # Sweep from left to right, keeping the left indices nested
 
     # Solve for the first indices
 
-    A = Array{T,3}(undef,(n[1],n[2],r[3]))
+    if size(A_first,3) != r[3]
+      A_first = Array{T,3}(undef,n[1],n[2],r[3])
+    end
+
     for k = 1:r[3]
       point_index[3:end] .= right_to_left_subs[2][k]
       for j in CartesianIndices((1:n[1],1:n[2]))
@@ -3101,11 +3288,11 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,initial:
         for m = 1:d
           point[m] = nodes[m][point_index[m]]
         end
-        A[j[1],j[2],k] = f(point)
+        A_first[j[1],j[2],k] = f(point)
       end
     end
 
-    A = reshape(A,n[1],n[2]*r[3])
+    A = reshape(A_first,n[1],n[2]*r[3])
     δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
 
@@ -3121,7 +3308,10 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,initial:
     
     for i = 2:d-2
 
-      A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+        A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      end
+
       for l = 1:r[i]
         point_index[1:i-1] .= left_to_right_subs[i-1][l]
         for k = 1:r[i+2]
@@ -3131,12 +3321,12 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,initial:
             for m = 1:d
               point[m] = nodes[m][point_index[m]]
             end
-            A[l,j[1],j[2],k] = f(point)
+            A_mid[l,j[1],j[2],k] = f(point)
           end
         end
       end
 
-      A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
+      A = reshape(A_mid,r[i]*n[i],r[i+2]*n[i+1])
       δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
   
@@ -3146,14 +3336,17 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,initial:
       # Update left_to_right_subs, keeping the indices nested
       temp = [ind2sub(x,(r[i],n[i])) for x in left_to_right_indices_new[i]]
       left_to_right_subs[i] = [tuple(left_to_right_subs[i-1][temp[j][1]]...,temp[j][2]...) for j in eachindex(temp)]
-  
-      G[i] = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
+
+      @views G[i]   = reshape(A[:,right_to_left_indices_new[i]]/A[left_to_right_indices_new[i],right_to_left_indices_new[i]],r[i],n[i],r[i+1])
 
     end
 
     # Solve for the final indices
 
-    A = Array{T,4}(undef,(r[d-1],n[d-1],n[d],r[d+1]))
+    if size(A_last,3) != r[d-1]
+      A_last = Array{T,3}(undef,(r[d-1],n[d-1],n[d]))
+    end
+
     for k = 1:r[d-1]
       point_index[1:d-2] .= left_to_right_subs[d-2][k]
       for j in CartesianIndices((1:n[d-1],1:n[d]))
@@ -3161,11 +3354,11 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,initial:
         for m = 1:d
           point[m] = nodes[m][point_index[m]]
         end
-        A[k,j[1],j[2],1] = f(point)
+       A_last[k,j[1],j[2]] = f(point)
       end
     end
 
-    A = reshape(A,r[d-1]*n[d-1],n[d])
+    A = reshape(A_last,r[d-1]*n[d-1],n[d]*r[d+1])
     δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[d] = tsvd(A,δ)
 
@@ -3190,7 +3383,10 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,initial:
     
     for i = d-2:-1:2
 
-      A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+        A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      end
+
       for l = 1:r[i]
         point_index[1:i-1] .= left_to_right_subs[i-1][l]
         for k = 1:r[i+2]
@@ -3200,12 +3396,12 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,initial:
             for m = 1:d
               point[m] = nodes[m][point_index[m]]
             end
-           A[l,j[1],j[2],k] = f(point)
+            A_mid[l,j[1],j[2],k] = f(point)
           end
         end
       end
     
-      A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
+      A = reshape(A_mid,r[i]*n[i],r[i+2]*n[i+1])
       δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
       
@@ -3220,7 +3416,10 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,initial:
     
     # Solve for the first indices
 
-    A = Array{T,3}(undef,(n[1],n[2],r[3]))
+    if size(A_first,3) != r[3]
+      A_first = Array{T,3}(undef,n[1],n[2],r[3])
+    end
+
     for k = 1:r[3]
       point_index[3:end] .= right_to_left_subs[2][k]
       for j in CartesianIndices((1:n[1],1:n[2]))
@@ -3228,11 +3427,11 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,initial:
         for m = 1:d
           point[m] = nodes[m][point_index[m]]
         end
-        A[j[1],j[2],k] = f(point)
+        A_first[j[1],j[2],k] = f(point)
       end
     end
     
-    A = reshape(A,n[1],n[2]*r[3])
+    A = reshape(A_first,n[1],n[2]*r[3])
     δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
     
@@ -3259,107 +3458,6 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T,initial:
     end
 
   end
-
-end
-
-function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},initial::ExtendedTensorTrain) where {T<:AbstractFloat,d} # Based on the description given in Dolgov and Savostyanov (2020).
-
-  # When d ≤ 2
-
-  n = length.(nodes)
-
-  if d == 1
-    A = [f(x) for x in nodes[1]]
-    return TTsvd(A,initial.ranks)
-  elseif d == 2
-    A = [f([nodes[1][i],nodes[2][j]]) for i in 1:n[1], j in 1:n[2]]
-    return TTsvd(A,initial.ranks)
-  end
-
-  # The following is used when d ≥ 3
-
-  G = Array{Array{T,3},1}(undef,d)
-
-  left_to_right_indices = deepcopy(initial.left_to_right_ind)
-  right_to_left_indices = deepcopy(initial.right_to_left_ind)
-  
-  left_to_right_subs = deepcopy(initial.left_to_right_sub)
-  right_to_left_subs = deepcopy(initial.right_to_left_sub)
-  
-  r = copy(initial.ranks)
-
-  point_index = Array{eltype(r),1}(undef,d)
-  point       = Array{T,1}(undef,d)
-
-  # Sweep from left to right, keeping the indices nested
-
-  # Solve for the first indices
-
-  A = Array{T,3}(undef,(n[1],n[2],r[3]))
-  for k = 1:r[3]
-    point_index[3:end] .= right_to_left_subs[2][k]
-    for j in CartesianIndices((1:n[1],1:n[2]))
-      point_index[1:2] .= Tuple(j)
-      for m = 1:d
-        point[m] = nodes[m][point_index[m]]
-      end
-      A[j[1],j[2],k] = f(point)
-    end
-  end
-
-  A = reshape(A,n[1],n[2]*r[3])
-
-  u,s,v,junk = tsvd(A,r[2])
-
-  @views G[1] = reshape(A[:,right_to_left_indices[1]]/A[left_to_right_indices[1],right_to_left_indices[1]],r[1],n[1],r[2])
-
-  # Solve for the interior indices
-    
-  for i = 2:d-2
-
-    A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
-    for l = 1:r[i]
-      point_index[1:i-1] .= left_to_right_subs[i-1][l]
-      for k = 1:r[i+2]
-        point_index[i+2:end] .= right_to_left_subs[i+1][k]
-        for j in CartesianIndices((1:n[i],1:n[i+1]))
-          point_index[i:i+1] .= Tuple(j)
-          for m = 1:d
-            point[m] = nodes[m][point_index[m]]
-          end
-          A[l,j[1],j[2],k] = f(point)
-        end
-      end
-    end
-
-    A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
-    u,s,v,junk = tsvd(A,r[i+1])
-  
-    @views G[i] = reshape(A[:,right_to_left_indices[i]]/A[left_to_right_indices[i],right_to_left_indices[i]],r[i],n[i],r[i+1])
-
-  end
-
-  # Solve for the final indices
-
-  A = Array{T,4}(undef,(r[d-1],n[d-1],n[d],r[d+1]))
-  for k = 1:r[d-1]
-    point_index[1:d-2] .= left_to_right_subs[d-2][k]
-    for j in CartesianIndices((1:n[d-1],1:n[d]))
-      point_index[d-1:d] .= Tuple(j)
-      for m = 1:d
-        point[m] = nodes[m][point_index[m]]
-      end
-      A[k,j[1],j[2],1] = f(point)
-    end
-  end
-
-  A = reshape(A,r[d-1]*n[d-1],n[d])
-  u,s,v,junk = tsvd(A,r[d])
-
-  @views G[d-1] = reshape(A[:,right_to_left_indices[d-1]]/A[left_to_right_indices[d-1],right_to_left_indices[d-1]],r[d-1],n[d-1],r[d])
-  @views G[d]   = reshape(A[left_to_right_indices[d-1],:],r[d],n[d],r[d+1])
-    
-  return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,1)
 
 end
 
@@ -3445,6 +3543,11 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Array{S,1},m
   point_index = Array{S,1}(undef,d)
   point       = Array{T,1}(undef,d)
 
+  # Pre-allocate supercores
+  A_first = Array{T,3}(undef, n[1], n[2], r[3])
+  A_last  = Array{T,3}(undef, r[d-1], n[d-1], n[d])
+  A_mid   = d >= 4 ? [Array{T,4}(undef, r[i], n[i], n[i+1], r[i+2]) for i in 2:d-2] : Array{T,4}[]
+
   sweeps = 0
   while true
 
@@ -3452,7 +3555,6 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Array{S,1},m
 
     # Solve for the first indices
 
-    A = Array{T,3}(undef,(n[1],n[2],r[3]))
     for k = 1:r[3]
       point_index[3:end] .= right_to_left_subs[2][k]
       for j in CartesianIndices((1:n[1],1:n[2]))
@@ -3460,11 +3562,11 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Array{S,1},m
         for m = 1:d
           point[m] = nodes[m][point_index[m]]
         end
-        A[j[1],j[2],k] = f(point)
+        A_first[j[1],j[2],k] = f(point)
       end
     end
 
-    A = reshape(A,n[1],n[2]*r[3])
+    A = reshape(A_first,n[1],n[2]*r[3])
     u,s,v,r[2] = tsvd(A,r[2])
 
     left_to_right_indices_new[1], _ = maxvol!(u,μ,300)
@@ -3479,7 +3581,6 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Array{S,1},m
     
     for i = 2:d-2
 
-      A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       for l = 1:r[i]
         point_index[1:i-1] .= left_to_right_subs[i-1][l]
         for k = 1:r[i+2]
@@ -3489,12 +3590,12 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Array{S,1},m
             for m = 1:d
               point[m] = nodes[m][point_index[m]]
             end
-           A[l,j[1],j[2],k] = f(point)
+            A_mid[l,j[1],j[2],k] = f(point)
           end
         end
       end
 
-      A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
+      A = reshape(A_mid,r[i]*n[i],r[i+2]*n[i+1])
       u,s,v,r[i+1] = tsvd(A,r[i+1])
   
       left_to_right_indices_new[i], _ = maxvol!(u,μ,300)
@@ -3510,7 +3611,6 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Array{S,1},m
 
     # Solve for the final indices
 
-    A = Array{T,3}(undef,(r[d-1],n[d-1],n[d]))
     for k = 1:r[d-1]
       point_index[1:d-2] .= left_to_right_subs[d-2][k]
       for j in CartesianIndices((1:n[d-1],1:n[d]))
@@ -3518,11 +3618,11 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Array{S,1},m
         for m = 1:d
           point[m] = nodes[m][point_index[m]]
         end
-       A[k,j[1],j[2]] = f(point)
+        A_last[k,j[1],j[2]] = f(point)
       end
     end
 
-    A = reshape(A,r[d-1]*n[d-1],n[d]*r[d+1])
+    A = reshape(A_last,r[d-1]*n[d-1],n[d]*r[d+1])
     u,s,v,r[d] = tsvd(A,r[d])
 
     left_to_right_indices_new[d-1], _ = maxvol!(u,μ,300)
@@ -3546,7 +3646,6 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Array{S,1},m
     
     for i = d-2:-1:2
 
-      A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       for l = 1:r[i]
         point_index[1:i-1] .= left_to_right_subs[i-1][l]
         for k = 1:r[i+2]
@@ -3556,12 +3655,12 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Array{S,1},m
             for m = 1:d
               point[m] = nodes[m][point_index[m]]
             end
-           A[l,j[1],j[2],k] = f(point)
+            A_mid[l,j[1],j[2],k] = f(point)
           end
         end
       end
     
-      A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
+      A = reshape(A_mid,r[i]*n[i],r[i+2]*n[i+1])
       u,s,v,r[i+1] = tsvd(A,r[i+1])
       
       left_to_right_indices_new[i], _ = maxvol!(u,μ,300)
@@ -3575,7 +3674,6 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Array{S,1},m
     
     # Solve for the first indices
 
-    A = Array{T,3}(undef,(n[1],n[2],r[3]))
     for k = 1:r[3]
       point_index[3:end] .= right_to_left_subs[2][k]
       for j in CartesianIndices((1:n[1],1:n[2]))
@@ -3583,11 +3681,11 @@ function DMRGcross(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Array{S,1},m
         for m = 1:d
           point[m] = nodes[m][point_index[m]]
         end
-        A[j[1],j[2],k] = f(point)
+        A_first[j[1],j[2],k] = f(point)
       end
     end
     
-    A = reshape(A,n[1],n[2]*r[3])
+    A = reshape(A_first,n[1],n[2]*r[3])
     u,s,v,r[2] = tsvd(A,r[2])
     
     left_to_right_indices_new[1], _ = maxvol!(u,μ,300)
@@ -3721,6 +3819,11 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
   point_index = Array{S,1}(undef,d)
   point       = Array{T,1}(undef,d)
 
+  # Pre-allocate supercores
+  A_first = Array{T,3}(undef, n[1], n[2], r[3])
+  A_last  = Array{T,3}(undef, r[d-1], n[d-1], n[d])
+  A_mid   = d >= 4 ? [Array{T,4}(undef, r[i], n[i], n[i+1], r[i+2]) for i in 2:d-2] : Array{T,4}[]
+
   sweeps = 0
   while true
 
@@ -3728,7 +3831,10 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
 
     # Solve for the first indices
 
-    A = Array{T,3}(undef,(n[1],n[2],r[3]))
+    if size(A_first,3) != r[3]
+      A_first = Array{T,3}(undef,n[1],n[2],r[3])
+    end
+
     for k = 1:r[3]
       point_index[3:end] .= right_to_left_subs[2][k]
       for j in CartesianIndices((1:n[1],1:n[2]))
@@ -3736,11 +3842,11 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
         for m = 1:d
           point[m] = nodes[m][point_index[m]]
         end
-        A[j[1],j[2],k] = f(point)
+        A_first[j[1],j[2],k] = f(point)
       end
     end
 
-    A = reshape(A,n[1],n[2]*r[3])
+    A = reshape(A_first,n[1],n[2]*r[3])
     δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
 
@@ -3756,7 +3862,10 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
     
     for i = 2:d-2
 
-      A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+        A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      end
+
       for l = 1:r[i]
         point_index[1:i-1] .= left_to_right_subs[i-1][l]
         for k = 1:r[i+2]
@@ -3766,12 +3875,12 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
             for m = 1:d
               point[m] = nodes[m][point_index[m]]
             end
-           A[l,j[1],j[2],k] = f(point)
+            A_mid[l,j[1],j[2],k] = f(point)
           end
         end
       end
 
-      A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
+      A = reshape(A_mid,r[i]*n[i],r[i+2]*n[i+1])
       δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
   
@@ -3788,7 +3897,10 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
 
     # Solve for the final indices
 
-    A = Array{T,4}(undef,(r[d-1],n[d-1],n[d],r[d+1]))
+    if size(A_last,3) != r[d-1]
+      A_last = Array{T,3}(undef,(r[d-1],n[d-1],n[d]))
+    end
+
     for k = 1:r[d-1]
       point_index[1:d-2] .= left_to_right_subs[d-2][k]
       for j in CartesianIndices((1:n[d-1],1:n[d]))
@@ -3796,11 +3908,11 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
         for m = 1:d
           point[m] = nodes[m][point_index[m]]
         end
-       A[k,j[1],j[2],1] = f(point)
+        A_last[k,j[1],j[2],1] = f(point)
       end
     end
 
-    A = reshape(A,r[d-1]*n[d-1],n[d])
+    A = reshape(A_last,r[d-1]*n[d-1],n[d])
     δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[d] = tsvd(A,δ)
 
@@ -3825,7 +3937,10 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
     
     for i = d-2:-1:2
 
-      A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+        A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      end
+
       for l = 1:r[i]
         point_index[1:i-1] .= left_to_right_subs[i-1][l]
         for k = 1:r[i+2]
@@ -3835,12 +3950,12 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
             for m = 1:d
               point[m] = nodes[m][point_index[m]]
             end
-           A[l,j[1],j[2],k] = f(point)
+            A_mid[l,j[1],j[2],k] = f(point)
           end
         end
       end
     
-      A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
+      A = reshape(A_mid,r[i]*n[i],r[i+2]*n[i+1])
       δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
       
@@ -3855,7 +3970,10 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
     
     # Solve for the first indices
 
-    A = Array{T,3}(undef,(n[1],n[2],r[3]))
+    if size(A_first,3) != r[3]
+      A_first = Array{T,3}(undef,n[1],n[2],r[3])
+    end
+
     for k = 1:r[3]
       point_index[3:end] .= right_to_left_subs[2][k]
       for j in CartesianIndices((1:n[1],1:n[2]))
@@ -3863,11 +3981,11 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
         for m = 1:d
           point[m] = nodes[m][point_index[m]]
         end
-        A[j[1],j[2],k] = f(point)
+        A_first[j[1],j[2],k] = f(point)
       end
     end
     
-    A = reshape(A,n[1],n[2]*r[3])
+    A = reshape(A_first,n[1],n[2]*r[3])
     δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
     
@@ -3929,6 +4047,11 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
   point_index = Array{S,1}(undef,d)
   point       = Array{T,1}(undef,d)
 
+  # Pre-allocate supercores
+  A_first = Array{T,3}(undef, n[1], n[2], r[3])
+  A_last  = Array{T,3}(undef, r[d-1], n[d-1], n[d])
+  A_mid   = d >= 4 ? [Array{T,4}(undef, r[i], n[i], n[i+1], r[i+2]) for i in 2:d-2] : Array{T,4}[]
+
   sweeps = 0
   while true
 
@@ -3936,7 +4059,10 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
 
     # Solve for the first indices
 
-    A = Array{T,3}(undef,(n[1],n[2],r[3]))
+    if size(A_first,3) != r[3]
+      A_first = Array{T,3}(undef,n[1],n[2],r[3])
+    end
+
     for k = 1:r[3]
       point_index[3:end] .= right_to_left_subs[2][k]
       for j in CartesianIndices((1:n[1],1:n[2]))
@@ -3944,11 +4070,11 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
         for m = 1:d
           point[m] = nodes[m][point_index[m]]
         end
-        A[j[1],j[2],k] = f(point)
+        A_first[j[1],j[2],k] = f(point)
       end
     end
 
-    A = reshape(A,n[1],n[2]*r[3])
+    A = reshape(A_first,n[1],n[2]*r[3])
     δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
 
@@ -3964,7 +4090,10 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
     
     for i = 2:d-2
 
-      A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+        A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      end
+
       for l = 1:r[i]
         point_index[1:i-1] .= left_to_right_subs[i-1][l]
         for k = 1:r[i+2]
@@ -3974,12 +4103,12 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
             for m = 1:d
               point[m] = nodes[m][point_index[m]]
             end
-           A[l,j[1],j[2],k] = f(point)
+            A_mid[l,j[1],j[2],k] = f(point)
           end
         end
       end
 
-      A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
+      A = reshape(A_mid,r[i]*n[i],r[i+2]*n[i+1])
       δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
   
@@ -3996,7 +4125,10 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
 
     # Solve for the final indices
 
-    A = Array{T,4}(undef,(r[d-1],n[d-1],n[d],r[d+1]))
+    if size(A_last,3) != r[d-1]
+      A_last = Array{T,3}(undef,(r[d-1],n[d-1],n[d]))
+    end
+
     for k = 1:r[d-1]
       point_index[1:d-2] .= left_to_right_subs[d-2][k]
       for j in CartesianIndices((1:n[d-1],1:n[d]))
@@ -4004,11 +4136,11 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
         for m = 1:d
           point[m] = nodes[m][point_index[m]]
         end
-       A[k,j[1],j[2],1] = f(point)
+        A_last[k,j[1],j[2],1] = f(point)
       end
     end
 
-    A = reshape(A,r[d-1]*n[d-1],n[d])
+    A = reshape(A_last,r[d-1]*n[d-1],n[d])
     δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[d] = tsvd(A,δ)
 
@@ -4033,7 +4165,10 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
     
     for i = d-2:-1:2
 
-      A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+        A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      end
+
       for l = 1:r[i]
         point_index[1:i-1] .= left_to_right_subs[i-1][l]
         for k = 1:r[i+2]
@@ -4043,12 +4178,12 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
             for m = 1:d
               point[m] = nodes[m][point_index[m]]
             end
-           A[l,j[1],j[2],k] = f(point)
+            A_mid[l,j[1],j[2],k] = f(point)
           end
         end
       end
     
-      A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
+      A = reshape(A_mid,r[i]*n[i],r[i+2]*n[i+1])
       δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
       
@@ -4058,12 +4193,15 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
       # Update right_to_left_subs, keeping the indices nested
       temp = [ind2sub(x,(n[i+1],r[i+2])) for x in right_to_left_indices_new[i]]
       right_to_left_subs[i] = [tuple(temp[j][1]...,right_to_left_subs[i+1][temp[j][2]]...) for j in eachindex(temp)]
-
+    
     end
     
     # Solve for the first indices
 
-    A = Array{T,3}(undef,(n[1],n[2],r[3]))
+    if size(A_first,3) != r[3]
+      A_first = Array{T,3}(undef,n[1],n[2],r[3])
+    end
+
     for k = 1:r[3]
       point_index[3:end] .= right_to_left_subs[2][k]
       for j in CartesianIndices((1:n[1],1:n[2]))
@@ -4071,11 +4209,11 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
         for m = 1:d
           point[m] = nodes[m][point_index[m]]
         end
-        A[j[1],j[2],k] = f(point)
+        A_first[j[1],j[2],k] = f(point)
       end
     end
     
-    A = reshape(A,n[1],n[2]*r[3])
+    A = reshape(A_first,n[1],n[2]*r[3])
     δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
     
@@ -4105,7 +4243,7 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,tol::R,
 
 end
 
-function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,r::Array{S,d},maxsweeps::S = 6) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,r::Array{S,1},maxsweeps::S = 6) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   if length(r) != d+1
     error("Rank vector has incorrect length")
@@ -4187,6 +4325,11 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,r::Arra
   point_index = Array{S,1}(undef,d)
   point       = Array{T,1}(undef,d)
 
+  # Pre-allocate supercores
+  A_first = Array{T,3}(undef, n[1], n[2], r[3])
+  A_last  = Array{T,3}(undef, r[d-1], n[d-1], n[d])
+  A_mid   = d >= 4 ? [Array{T,4}(undef, r[i], n[i], n[i+1], r[i+2]) for i in 2:d-2] : Array{T,4}[]
+
   sweeps = 0
   while true
 
@@ -4194,7 +4337,6 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,r::Arra
 
     # Solve for the first indices
 
-    A = Array{T,3}(undef,(n[1],n[2],r[3]))
     for k = 1:r[3]
       point_index[3:end] .= right_to_left_subs[2][k]
       for j in CartesianIndices((1:n[1],1:n[2]))
@@ -4202,11 +4344,11 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,r::Arra
         for m = 1:d
           point[m] = nodes[m][point_index[m]]
         end
-        A[j[1],j[2],k] = f(point)
+        A_first[j[1],j[2],k] = f(point)
       end
     end
 
-    A = reshape(A,n[1],n[2]*r[3])
+    A = reshape(A_first,n[1],n[2]*r[3])
     u,s,v,r[2] = tsvd(A,r[2])
 
     left_to_right_indices_new[1], _ = maxvol_generic!(u,μ,300)
@@ -4221,7 +4363,6 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,r::Arra
     
     for i = 2:d-2
 
-      A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       for l = 1:r[i]
         point_index[1:i-1] .= left_to_right_subs[i-1][l]
         for k = 1:r[i+2]
@@ -4231,12 +4372,12 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,r::Arra
             for m = 1:d
               point[m] = nodes[m][point_index[m]]
             end
-           A[l,j[1],j[2],k] = f(point)
+            A_mid[l,j[1],j[2],k] = f(point)
           end
         end
       end
 
-      A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
+      A = reshape(A_mid,r[i]*n[i],r[i+2]*n[i+1])
       u,s,v,r[i+1] = tsvd(A,r[i+1])
   
       left_to_right_indices_new[i], _ = maxvol_generic!(u,μ,300)
@@ -4252,7 +4393,6 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,r::Arra
 
     # Solve for the final indices
 
-    A = Array{T,4}(undef,(r[d-1],n[d-1],n[d],r[d+1]))
     for k = 1:r[d-1]
       point_index[1:d-2] .= left_to_right_subs[d-2][k]
       for j in CartesianIndices((1:n[d-1],1:n[d]))
@@ -4260,11 +4400,11 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,r::Arra
         for m = 1:d
           point[m] = nodes[m][point_index[m]]
         end
-       A[k,j[1],j[2],1] = f(point)
+        A_last[k,j[1],j[2],1] = f(point)
       end
     end
 
-    A = reshape(A,r[d-1]*n[d-1],n[d])
+    A = reshape(A_last,r[d-1]*n[d-1],n[d])
     u,s,v,r[d] = tsvd(A,r[d])
 
     left_to_right_indices_new[d-1], _ = maxvol_generic!(u,μ,300)
@@ -4288,7 +4428,6 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,r::Arra
     
     for i = d-2:-1:2
 
-      A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       for l = 1:r[i]
         point_index[1:i-1] .= left_to_right_subs[i-1][l]
         for k = 1:r[i+2]
@@ -4298,12 +4437,12 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,r::Arra
             for m = 1:d
               point[m] = nodes[m][point_index[m]]
             end
-           A[l,j[1],j[2],k] = f(point)
+            A_mid[l,j[1],j[2],k] = f(point)
           end
         end
       end
     
-      A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
+      A = reshape(A_mid,r[i]*n[i],r[i+2]*n[i+1])
       u,s,v,r[i+1] = tsvd(A,r[i+1])
       
       left_to_right_indices_new[i], _ = maxvol_generic!(u,μ,300)
@@ -4317,7 +4456,6 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,r::Arra
     
     # Solve for the first indices
 
-    A = Array{T,3}(undef,(n[1],n[2],r[3]))
     for k = 1:r[3]
       point_index[3:end] .= right_to_left_subs[2][k]
       for j in CartesianIndices((1:n[1],1:n[2]))
@@ -4325,11 +4463,11 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,r::Arra
         for m = 1:d
           point[m] = nodes[m][point_index[m]]
         end
-        A[j[1],j[2],k] = f(point)
+        A_first[j[1],j[2],k] = f(point)
       end
     end
     
-    A = reshape(A,n[1],n[2]*r[3])
+    A = reshape(A_first,n[1],n[2]*r[3])
     u,s,v,r[2] = tsvd(A,r[2])
     
     left_to_right_indices_new[1], _ = maxvol_generic!(u,μ,300)
@@ -4360,7 +4498,7 @@ end
 
 function DMRGcross_generic(f::Function,nodes::NTuple{d,Array{T,1}},μ::R,r::S,maxsweeps::S = 6) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
-  ranks = ones(Int,d+1)
+  ranks = ones(S,d+1)
   ranks[2:d] .= r
 
   train = DMRGcross_generic(f,nodes,μ,ranks,maxsweeps)
@@ -4379,7 +4517,6 @@ t = DMRGcross_threaded(f,nodes,μ,tol)
 t = DMRGcross_threaded(f,nodes,μ,tol,maxsweeps)
 t = DMRGcross_threaded(f,nodes,μ,tol,initial)
 t = DMRGcross_threaded(f,nodes,μ,tol,initial,maxsweeps)
-t = DMRGcross_threaded(f,nodes,initial)
 t = DMRGcross_threaded(f,nodes,μ,r)
 t = DMRGcross_threaded(f,nodes,μ,r,maxsweeps)
 """
@@ -4461,6 +4598,11 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T
   left_to_right_indices_new = similar(left_to_right_indices)
   right_to_left_indices_new = similar(right_to_left_indices)
 
+  # Pre-allocate supercores; resize only when ranks change between sweeps
+  A_first = Array{T,3}(undef, n[1], n[2], r[3])
+  A_last  = Array{T,3}(undef, r[d-1], n[d-1], n[d])
+  A_mid   = d >= 4 ? [Array{T,4}(undef, r[i], n[i], n[i+1], r[i+2]) for i in 2:d-2] : Array{T,4}[]
+
   sweeps = 0
   while true
 
@@ -4468,17 +4610,20 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T
 
     # Solve for the first indices
 
-    A = Array{T,3}(undef,(n[1],n[2],r[3]))
+    if size(A_first,3) != r[3]
+      A_first = Array{T,3}(undef,n[1],n[2],r[3])
+    end
+
     Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
       point_ind = (j[1],j[2],right_to_left_subs[2][j[3]]...)
       p         = Array{T,1}(undef,d)
       for m = 1:d
         p[m] = nodes[m][point_ind[m]]
       end
-      A[j] = f(p)
+      A_first[j] = f(p)
     end
 
-    A = reshape(A,n[1],n[2]*r[3])
+    A = reshape(A_first,n[1],n[2]*r[3])
     δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
 
@@ -4494,17 +4639,20 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T
     
     for i = 2:d-2
 
-      A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+        A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      end
+
       Threads.@threads for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
         point_ind = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
         p         = Array{T,1}(undef,d)
         for m = 1:d
           p[m] = nodes[m][point_ind[m]]
         end
-        A[j] = f(p)
+        A_mid[j] = f(p)
       end
 
-      A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
+      A = reshape(A_mid,r[i]*n[i],r[i+2]*n[i+1])
       δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
   
@@ -4521,17 +4669,20 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T
 
     # Solve for the final indices
 
-    A = Array{T,4}(undef,(r[d-1],n[d-1],n[d],r[d+1]))
+    if size(A_last,1) != r[d-1]
+      A_last = Array{T,4}(undef,(r[d-1],n[d-1],n[d],r[d+1]))
+    end
+
     Threads.@threads for j in CartesianIndices((1:r[d-1],1:n[d-1],1:n[d]))
       point_ind = (left_to_right_subs[d-2][j[1]]...,j[2],j[3])
       p         = Array{T,1}(undef,d)
       for m = 1:d
         p[m] = nodes[m][point_ind[m]]
       end
-     A[j[1],j[2],j[3],1] = f(p)
+      A_last[j[1],j[2],j[3],1] = f(p)
     end
 
-    A = reshape(A,r[d-1]*n[d-1],n[d])
+    A = reshape(A_last,r[d-1]*n[d-1],n[d])
     δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[d] = tsvd(A,δ)
 
@@ -4556,17 +4707,20 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T
     
     for i = d-2:-1:2
 
-      A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+        A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      end
+
       Threads.@threads for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
         point_ind = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
         p         = Array{T,1}(undef,d)
         for m = 1:d
           p[m] = nodes[m][point_ind[m]]
         end
-        A[j] = f(p)
+        A_mid[j] = f(p)
       end
 
-      A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
+      A = reshape(A_mid,r[i]*n[i],r[i+2]*n[i+1])
       δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
   
@@ -4581,17 +4735,20 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T
 
     # Solve for the first indices
 
-    A = Array{T,3}(undef,(n[1],n[2],r[3]))
+    if size(A_first,3) != r[3]
+      A_first = Array{T,3}(undef,n[1],n[2],r[3])
+    end
+
     Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
       point_ind = (j[1],j[2],right_to_left_subs[2][j[3]]...)
       p         = Array{T,1}(undef,d)
       for m = 1:d
         p[m] = nodes[m][point_ind[m]]
       end
-      A[j] = f(p)
+      A_first[j] = f(p)
     end
 
-    A = reshape(A,n[1],n[2]*r[3])
+    A = reshape(A_first,n[1],n[2]*r[3])
     δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
 
@@ -4650,6 +4807,11 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T
   left_to_right_indices_new = similar(left_to_right_indices)
   right_to_left_indices_new = similar(right_to_left_indices)
 
+  # Pre-allocate supercores; resize only when ranks change between sweeps
+  A_first = Array{T,3}(undef, n[1], n[2], r[3])
+  A_last  = Array{T,3}(undef, r[d-1], n[d-1], n[d])
+  A_mid   = d >= 4 ? [Array{T,4}(undef, r[i], n[i], n[i+1], r[i+2]) for i in 2:d-2] : Array{T,4}[]
+
   sweeps = 0
   while true
 
@@ -4657,17 +4819,20 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T
 
     # Solve for the first indices
 
-    A = Array{T,3}(undef,(n[1],n[2],r[3]))
+    if size(A_first,3) != r[3]
+      A_first = Array{T,3}(undef,n[1],n[2],r[3])
+    end
+
     Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
       point_ind = (j[1],j[2],right_to_left_subs[2][j[3]]...)
       p         = Array{T,1}(undef,d)
       for m = 1:d
         p[m] = nodes[m][point_ind[m]]
       end
-      A[j] = f(p)
+      A_first[j] = f(p)
     end
 
-    A = reshape(A,n[1],n[2]*r[3])
+    A = reshape(A_first,n[1],n[2]*r[3])
     δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
 
@@ -4683,17 +4848,20 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T
     
     for i = 2:d-2
 
-      A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+        A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      end
+
       Threads.@threads for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
         point_ind = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
         p         = Array{T,1}(undef,d)
         for m = 1:d
           p[m] = nodes[m][point_ind[m]]
         end
-        A[j] = f(p)
+        A_mid[j] = f(p)
       end
 
-      A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
+      A = reshape(A_mid,r[i]*n[i],r[i+2]*n[i+1])
       δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
   
@@ -4710,17 +4878,20 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T
 
     # Solve for the final indices
 
-    A = Array{T,4}(undef,(r[d-1],n[d-1],n[d],r[d+1]))
+    if size(A_last,1) != r[d-1]
+      A_last = Array{T,4}(undef,(r[d-1],n[d-1],n[d],r[d+1]))
+    end
+
     Threads.@threads for j in CartesianIndices((1:r[d-1],1:n[d-1],1:n[d]))
       point_ind = (left_to_right_subs[d-2][j[1]]...,j[2],j[3])
       p         = Array{T,1}(undef,d)
       for m = 1:d
         p[m] = nodes[m][point_ind[m]]
       end
-     A[j[1],j[2],j[3],1] = f(p)
+      A_last[j[1],j[2],j[3],1] = f(p)
     end
 
-    A = reshape(A,r[d-1]*n[d-1],n[d])
+    A = reshape(A_last,r[d-1]*n[d-1],n[d])
     δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[d] = tsvd(A,δ)
 
@@ -4745,17 +4916,20 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T
     
     for i = d-2:-1:2
 
-      A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+        A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      end
+
       Threads.@threads for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
         point_ind = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
         p         = Array{T,1}(undef,d)
         for m = 1:d
           p[m] = nodes[m][point_ind[m]]
         end
-        A[j] = f(p)
+        A_mid[j] = f(p)
       end
 
-      A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
+      A = reshape(A_mid,r[i]*n[i],r[i+2]*n[i+1])
       δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
   
@@ -4770,17 +4944,20 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T
 
     # Solve for the first indices
 
-    A = Array{T,3}(undef,(n[1],n[2],r[3]))
+    if size(A_first,3) != r[3]
+      A_first = Array{T,3}(undef,n[1],n[2],r[3])
+    end
+
     Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
       point_ind = (j[1],j[2],right_to_left_subs[2][j[3]]...)
       p         = Array{T,1}(undef,d)
       for m = 1:d
         p[m] = nodes[m][point_ind[m]]
       end
-      A[j] = f(p)
+      A_first[j] = f(p)
     end
 
-    A = reshape(A,n[1],n[2]*r[3])
+    A = reshape(A_first,n[1],n[2]*r[3])
     δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
 
@@ -4790,7 +4967,7 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T
     # Update right_to_left_subs, keeping the indices nested
     temp = [ind2sub(x,(n[2],r[3])) for x in right_to_left_indices_new[1]]
     right_to_left_subs[1] = [tuple(temp[j][1]...,right_to_left_subs[2][temp[j][2]]...) for j in eachindex(temp)]
-
+  
     sweeps += 1
   
     all(isempty.(setdiff.(left_to_right_indices_new, left_to_right_indices))) &&
@@ -4807,94 +4984,6 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,tol::T
     end
 
   end
-
-end
-
-function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},initial::ExtendedTensorTrain) where {T<:AbstractFloat,d} # Based on the description given in Dolgov and Savostyanov (2020).
-
-  # When d ≤ 2
-
-  n = length.(nodes)
-
-  if d == 1
-    A = [f(x) for x in nodes[1]]
-    return TTsvd(A,initial.ranks)
-  elseif d == 2
-    A = [f([nodes[1][i],nodes[2][j]]) for i in 1:n[1], j in 1:n[2]]
-    return TTsvd(A,initial.ranks)
-  end
-
-  # When d ≥ 3
-
-  G = Array{Array{T,3},1}(undef,d)
-
-  left_to_right_indices = deepcopy(initial.left_to_right_ind)
-  right_to_left_indices = deepcopy(initial.right_to_left_ind)
-
-  left_to_right_subs = deepcopy(initial.left_to_right_sub)
-  right_to_left_subs = deepcopy(initial.right_to_left_sub)
-
-  r = copy(initial.ranks)
-  
-  # Sweep from left to right, keeping the indices nested
-
-  # Solve for the first indices
-
-  A = Array{T,3}(undef,(n[1],n[2],r[3]))
-  Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
-    point_ind = (j[1],j[2],right_to_left_subs[2][j[3]]...)
-    p         = Array{T,1}(undef,d)
-    for m = 1:d
-      p[m] = nodes[m][point_ind[m]]
-    end
-    A[j] = f(p)
-  end
-  
-  A = reshape(A,n[1],n[2]*r[3])
-  u,s,v,junk = tsvd(A,r[2])
-  
-  @views G[1] = reshape(A[:,right_to_left_indices[1]]/A[left_to_right_indices[1],right_to_left_indices[1]],r[1],n[1],r[2])
-
-  # Solve for the interior indices
-    
-  for i = 2:d-2
-
-    A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
-    Threads.@threads for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
-      point_ind = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
-      p         = Array{T,1}(undef,d)
-      for m = 1:d
-        p[m] = nodes[m][point_ind[m]]
-      end
-      A[j] = f(p)
-    end
-
-    A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
-    u,s,v,junk = tsvd(A,r[i+1])
-  
-    @views G[i] = reshape(A[:,right_to_left_indices[i]]/A[left_to_right_indices[i],right_to_left_indices[i]],r[i],n[i],r[i+1])
-
-  end
-
-  # Solve for the final indices
-
-  A = Array{T,4}(undef,(r[d-1],n[d-1],n[d],r[d+1]))
-  Threads.@threads for j in CartesianIndices((1:r[d-1],1:n[d-1],1:n[d]))
-    point_ind = (left_to_right_subs[d-2][j[1]]...,j[2],j[3])
-    p         = Array{T,1}(undef,d)
-    for m = 1:d
-      p[m] = nodes[m][point_ind[m]]
-    end
-   A[j[1],j[2],j[3],1] = f(p)
-  end
-
-  A = reshape(A,r[d-1]*n[d-1],n[d])
-  u,s,v,junk = tsvd(A,r[d])
-
-  @views G[d-1] = reshape(A[:,right_to_left_indices[d-1]]/A[left_to_right_indices[d-1],right_to_left_indices[d-1]],r[d-1],n[d-1],r[d])
-  @views G[d]   = reshape(A[left_to_right_indices[d-1],:],r[d],n[d],r[d+1])
-
-  return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,1)
 
 end
 
@@ -4977,6 +5066,11 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Arr
   left_to_right_indices_new = similar(left_to_right_indices)
   right_to_left_indices_new = similar(right_to_left_indices)
 
+  # Pre-allocate supercores; resize only when ranks change between sweeps
+  A_first = Array{T,3}(undef, n[1], n[2], r[3])
+  A_last  = Array{T,3}(undef, r[d-1], n[d-1], n[d])
+  A_mid   = d >= 4 ? [Array{T,4}(undef, r[i], n[i], n[i+1], r[i+2]) for i in 2:d-2] : Array{T,4}[]
+
   sweeps = 0
   while true
 
@@ -4984,17 +5078,20 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Arr
 
     # Solve for the first indices
 
-    A = Array{T,3}(undef,(n[1],n[2],r[3]))
+    if size(A_first,3) != r[3]
+      A_first = Array{T,3}(undef,n[1],n[2],r[3])
+    end
+
     Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
-      point_ind =  (j[1],j[2],right_to_left_subs[2][j[3]]...)
+      point_ind = (j[1],j[2],right_to_left_subs[2][j[3]]...)
       p         = Array{T,1}(undef,d)
       for m = 1:d
         p[m] = nodes[m][point_ind[m]]
       end
-      A[j] = f(p)
+      A_first[j] = f(p)
     end
 
-    A = reshape(A,n[1],n[2]*r[3])
+    A = reshape(A_first,n[1],n[2]*r[3])
     u,s,v,r[2] = tsvd(A,r[2])
 
     left_to_right_indices_new[1], _ = maxvol!(u,μ,300)
@@ -5009,17 +5106,20 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Arr
     
     for i = 2:d-2
 
-      A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+        A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      end
+
       Threads.@threads for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
         point_ind = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
         p         = Array{T,1}(undef,d)
         for m = 1:d
           p[m] = nodes[m][point_ind[m]]
         end
-        A[j] = f(p)
+        A_mid[j] = f(p)
       end
 
-      A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
+      A = reshape(A_mid,r[i]*n[i],r[i+2]*n[i+1])
       u,s,v,r[i+1] = tsvd(A,r[i+1])
   
       left_to_right_indices_new[i], _ = maxvol!(u,μ,300)
@@ -5035,17 +5135,20 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Arr
 
     # Solve for the final indices
 
-    A = Array{T,4}(undef,(r[d-1],n[d-1],n[d],r[d+1]))
+    if size(A_last,1) != r[d-1]
+      A_last = Array{T,4}(undef,(r[d-1],n[d-1],n[d],r[d+1]))
+    end
+
     Threads.@threads for j in CartesianIndices((1:r[d-1],1:n[d-1],1:n[d]))
       point_ind = (left_to_right_subs[d-2][j[1]]...,j[2],j[3])
       p         = Array{T,1}(undef,d)
       for m = 1:d
         p[m] = nodes[m][point_ind[m]]
       end
-     A[j[1],j[2],j[3],1] = f(p)
+      A_last[j[1],j[2],j[3],1] = f(p)
     end
 
-    A = reshape(A,r[d-1]*n[d-1],n[d])
+    A = reshape(A_last,r[d-1]*n[d-1],n[d])
     u,s,v,r[d] = tsvd(A,r[d])
 
     left_to_right_indices_new[d-1], _ = maxvol!(u,μ,300)
@@ -5069,17 +5172,20 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Arr
     
     for i = d-2:-1:2
 
-      A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+        A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      end
+
       Threads.@threads for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
         point_ind = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
         p         = Array{T,1}(undef,d)
         for m = 1:d
           p[m] = nodes[m][point_ind[m]]
         end
-        A[j] = f(p)
+        A_mid[j] = f(p)
       end
 
-      A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
+      A = reshape(A_mid,r[i]*n[i],r[i+2]*n[i+1])
       u,s,v,r[i+1] = tsvd(A,r[i+1])
   
       left_to_right_indices_new[i], _ = maxvol!(u,μ,300)
@@ -5093,17 +5199,20 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::T,r::Arr
 
     # Solve for the first indices
 
-    A = Array{T,3}(undef,(n[1],n[2],r[3]))
+    if size(A_first,3) != r[3]
+      A_first = Array{T,3}(undef,n[1],n[2],r[3])
+    end
+
     Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
       point_ind = (j[1],j[2],right_to_left_subs[2][j[3]]...)
       p         = Array{T,1}(undef,d)
       for m = 1:d
         p[m] = nodes[m][point_ind[m]]
       end
-      A[j] = f(p)
+      A_first[j] = f(p)
     end
 
-    A = reshape(A,n[1],n[2]*r[3])
+    A = reshape(A_first,n[1],n[2]*r[3])
     u,s,v,r[2] = tsvd(A,r[2])
 
     left_to_right_indices_new[1], _ = maxvol!(u,μ,300)
@@ -5234,6 +5343,11 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
   left_to_right_indices_new = similar(left_to_right_indices)
   right_to_left_indices_new = similar(right_to_left_indices)
 
+  # Pre-allocate supercores; resize only when ranks change between sweeps
+  A_first = Array{T,3}(undef, n[1], n[2], r[3])
+  A_last  = Array{T,3}(undef, r[d-1], n[d-1], n[d])
+  A_mid   = d >= 4 ? [Array{T,4}(undef, r[i], n[i], n[i+1], r[i+2]) for i in 2:d-2] : Array{T,4}[]
+
   sweeps = 0
   while true
 
@@ -5241,17 +5355,20 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
 
     # Solve for the first indices
 
-    A = Array{T,3}(undef,(n[1],n[2],r[3]))
+    if size(A_first,3) != r[3]
+      A_first = Array{T,3}(undef,n[1],n[2],r[3])
+    end
+
     Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
       point_ind = (j[1],j[2],right_to_left_subs[2][j[3]]...)
       p         = Array{T,1}(undef,d)
       for m = 1:d
         p[m] = nodes[m][point_ind[m]]
       end
-      A[j] = f(p)
+      A_first[j] = f(p)
     end
 
-    A = reshape(A,n[1],n[2]*r[3])
+    A = reshape(A_first,n[1],n[2]*r[3])
     δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
 
@@ -5267,17 +5384,20 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
     
     for i = 2:d-2
 
-      A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+        A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      end
+
       Threads.@threads for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
         point_ind = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
         p         = Array{T,1}(undef,d)
         for m = 1:d
           p[m] = nodes[m][point_ind[m]]
         end
-        A[j] = f(p)
+        A_mid[j] = f(p)
       end
 
-      A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
+      A = reshape(A_mid,r[i]*n[i],r[i+2]*n[i+1])
       δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
   
@@ -5294,17 +5414,20 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
 
     # Solve for the final indices
 
-    A = Array{T,4}(undef,(r[d-1],n[d-1],n[d],r[d+1]))
+    if size(A_last,1) != r[d-1]
+      A_last = Array{T,4}(undef,(r[d-1],n[d-1],n[d],r[d+1]))
+    end
+
     Threads.@threads for j in CartesianIndices((1:r[d-1],1:n[d-1],1:n[d]))
       point_ind = (left_to_right_subs[d-2][j[1]]...,j[2],j[3])
       p         = Array{T,1}(undef,d)
       for m = 1:d
         p[m] = nodes[m][point_ind[m]]
       end
-     A[j[1],j[2],j[3],1] = f(p)
+      A_last[j[1],j[2],j[3],1] = f(p)
     end
 
-    A = reshape(A,r[d-1]*n[d-1],n[d])
+    A = reshape(A_last,r[d-1]*n[d-1],n[d])
     δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[d] = tsvd(A,δ)
 
@@ -5329,17 +5452,20 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
     
     for i = d-2:-1:2
 
-      A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+        A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      end
+
       Threads.@threads for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
         point_ind = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
         p         = Array{T,1}(undef,d)
         for m = 1:d
           p[m] = nodes[m][point_ind[m]]
         end
-        A[j] = f(p)
+        A_mid[j] = f(p)
       end
 
-      A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
+      A = reshape(A_mid,r[i]*n[i],r[i+2]*n[i+1])
       δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
   
@@ -5354,17 +5480,20 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
 
     # Solve for the first indices
 
-    A = Array{T,3}(undef,(n[1],n[2],r[3]))
+    if size(A_first,3) != r[3]
+      A_first = Array{T,3}(undef,n[1],n[2],r[3])
+    end
+
     Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
       point_ind = (j[1],j[2],right_to_left_subs[2][j[3]]...)
       p         = Array{T,1}(undef,d)
       for m = 1:d
         p[m] = nodes[m][point_ind[m]]
       end
-      A[j] = f(p)
+      A_first[j] = f(p)
     end
 
-    A = reshape(A,n[1],n[2]*r[3])
+    A = reshape(A_first,n[1],n[2]*r[3])
     δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
 
@@ -5374,7 +5503,7 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
     # Update right_to_left_subs, keeping the indices nested
     temp = [ind2sub(x,(n[2],r[3])) for x in right_to_left_indices_new[1]]
     right_to_left_subs[1] = [tuple(temp[j][1]...,right_to_left_subs[2][temp[j][2]]...) for j in eachindex(temp)]
-
+  
     sweeps += 1
   
     all(isempty.(setdiff.(left_to_right_indices_new, left_to_right_indices))) &&
@@ -5423,6 +5552,11 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
   left_to_right_indices_new = similar(left_to_right_indices)
   right_to_left_indices_new = similar(right_to_left_indices)
 
+  # Pre-allocate supercores; resize only when ranks change between sweeps
+  A_first = Array{T,3}(undef, n[1], n[2], r[3])
+  A_last  = Array{T,3}(undef, r[d-1], n[d-1], n[d])
+  A_mid   = d >= 4 ? [Array{T,4}(undef, r[i], n[i], n[i+1], r[i+2]) for i in 2:d-2] : Array{T,4}[]
+
   sweeps = 0
   while true
 
@@ -5430,17 +5564,20 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
 
     # Solve for the first indices
 
-    A = Array{T,3}(undef,(n[1],n[2],r[3]))
+    if size(A_first,3) != r[3]
+      A_first = Array{T,3}(undef,n[1],n[2],r[3])
+    end
+
     Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
       point_ind = (j[1],j[2],right_to_left_subs[2][j[3]]...)
       p         = Array{T,1}(undef,d)
       for m = 1:d
         p[m] = nodes[m][point_ind[m]]
       end
-      A[j] = f(p)
+      A_first[j] = f(p)
     end
 
-    A = reshape(A,n[1],n[2]*r[3])
+    A = reshape(A_first,n[1],n[2]*r[3])
     δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
 
@@ -5456,17 +5593,20 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
     
     for i = 2:d-2
 
-      A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+        A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      end
+
       Threads.@threads for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
         point_ind = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
         p         = Array{T,1}(undef,d)
         for m = 1:d
           p[m] = nodes[m][point_ind[m]]
         end
-        A[j] = f(p)
+        A_mid[j] = f(p)
       end
 
-      A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
+      A = reshape(A_mid,r[i]*n[i],r[i+2]*n[i+1])
       δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
   
@@ -5483,17 +5623,20 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
 
     # Solve for the final indices
 
-    A = Array{T,4}(undef,(r[d-1],n[d-1],n[d],r[d+1]))
+    if size(A_last,1) != r[d-1]
+      A_last = Array{T,4}(undef,(r[d-1],n[d-1],n[d],r[d+1]))
+    end
+
     Threads.@threads for j in CartesianIndices((1:r[d-1],1:n[d-1],1:n[d]))
       point_ind = (left_to_right_subs[d-2][j[1]]...,j[2],j[3])
       p         = Array{T,1}(undef,d)
       for m = 1:d
         p[m] = nodes[m][point_ind[m]]
       end
-     A[j[1],j[2],j[3],1] = f(p)
+      A_last[j[1],j[2],j[3],1] = f(p)
     end
 
-    A = reshape(A,r[d-1]*n[d-1],n[d])
+    A = reshape(A_last,r[d-1]*n[d-1],n[d])
     δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[d] = tsvd(A,δ)
 
@@ -5512,23 +5655,26 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
     
     r_temp = copy(r)
 
-    # Sweep from tight to left, keeping the indices nested
+    # Sweep from right to left, keeping the indices nested
 
     # Solve for the interior indices
     
     for i = d-2:-1:2
 
-      A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+        A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      end
+
       Threads.@threads for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
         point_ind = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
         p         = Array{T,1}(undef,d)
         for m = 1:d
           p[m] = nodes[m][point_ind[m]]
         end
-        A[j] = f(p)
+        A_mid[j] = f(p)
       end
 
-      A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
+      A = reshape(A_mid,r[i]*n[i],r[i+2]*n[i+1])
       δ = (tol/sqrt(d-1))*norm(A)
       u,s,v,r[i+1] = tsvd(A,δ)
   
@@ -5543,17 +5689,20 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
 
     # Solve for the first indices
 
-    A = Array{T,3}(undef,(n[1],n[2],r[3]))
+    if size(A_first,3) != r[3]
+      A_first = Array{T,3}(undef,n[1],n[2],r[3])
+    end
+
     Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
       point_ind = (j[1],j[2],right_to_left_subs[2][j[3]]...)
       p         = Array{T,1}(undef,d)
       for m = 1:d
         p[m] = nodes[m][point_ind[m]]
       end
-      A[j] = f(p)
+      A_first[j] = f(p)
     end
 
-    A = reshape(A,n[1],n[2]*r[3])
+    A = reshape(A_first,n[1],n[2]*r[3])
     δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r[2] = tsvd(A,δ)
 
@@ -5563,7 +5712,7 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
     # Update right_to_left_subs, keeping the indices nested
     temp = [ind2sub(x,(n[2],r[3])) for x in right_to_left_indices_new[1]]
     right_to_left_subs[1] = [tuple(temp[j][1]...,right_to_left_subs[2][temp[j][2]]...) for j in eachindex(temp)]
-
+  
     sweeps += 1
   
     all(isempty.(setdiff.(left_to_right_indices_new, left_to_right_indices))) &&
@@ -5662,6 +5811,11 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
   left_to_right_indices_new = similar(left_to_right_indices)
   right_to_left_indices_new = similar(right_to_left_indices)
 
+  # Pre-allocate supercores; resize only when ranks change between sweeps
+  A_first = Array{T,3}(undef, n[1], n[2], r[3])
+  A_last  = Array{T,3}(undef, r[d-1], n[d-1], n[d])
+  A_mid   = d >= 4 ? [Array{T,4}(undef, r[i], n[i], n[i+1], r[i+2]) for i in 2:d-2] : Array{T,4}[]
+
   sweeps = 0
   while true
 
@@ -5669,17 +5823,20 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
 
     # Solve for the first indices
 
-    A = Array{T,3}(undef,(n[1],n[2],r[3]))
+    if size(A_first,3) != r[3]
+      A_first = Array{T,3}(undef,n[1],n[2],r[3])
+    end
+
     Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
       point_ind = (j[1],j[2],right_to_left_subs[2][j[3]]...)
       p         = Array{T,1}(undef,d)
       for m = 1:d
         p[m] = nodes[m][point_ind[m]]
       end
-      A[j] = f(p)
+      A_first[j] = f(p)
     end
 
-    A = reshape(A,n[1],n[2]*r[3])
+    A = reshape(A_first,n[1],n[2]*r[3])
     u,s,v,r[2] = tsvd(A,r[2])
 
     left_to_right_indices_new[1], _ = maxvol_generic!(u,μ,300)
@@ -5694,17 +5851,20 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
     
     for i = 2:d-2
 
-      A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+        A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      end
+
       Threads.@threads for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
         point_ind = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
         p         = Array{T,1}(undef,d)
         for m = 1:d
           p[m] = nodes[m][point_ind[m]]
         end
-        A[j] = f(p)
+        A_mid[j] = f(p)
       end
 
-      A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
+      A = reshape(A_mid,r[i]*n[i],r[i+2]*n[i+1])
       u,s,v,r[i+1] = tsvd(A,r[i+1])
   
       left_to_right_indices_new[i], _ = maxvol_generic!(u,μ,300)
@@ -5720,17 +5880,20 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
 
     # Solve for the final indices
 
-    A = Array{T,4}(undef,(r[d-1],n[d-1],n[d],r[d+1]))
+    if size(A_last,1) != r[d-1]
+      A_last = Array{T,4}(undef,(r[d-1],n[d-1],n[d],r[d+1]))
+    end
+
     Threads.@threads for j in CartesianIndices((1:r[d-1],1:n[d-1],1:n[d]))
       point_ind = (left_to_right_subs[d-2][j[1]]...,j[2],j[3])
       p         = Array{T,1}(undef,d)
       for m = 1:d
         p[m] = nodes[m][point_ind[m]]
       end
-     A[j[1],j[2],j[3],1] = f(p)
+      A_last[j[1],j[2],j[3],1] = f(p)
     end
 
-    A = reshape(A,r[d-1]*n[d-1],n[d])
+    A = reshape(A_last,r[d-1]*n[d-1],n[d])
     u,s,v,r[d] = tsvd(A,r[d])
 
     left_to_right_indices_new[d-1], _ = maxvol_generic!(u,μ,300)
@@ -5754,17 +5917,20 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
     
     for i = d-2:-1:2
 
-      A = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+        A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      end
+
       Threads.@threads for j in CartesianIndices((1:r[i],1:n[i],1:n[i+1],1:r[i+2]))
         point_ind = (left_to_right_subs[i-1][j[1]]...,j[2],j[3],right_to_left_subs[i+1][j[4]]...)
         p         = Array{T,1}(undef,d)
         for m = 1:d
           p[m] = nodes[m][point_ind[m]]
         end
-        A[j] = f(p)
+        A_mid[j] = f(p)
       end
 
-      A = reshape(A,r[i]*n[i],r[i+2]*n[i+1])
+      A = reshape(A_mid,r[i]*n[i],r[i+2]*n[i+1])
       u,s,v,r[i+1] = tsvd(A,r[i+1])
   
       left_to_right_indices_new[i], _ = maxvol_generic!(u,μ,300)
@@ -5778,17 +5944,20 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
 
     # Solve for the first indices
 
-    A = Array{T,3}(undef,(n[1],n[2],r[3]))
+    if size(A_first,3) != r[3]
+      A_first = Array{T,3}(undef,n[1],n[2],r[3])
+    end
+
     Threads.@threads for j in CartesianIndices((1:n[1],1:n[2],1:r[3]))
       point_ind = (j[1],j[2],right_to_left_subs[2][j[3]]...)
       p         = Array{T,1}(undef,d)
       for m = 1:d
         p[m] = nodes[m][point_ind[m]]
       end
-      A[j] = f(p)
+      A_first[j] = f(p)
     end
 
-    A = reshape(A,n[1],n[2]*r[3])
+    A = reshape(A_first,n[1],n[2]*r[3])
     u,s,v,r[2] = tsvd(A,r[2])
 
     left_to_right_indices_new[1], _ = maxvol_generic!(u,μ,300)
@@ -5797,7 +5966,7 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,Array{T,1}},μ::
     # Update right_to_left_subs, keeping the indices nested
     temp = [ind2sub(x,(n[2],r[3])) for x in right_to_left_indices_new[1]]
     right_to_left_subs[1] = [tuple(temp[j][1]...,right_to_left_subs[2][temp[j][2]]...) for j in eachindex(temp)]
-
+  
     sweeps += 1
   
     all(isempty.(setdiff.(left_to_right_indices_new, left_to_right_indices))) &&
@@ -8268,16 +8437,16 @@ TTnorm(train)
 function TTnorm(train::DiscreteTensorTrain)
 
   if typeof(train) <: Union{RightOrthBaseTensorTrain,RightOrthExtendedTensorTrain}
-    return norm(orthtrain.cores[1])
+    return norm(train.cores[1])
   elseif typeof(train) <: Union{LeftOrthBaseTensorTrain,LeftOrthExtendedTensorTrain}
-    return norm(orthtrain.cores[d])
+    return norm(train.cores[end])
   else
     try
       orthtrain = TTorthright(train)
       return norm(orthtrain.cores[1])
     catch
       orthtrain = TTorthleft(train)
-      return norm(orthtrain.cores[d])
+      return norm(orthtrain.cores[end])
     end
   end
 
