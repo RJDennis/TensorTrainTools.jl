@@ -12,8 +12,8 @@ Maxvol = "4cc553b9-be87-484b-81d9-b5ae2a4e3958"
 [compat]
 GaussQuadrature = "^0.5"
 Maxvol = "^1.0"
-GenericLinearAlgebra = "^0.3"
-julia = "1.6"
+GenericLinearAlgebra = "^0.4"
+julia = "1.10"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
