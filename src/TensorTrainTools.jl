@@ -1,4 +1,4 @@
-module TensorTrainApprox
+module TensorTrainTools
 
 using GaussQuadrature
 using Maxvol
