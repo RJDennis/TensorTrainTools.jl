@@ -1,4 +1,4 @@
-name = "TensorTrainApprox"
+name = "TensorTrainTools"
 uuid = "1940a7fa-26bb-40ed-82aa-2c0b66cfb046"
 authors = ["Richard Dennis <richard.dennis@glasgow.ac.uk>"]
 version = "0.1.0"
