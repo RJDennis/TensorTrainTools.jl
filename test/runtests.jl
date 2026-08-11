@@ -1,5 +1,5 @@
 
-using TensorTrainApprox
+using TensorTrainTools
 using Test
 
 @testset "TensorTrainApprox.jl" begin
