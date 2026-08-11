@@ -72,6 +72,6 @@ jobs:
         shell: julia --project=docs --color=yes {0}
         run: |
           using Documenter: DocMeta, doctest
-          using TensorTrainApprox
-          DocMeta.setdocmeta!(TensorTrainApprox, :DocTestSetup, :(using TensorTrainApprox); recursive=true)
-          doctest(TensorTrainApprox)
+          using TensorTrainTools
+          DocMeta.setdocmeta!(TensorTrainTools, :DocTestSetup, :(using TensorTrainTools); recursive=true)
+          doctest(TensorTrainTools)
