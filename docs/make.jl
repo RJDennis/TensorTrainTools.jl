@@ -1,14 +1,14 @@
-using TensorTrainApprox
+using TensorTrainTools
 using Documenter
 
-DocMeta.setdocmeta!(TensorTrainApprox, :DocTestSetup, :(using TensorTrainApprox); recursive=true)
+DocMeta.setdocmeta!(TensorTrainTools, :DocTestSetup, :(using TensorTrainTools); recursive=true)
 
 makedocs(;
-    modules=[TensorTrainApprox],
+    modules=[TensorTrainTools],
     authors="Richard Dennis <richard.dennis@glasgow.ac.uk> and contributors",
-    sitename="TensorTrainApprox.jl",
+    sitename="TensorTrainTools.jl",
     format=Documenter.HTML(;
-        canonical="https://RJDennis.github.io/TensorTrainApprox.jl",
+        canonical="https://RJDennis.github.io/TensorTrainTools.jl",
         edit_link="master",
         assets=String[],
     ),
@@ -18,6 +18,6 @@ makedocs(;
 )
 
 deploydocs(;
-    repo="github.com/RJDennis/TensorTrainApprox.jl",
+    repo="github.com/RJDennis/TensorTrainTools.jl",
     devbranch="master",
 )

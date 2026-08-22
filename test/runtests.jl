@@ -2,7 +2,7 @@
 using TensorTrainTools
 using Test
 
-@testset "TensorTrainApprox.jl" begin
+@testset "TensorTrainTools.jl" begin
     
     constant_tensor_train_a = TTconstant(2.0,(5,6,7),3)
     constant_tensor_train_b = TTconstant(2.0,(5,6,7),[1,3,3,1])

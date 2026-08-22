@@ -887,7 +887,7 @@ t = DMRGcross(B,μ,tol,maxsweeps)
 t = DMRGcross(B,μ,r)
 t = DMRGcross(B,μ,r,maxsweeps)
 """
-function DMRGcross(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020)
+function DMRGcross(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 30) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020)
 
   # When d ≤ 2
 
@@ -1004,7 +1004,7 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6) where {T
   
     for i = 2:d-2
 
-      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+      if size(A_mid) != (r[i],n[i],n[i+1],r[i+2])
         A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
@@ -1064,7 +1064,7 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6) where {T
   
     for i = d-2:-1:2
 
-      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+      if size(A_mid) != (r[i],n[i],n[i+1],r[i+2])
         A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
@@ -1112,14 +1112,17 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6) where {T
   
     all(isempty.(setdiff.(left_to_right_indices_new, left_to_right_indices))) &&
     all(isempty.(setdiff.(right_to_left_indices_new, right_to_left_indices))) &&
-    return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps)
+    return r == r_temp ? ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) : BaseTensorTrain(G,r_temp,sweeps)
 
     left_to_right_indices .= left_to_right_indices_new
     right_to_left_indices .= right_to_left_indices_new
 
     if sweeps >= maxsweeps
-      return isempty(setdiff(r,r_temp)) ?
-        ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps) :
+      # The right-to-left sweep overwrote `r` bond by bond without writing any cores, so
+      # r_temp is the rank vector the cores are actually in.  Compare elementwise: a set
+      # comparison cannot tell [..,6,7,..] from [..,7,6,..].
+      return r == r_temp ?
+        ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) :
         BaseTensorTrain(G,r_temp,sweeps)
     end
 
@@ -1127,7 +1130,7 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6) where {T
 
 end
 
-function DMRGcross(B::AbstractArray{T,d},μ::T,r::AbstractVector{S},maxsweeps::S = 6) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross(B::AbstractArray{T,d},μ::T,r::AbstractVector{S},maxsweeps::S = 30) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   if length(r) != d+1
     error("Rank vector has incorrect length")
@@ -1240,7 +1243,7 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,r::AbstractVector{S},maxsweeps::S
   
     for i = 2:d-2
 
-      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+      if size(A_mid) != (r[i],n[i],n[i+1],r[i+2])
         A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
@@ -1298,7 +1301,7 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,r::AbstractVector{S},maxsweeps::S
   
     for i = d-2:-1:2
 
-      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+      if size(A_mid) != (r[i],n[i],n[i+1],r[i+2])
         A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
@@ -1344,14 +1347,17 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,r::AbstractVector{S},maxsweeps::S
   
     all(isempty.(setdiff.(left_to_right_indices_new, left_to_right_indices))) &&
     all(isempty.(setdiff.(right_to_left_indices_new, right_to_left_indices))) &&
-    return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps)
+    return r == r_temp ? ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) : BaseTensorTrain(G,r_temp,sweeps)
 
     left_to_right_indices .= left_to_right_indices_new
     right_to_left_indices .= right_to_left_indices_new
 
     if sweeps >= maxsweeps
-      return isempty(setdiff(r,r_temp)) ?
-        ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps) :
+      # The right-to-left sweep overwrote `r` bond by bond without writing any cores, so
+      # r_temp is the rank vector the cores are actually in.  Compare elementwise: a set
+      # comparison cannot tell [..,6,7,..] from [..,7,6,..].
+      return r == r_temp ?
+        ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) :
         BaseTensorTrain(G,r_temp,sweeps)
     end
 
@@ -1359,7 +1365,7 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,r::AbstractVector{S},maxsweeps::S
 
 end
 
-function DMRGcross(B::AbstractArray{T,d},μ::T,r::S,maxsweeps::S = 6) where {T<:AbstractFloat,S<:Integer,d}
+function DMRGcross(B::AbstractArray{T,d},μ::T,r::S,maxsweeps::S = 30) where {T<:AbstractFloat,S<:Integer,d}
 
   ranks = ones(Int,d+1)
   ranks[2:d] .= r
@@ -1381,7 +1387,7 @@ t = DMRGcross_generic(B,μ,tol,maxsweeps)
 t = DMRGcross_generic(B,μ,r)
 t = DMRGcross_generic(B,μ,r,maxsweeps)
 """
-function DMRGcross_generic(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps::S = 6) where {T<:AbstractFloat,R<: AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_generic(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps::S = 30) where {T<:AbstractFloat,R<: AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   # When d ≤ 2
 
@@ -1499,7 +1505,7 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps::S = 6) 
   
     for i = 2:d-2
 
-      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+      if size(A_mid) != (r[i],n[i],n[i+1],r[i+2])
         A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
@@ -1559,7 +1565,7 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps::S = 6) 
   
     for i = d-2:-1:2
 
-      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+      if size(A_mid) != (r[i],n[i],n[i+1],r[i+2])
         A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
@@ -1607,14 +1613,17 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps::S = 6) 
   
     all(isempty.(setdiff.(left_to_right_indices_new, left_to_right_indices))) &&
     all(isempty.(setdiff.(right_to_left_indices_new, right_to_left_indices))) &&
-    return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps)
+    return r == r_temp ? ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) : BaseTensorTrain(G,r_temp,sweeps)
 
     left_to_right_indices .= left_to_right_indices_new
     right_to_left_indices .= right_to_left_indices_new
 
     if sweeps >= maxsweeps
-      return isempty(setdiff(r,r_temp)) ?
-        ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps) :
+      # The right-to-left sweep overwrote `r` bond by bond without writing any cores, so
+      # r_temp is the rank vector the cores are actually in.  Compare elementwise: a set
+      # comparison cannot tell [..,6,7,..] from [..,7,6,..].
+      return r == r_temp ?
+        ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) :
         BaseTensorTrain(G,r_temp,sweeps)
     end
 
@@ -1622,7 +1631,7 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps::S = 6) 
 
 end
 
-function DMRGcross_generic(B::AbstractArray{T,d},μ::R,r::AbstractVector{S},maxsweeps::S = 6) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_generic(B::AbstractArray{T,d},μ::R,r::AbstractVector{S},maxsweeps::S = 30) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   if length(r) != d+1
     error("Rank vector has incorrect length")
@@ -1736,7 +1745,7 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,r::AbstractVector{S},maxs
   
     for i = 2:d-2
 
-      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+      if size(A_mid) != (r[i],n[i],n[i+1],r[i+2])
         A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
@@ -1794,7 +1803,7 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,r::AbstractVector{S},maxs
   
     for i = d-2:-1:2
 
-      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+      if size(A_mid) != (r[i],n[i],n[i+1],r[i+2])
         A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
@@ -1840,14 +1849,17 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,r::AbstractVector{S},maxs
   
     all(isempty.(setdiff.(left_to_right_indices_new, left_to_right_indices))) &&
     all(isempty.(setdiff.(right_to_left_indices_new, right_to_left_indices))) &&
-    return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps)
+    return r == r_temp ? ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) : BaseTensorTrain(G,r_temp,sweeps)
 
     left_to_right_indices .= left_to_right_indices_new
     right_to_left_indices .= right_to_left_indices_new
 
     if sweeps >= maxsweeps
-      return isempty(setdiff(r,r_temp)) ?
-        ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps) :
+      # The right-to-left sweep overwrote `r` bond by bond without writing any cores, so
+      # r_temp is the rank vector the cores are actually in.  Compare elementwise: a set
+      # comparison cannot tell [..,6,7,..] from [..,7,6,..].
+      return r == r_temp ?
+        ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) :
         BaseTensorTrain(G,r_temp,sweeps)
     end
 
@@ -1855,7 +1867,7 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,r::AbstractVector{S},maxs
 
 end
 
-function DMRGcross_generic(B::AbstractArray{T,d},μ::R,r::S,maxsweeps::S = 6) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_generic(B::AbstractArray{T,d},μ::R,r::S,maxsweeps::S = 30) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   ranks = ones(Int,d+1)
   ranks[2:d] .= r
@@ -1877,7 +1889,7 @@ t = DMRGcross_threaded(B,μ,tol,maxsweeps)
 t = DMRGcross_threaded(B,μ,r)
 t = DMRGcross_threaded(B,μ,r,maxsweeps)
 """
-function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 30) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   # When d ≤ 2
 
@@ -1995,7 +2007,7 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6)
   
     for i = 2:d-2
 
-      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+      if size(A_mid) != (r[i],n[i],n[i+1],r[i+2])
         A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
@@ -2055,7 +2067,7 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6)
   
     for i = d-2:-1:2
 
-      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+      if size(A_mid) != (r[i],n[i],n[i+1],r[i+2])
         A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
@@ -2103,14 +2115,17 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6)
   
     all(isempty.(setdiff.(left_to_right_indices_new, left_to_right_indices))) &&
     all(isempty.(setdiff.(right_to_left_indices_new, right_to_left_indices))) &&
-    return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps)
+    return r == r_temp ? ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) : BaseTensorTrain(G,r_temp,sweeps)
 
     left_to_right_indices .= left_to_right_indices_new
     right_to_left_indices .= right_to_left_indices_new
 
     if sweeps >= maxsweeps
-      return isempty(setdiff(r,r_temp)) ?
-        ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps) :
+      # The right-to-left sweep overwrote `r` bond by bond without writing any cores, so
+      # r_temp is the rank vector the cores are actually in.  Compare elementwise: a set
+      # comparison cannot tell [..,6,7,..] from [..,7,6,..].
+      return r == r_temp ?
+        ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) :
         BaseTensorTrain(G,r_temp,sweeps)
     end
 
@@ -2118,7 +2133,7 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 6)
 
 end
 
-function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,r::AbstractVector{S},maxsweeps::S = 6) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,r::AbstractVector{S},maxsweeps::S = 30) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   if length(r) != d+1
     error("Rank vector has incorrect length")
@@ -2232,7 +2247,7 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,r::AbstractVector{S},max
   
     for i = 2:d-2
 
-      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+      if size(A_mid) != (r[i],n[i],n[i+1],r[i+2])
         A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
@@ -2290,7 +2305,7 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,r::AbstractVector{S},max
   
     for i = d-2:-1:2
 
-      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+      if size(A_mid) != (r[i],n[i],n[i+1],r[i+2])
         A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
@@ -2336,14 +2351,17 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,r::AbstractVector{S},max
   
     all(isempty.(setdiff.(left_to_right_indices_new, left_to_right_indices))) &&
     all(isempty.(setdiff.(right_to_left_indices_new, right_to_left_indices))) &&
-    return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps)
+    return r == r_temp ? ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) : BaseTensorTrain(G,r_temp,sweeps)
 
     left_to_right_indices .= left_to_right_indices_new
     right_to_left_indices .= right_to_left_indices_new
 
     if sweeps >= maxsweeps
-      return isempty(setdiff(r,r_temp)) ?
-        ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps) :
+      # The right-to-left sweep overwrote `r` bond by bond without writing any cores, so
+      # r_temp is the rank vector the cores are actually in.  Compare elementwise: a set
+      # comparison cannot tell [..,6,7,..] from [..,7,6,..].
+      return r == r_temp ?
+        ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) :
         BaseTensorTrain(G,r_temp,sweeps)
     end
 
@@ -2351,7 +2369,7 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,r::AbstractVector{S},max
 
 end
 
-function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,r::S,maxsweeps::S = 6) where {T<:AbstractFloat,S<:Integer,d}
+function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,r::S,maxsweeps::S = 30) where {T<:AbstractFloat,S<:Integer,d}
 
   ranks = ones(Int,d+1)
   ranks[2:d] .= r
@@ -2373,7 +2391,7 @@ t = DMRGcross_generic_threaded(B,μ,tol,maxsweeps)
 t = DMRGcross_generic_threaded(B,μ,r)
 t = DMRGcross_generic_threaded(B,μ,r,maxsweeps)
 """
-function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps::S = 6) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps::S = 30) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   # When d ≤ 2
 
@@ -2491,7 +2509,7 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps
   
     for i = 2:d-2
 
-      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+      if size(A_mid) != (r[i],n[i],n[i+1],r[i+2])
         A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
@@ -2551,7 +2569,7 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps
   
     for i = d-2:-1:2
 
-      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+      if size(A_mid) != (r[i],n[i],n[i+1],r[i+2])
         A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
@@ -2599,14 +2617,17 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps
   
     all(isempty.(setdiff.(left_to_right_indices_new, left_to_right_indices))) &&
     all(isempty.(setdiff.(right_to_left_indices_new, right_to_left_indices))) &&
-    return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps)
+    return r == r_temp ? ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) : BaseTensorTrain(G,r_temp,sweeps)
 
     left_to_right_indices .= left_to_right_indices_new
     right_to_left_indices .= right_to_left_indices_new
 
     if sweeps >= maxsweeps
-      return isempty(setdiff(r,r_temp)) ?
-        ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps) :
+      # The right-to-left sweep overwrote `r` bond by bond without writing any cores, so
+      # r_temp is the rank vector the cores are actually in.  Compare elementwise: a set
+      # comparison cannot tell [..,6,7,..] from [..,7,6,..].
+      return r == r_temp ?
+        ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) :
         BaseTensorTrain(G,r_temp,sweeps)
     end
 
@@ -2614,7 +2635,7 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps
 
 end
 
-function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,r::AbstractVector{S},maxsweeps::S = 6) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,r::AbstractVector{S},maxsweeps::S = 30) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   if length(r) != d+1
     error("Rank vector has incorrect length")
@@ -2728,7 +2749,7 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,r::AbstractVecto
   
     for i = 2:d-2
 
-      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+      if size(A_mid) != (r[i],n[i],n[i+1],r[i+2])
         A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
@@ -2786,7 +2807,7 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,r::AbstractVecto
   
     for i = d-2:-1:2
 
-      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+      if size(A_mid) != (r[i],n[i],n[i+1],r[i+2])
         A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
@@ -2832,14 +2853,17 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,r::AbstractVecto
   
     all(isempty.(setdiff.(left_to_right_indices_new, left_to_right_indices))) &&
     all(isempty.(setdiff.(right_to_left_indices_new, right_to_left_indices))) &&
-    return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps)
+    return r == r_temp ? ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) : BaseTensorTrain(G,r_temp,sweeps)
 
     left_to_right_indices .= left_to_right_indices_new
     right_to_left_indices .= right_to_left_indices_new
 
     if sweeps >= maxsweeps
-      return isempty(setdiff(r,r_temp)) ?
-        ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps) :
+      # The right-to-left sweep overwrote `r` bond by bond without writing any cores, so
+      # r_temp is the rank vector the cores are actually in.  Compare elementwise: a set
+      # comparison cannot tell [..,6,7,..] from [..,7,6,..].
+      return r == r_temp ?
+        ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) :
         BaseTensorTrain(G,r_temp,sweeps)
     end
 
@@ -2847,7 +2871,7 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,r::AbstractVecto
 
 end
 
-function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,r::S,maxsweeps::S = 6) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,r::S,maxsweeps::S = 30) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   ranks = ones(Int,d+1)
   ranks[2:d] .= r
@@ -2956,7 +2980,7 @@ t = DMRGcross(f,nodes,μ,tol,initial,maxsweeps)
 t = DMRGcross(f,nodes,μ,r)
 t = DMRGcross(f,nodes,μ,r,maxsweeps)
 """
-function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,tol::T,maxsweeps::S = 6) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,tol::T,maxsweeps::S = 30) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   n = length.(nodes)
 
@@ -3080,7 +3104,7 @@ function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,tol::T,m
     
     for i = 2:d-2
 
-      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+      if size(A_mid) != (r[i],n[i],n[i+1],r[i+2])
         A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
@@ -3155,7 +3179,7 @@ function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,tol::T,m
     
     for i = d-2:-1:2
 
-      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+      if size(A_mid) != (r[i],n[i],n[i+1],r[i+2])
         A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
@@ -3218,14 +3242,17 @@ function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,tol::T,m
   
     all(isempty.(setdiff.(left_to_right_indices_new, left_to_right_indices))) &&
     all(isempty.(setdiff.(right_to_left_indices_new, right_to_left_indices))) &&
-    return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps)
+    return r == r_temp ? ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) : BaseTensorTrain(G,r_temp,sweeps)
 
     left_to_right_indices .= left_to_right_indices_new
     right_to_left_indices .= right_to_left_indices_new
 
     if sweeps >= maxsweeps
-      return isempty(setdiff(r,r_temp)) ?
-        ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps) :
+      # The right-to-left sweep overwrote `r` bond by bond without writing any cores, so
+      # r_temp is the rank vector the cores are actually in.  Compare elementwise: a set
+      # comparison cannot tell [..,6,7,..] from [..,7,6,..].
+      return r == r_temp ?
+        ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) :
         BaseTensorTrain(G,r_temp,sweeps)
     end
 
@@ -3233,7 +3260,7 @@ function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,tol::T,m
 
 end
 
-function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,tol::T,initial::ExtendedTensorTrain,maxsweeps::S = 6) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,tol::T,initial::ExtendedTensorTrain,maxsweeps::S = 30) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   # When d ≤ 2
 
@@ -3308,7 +3335,7 @@ function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,tol::T,i
     
     for i = 2:d-2
 
-      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+      if size(A_mid) != (r[i],n[i],n[i+1],r[i+2])
         A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
@@ -3383,7 +3410,7 @@ function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,tol::T,i
     
     for i = d-2:-1:2
 
-      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+      if size(A_mid) != (r[i],n[i],n[i+1],r[i+2])
         A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
@@ -3446,14 +3473,17 @@ function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,tol::T,i
   
     all(isempty.(setdiff.(left_to_right_indices_new, left_to_right_indices))) &&
     all(isempty.(setdiff.(right_to_left_indices_new, right_to_left_indices))) &&
-    return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps)
+    return r == r_temp ? ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) : BaseTensorTrain(G,r_temp,sweeps)
 
     left_to_right_indices .= left_to_right_indices_new
     right_to_left_indices .= right_to_left_indices_new
 
     if sweeps >= maxsweeps
-      return isempty(setdiff(r,r_temp)) ?
-        ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps) :
+      # The right-to-left sweep overwrote `r` bond by bond without writing any cores, so
+      # r_temp is the rank vector the cores are actually in.  Compare elementwise: a set
+      # comparison cannot tell [..,6,7,..] from [..,7,6,..].
+      return r == r_temp ?
+        ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) :
         BaseTensorTrain(G,r_temp,sweeps)
     end
 
@@ -3461,7 +3491,7 @@ function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,tol::T,i
 
 end
 
-function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,r::AbstractVector{S},maxsweeps::S = 6) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,r::AbstractVector{S},maxsweeps::S = 30) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   if length(r) != d+1
     error("Rank vector has incorrect length")
@@ -3699,14 +3729,17 @@ function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,r::Abstr
   
     all(isempty.(setdiff.(left_to_right_indices_new, left_to_right_indices))) &&
     all(isempty.(setdiff.(right_to_left_indices_new, right_to_left_indices))) &&
-    return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps)
+    return r == r_temp ? ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) : BaseTensorTrain(G,r_temp,sweeps)
 
     left_to_right_indices .= left_to_right_indices_new
     right_to_left_indices .= right_to_left_indices_new
 
     if sweeps >= maxsweeps
-      return isempty(setdiff(r,r_temp)) ?
-        ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps) :
+      # The right-to-left sweep overwrote `r` bond by bond without writing any cores, so
+      # r_temp is the rank vector the cores are actually in.  Compare elementwise: a set
+      # comparison cannot tell [..,6,7,..] from [..,7,6,..].
+      return r == r_temp ?
+        ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) :
         BaseTensorTrain(G,r_temp,sweeps)
     end
 
@@ -3714,7 +3747,7 @@ function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,r::Abstr
 
 end
 
-function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,r::S,maxsweeps::S = 6) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,r::S,maxsweeps::S = 30) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   ranks = ones(Int,d+1)
   ranks[2:d] .= r
@@ -3738,7 +3771,7 @@ t = DMRGcross_generic(f,nodes,μ,tol,initial,maxsweeps)
 t = DMRGcross_generic(f,nodes,μ,r)
 t = DMRGcross_generic(f,nodes,μ,r,maxsweeps)
 """
-function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,tol::R,maxsweeps::S = 6) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,tol::R,maxsweeps::S = 30) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   # When d ≤ 2
 
@@ -3862,7 +3895,7 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,
     
     for i = 2:d-2
 
-      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+      if size(A_mid) != (r[i],n[i],n[i+1],r[i+2])
         A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
@@ -3937,7 +3970,7 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,
     
     for i = d-2:-1:2
 
-      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+      if size(A_mid) != (r[i],n[i],n[i+1],r[i+2])
         A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
@@ -4000,14 +4033,17 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,
   
     all(isempty.(setdiff.(left_to_right_indices_new, left_to_right_indices))) &&
     all(isempty.(setdiff.(right_to_left_indices_new, right_to_left_indices))) &&
-    return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps)
+    return r == r_temp ? ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) : BaseTensorTrain(G,r_temp,sweeps)
 
     left_to_right_indices .= left_to_right_indices_new
     right_to_left_indices .= right_to_left_indices_new
 
     if sweeps >= maxsweeps
-      return isempty(setdiff(r,r_temp)) ?
-        ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps) :
+      # The right-to-left sweep overwrote `r` bond by bond without writing any cores, so
+      # r_temp is the rank vector the cores are actually in.  Compare elementwise: a set
+      # comparison cannot tell [..,6,7,..] from [..,7,6,..].
+      return r == r_temp ?
+        ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) :
         BaseTensorTrain(G,r_temp,sweeps)
     end
 
@@ -4015,7 +4051,7 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,
 
 end
 
-function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,tol::R,initial::ExtendedTensorTrain,maxsweeps::S = 6) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,tol::R,initial::ExtendedTensorTrain,maxsweeps::S = 30) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   # When d ≤ 2
 
@@ -4090,7 +4126,7 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,
     
     for i = 2:d-2
 
-      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+      if size(A_mid) != (r[i],n[i],n[i+1],r[i+2])
         A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
@@ -4165,7 +4201,7 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,
     
     for i = d-2:-1:2
 
-      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+      if size(A_mid) != (r[i],n[i],n[i+1],r[i+2])
         A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
@@ -4228,14 +4264,17 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,
   
     all(isempty.(setdiff.(left_to_right_indices_new, left_to_right_indices))) &&
     all(isempty.(setdiff.(right_to_left_indices_new, right_to_left_indices))) &&
-    return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps)
+    return r == r_temp ? ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) : BaseTensorTrain(G,r_temp,sweeps)
 
     left_to_right_indices .= left_to_right_indices_new
     right_to_left_indices .= right_to_left_indices_new
 
     if sweeps >= maxsweeps
-      return isempty(setdiff(r,r_temp)) ?
-        ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps) :
+      # The right-to-left sweep overwrote `r` bond by bond without writing any cores, so
+      # r_temp is the rank vector the cores are actually in.  Compare elementwise: a set
+      # comparison cannot tell [..,6,7,..] from [..,7,6,..].
+      return r == r_temp ?
+        ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) :
         BaseTensorTrain(G,r_temp,sweeps)
     end
 
@@ -4243,7 +4282,7 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,
 
 end
 
-function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,r::Vector{S},maxsweeps::S = 6) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,r::Vector{S},maxsweeps::S = 30) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   if length(r) != d+1
     error("Rank vector has incorrect length")
@@ -4481,14 +4520,17 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,
   
     all(isempty.(setdiff.(left_to_right_indices_new, left_to_right_indices))) &&
     all(isempty.(setdiff.(right_to_left_indices_new, right_to_left_indices))) &&
-    return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps)
+    return r == r_temp ? ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) : BaseTensorTrain(G,r_temp,sweeps)
 
     left_to_right_indices .= left_to_right_indices_new
     right_to_left_indices .= right_to_left_indices_new
 
     if sweeps >= maxsweeps
-      return isempty(setdiff(r,r_temp)) ?
-        ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps) :
+      # The right-to-left sweep overwrote `r` bond by bond without writing any cores, so
+      # r_temp is the rank vector the cores are actually in.  Compare elementwise: a set
+      # comparison cannot tell [..,6,7,..] from [..,7,6,..].
+      return r == r_temp ?
+        ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) :
         BaseTensorTrain(G,r_temp,sweeps)
     end
 
@@ -4496,7 +4538,7 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,
 
 end
 
-function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,r::S,maxsweeps::S = 6) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,r::S,maxsweeps::S = 30) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   ranks = ones(S,d+1)
   ranks[2:d] .= r
@@ -4520,7 +4562,7 @@ t = DMRGcross_threaded(f,nodes,μ,tol,initial,maxsweeps)
 t = DMRGcross_threaded(f,nodes,μ,r)
 t = DMRGcross_threaded(f,nodes,μ,r,maxsweeps)
 """
-function DMRGcross_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,tol::T,maxsweeps::S = 6) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,tol::T,maxsweeps::S = 30) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   # When d ≤ 2
 
@@ -4639,7 +4681,7 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T
     
     for i = 2:d-2
 
-      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+      if size(A_mid) != (r[i],n[i],n[i+1],r[i+2])
         A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
@@ -4707,7 +4749,7 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T
     
     for i = d-2:-1:2
 
-      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+      if size(A_mid) != (r[i],n[i],n[i+1],r[i+2])
         A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
@@ -4763,14 +4805,17 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T
   
     all(isempty.(setdiff.(left_to_right_indices_new, left_to_right_indices))) &&
     all(isempty.(setdiff.(right_to_left_indices_new, right_to_left_indices))) &&
-    return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps)
+    return r == r_temp ? ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) : BaseTensorTrain(G,r_temp,sweeps)
 
     left_to_right_indices .= left_to_right_indices_new
     right_to_left_indices .= right_to_left_indices_new
 
     if sweeps >= maxsweeps
-      return isempty(setdiff(r,r_temp)) ?
-        ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps) :
+      # The right-to-left sweep overwrote `r` bond by bond without writing any cores, so
+      # r_temp is the rank vector the cores are actually in.  Compare elementwise: a set
+      # comparison cannot tell [..,6,7,..] from [..,7,6,..].
+      return r == r_temp ?
+        ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) :
         BaseTensorTrain(G,r_temp,sweeps)
     end
 
@@ -4778,7 +4823,7 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T
 
 end
 
-function DMRGcross_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,tol::T,initial::ExtendedTensorTrain,maxsweeps::S = 6) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,tol::T,initial::ExtendedTensorTrain,maxsweeps::S = 30) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   # When d ≤ 2
 
@@ -4848,7 +4893,7 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T
     
     for i = 2:d-2
 
-      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+      if size(A_mid) != (r[i],n[i],n[i+1],r[i+2])
         A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
@@ -4916,7 +4961,7 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T
     
     for i = d-2:-1:2
 
-      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+      if size(A_mid) != (r[i],n[i],n[i+1],r[i+2])
         A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
@@ -4972,14 +5017,17 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T
   
     all(isempty.(setdiff.(left_to_right_indices_new, left_to_right_indices))) &&
     all(isempty.(setdiff.(right_to_left_indices_new, right_to_left_indices))) &&
-    return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps)
+    return r == r_temp ? ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) : BaseTensorTrain(G,r_temp,sweeps)
 
     left_to_right_indices .= left_to_right_indices_new
     right_to_left_indices .= right_to_left_indices_new
 
     if sweeps >= maxsweeps
-      return isempty(setdiff(r,r_temp)) ?
-        ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps) :
+      # The right-to-left sweep overwrote `r` bond by bond without writing any cores, so
+      # r_temp is the rank vector the cores are actually in.  Compare elementwise: a set
+      # comparison cannot tell [..,6,7,..] from [..,7,6,..].
+      return r == r_temp ?
+        ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) :
         BaseTensorTrain(G,r_temp,sweeps)
     end
 
@@ -4987,7 +5035,7 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T
 
 end
 
-function DMRGcross_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,r::Vector{S},maxsweeps::S = 6) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,r::Vector{S},maxsweeps::S = 30) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   if length(r) != d+1
     error("Rank vector has incorrect length")
@@ -5106,7 +5154,7 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T
     
     for i = 2:d-2
 
-      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+      if size(A_mid) != (r[i],n[i],n[i+1],r[i+2])
         A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
@@ -5172,7 +5220,7 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T
     
     for i = d-2:-1:2
 
-      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+      if size(A_mid) != (r[i],n[i],n[i+1],r[i+2])
         A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
@@ -5226,14 +5274,17 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T
   
     all(isempty.(setdiff.(left_to_right_indices_new, left_to_right_indices))) &&
     all(isempty.(setdiff.(right_to_left_indices_new, right_to_left_indices))) &&
-    return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps)
+    return r == r_temp ? ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) : BaseTensorTrain(G,r_temp,sweeps)
 
     left_to_right_indices .= left_to_right_indices_new
     right_to_left_indices .= right_to_left_indices_new
 
     if sweeps >= maxsweeps
-      return isempty(setdiff(r,r_temp)) ?
-        ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps) :
+      # The right-to-left sweep overwrote `r` bond by bond without writing any cores, so
+      # r_temp is the rank vector the cores are actually in.  Compare elementwise: a set
+      # comparison cannot tell [..,6,7,..] from [..,7,6,..].
+      return r == r_temp ?
+        ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) :
         BaseTensorTrain(G,r_temp,sweeps)
     end
 
@@ -5241,7 +5292,7 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T
 
 end
 
-function DMRGcross_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,r::S,maxsweeps::S = 6) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,r::S,maxsweeps::S = 30) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   ranks = ones(Int,d+1)
   ranks[2:d] .= r
@@ -5265,7 +5316,7 @@ t = DMRGcross_generic_threaded(f,nodes,μ,tol,initial,maxsweeps)
 t = DMRGcross_generic_threaded(f,nodes,μ,r)
 t = DMRGcross_generic_threaded(f,nodes,μ,r,maxsweeps)
 """
-function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,tol::R,maxsweeps::S = 6) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,tol::R,maxsweeps::S = 30) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   # When d ≤ 2
 
@@ -5384,7 +5435,7 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,AbstractVector{T
     
     for i = 2:d-2
 
-      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+      if size(A_mid) != (r[i],n[i],n[i+1],r[i+2])
         A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
@@ -5452,7 +5503,7 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,AbstractVector{T
     
     for i = d-2:-1:2
 
-      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+      if size(A_mid) != (r[i],n[i],n[i+1],r[i+2])
         A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
@@ -5508,14 +5559,17 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,AbstractVector{T
   
     all(isempty.(setdiff.(left_to_right_indices_new, left_to_right_indices))) &&
     all(isempty.(setdiff.(right_to_left_indices_new, right_to_left_indices))) &&
-    return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps)
+    return r == r_temp ? ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) : BaseTensorTrain(G,r_temp,sweeps)
 
     left_to_right_indices .= left_to_right_indices_new
     right_to_left_indices .= right_to_left_indices_new
 
     if sweeps >= maxsweeps
-      return isempty(setdiff(r,r_temp)) ?
-        ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps) :
+      # The right-to-left sweep overwrote `r` bond by bond without writing any cores, so
+      # r_temp is the rank vector the cores are actually in.  Compare elementwise: a set
+      # comparison cannot tell [..,6,7,..] from [..,7,6,..].
+      return r == r_temp ?
+        ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) :
         BaseTensorTrain(G,r_temp,sweeps)
     end
 
@@ -5523,7 +5577,7 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,AbstractVector{T
 
 end
 
-function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,tol::R,initial::ExtendedTensorTrain,maxsweeps::S = 6) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,tol::R,initial::ExtendedTensorTrain,maxsweeps::S = 30) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   # When d ≤ 2
 
@@ -5593,7 +5647,7 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,AbstractVector{T
     
     for i = 2:d-2
 
-      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+      if size(A_mid) != (r[i],n[i],n[i+1],r[i+2])
         A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
@@ -5661,7 +5715,7 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,AbstractVector{T
     
     for i = d-2:-1:2
 
-      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+      if size(A_mid) != (r[i],n[i],n[i+1],r[i+2])
         A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
@@ -5717,14 +5771,17 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,AbstractVector{T
   
     all(isempty.(setdiff.(left_to_right_indices_new, left_to_right_indices))) &&
     all(isempty.(setdiff.(right_to_left_indices_new, right_to_left_indices))) &&
-    return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps)
+    return r == r_temp ? ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) : BaseTensorTrain(G,r_temp,sweeps)
 
     left_to_right_indices .= left_to_right_indices_new
     right_to_left_indices .= right_to_left_indices_new
 
     if sweeps >= maxsweeps
-      return isempty(setdiff(r,r_temp)) ?
-        ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps) :
+      # The right-to-left sweep overwrote `r` bond by bond without writing any cores, so
+      # r_temp is the rank vector the cores are actually in.  Compare elementwise: a set
+      # comparison cannot tell [..,6,7,..] from [..,7,6,..].
+      return r == r_temp ?
+        ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) :
         BaseTensorTrain(G,r_temp,sweeps)
     end
 
@@ -5732,7 +5789,7 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,AbstractVector{T
 
 end
 
-function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,r::Vector{S},maxsweeps::S = 6) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,r::Vector{S},maxsweeps::S = 30) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   if length(r) != d+1
     error("Rank vector has incorrect length")
@@ -5851,7 +5908,7 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,AbstractVector{T
     
     for i = 2:d-2
 
-      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+      if size(A_mid) != (r[i],n[i],n[i+1],r[i+2])
         A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
@@ -5917,7 +5974,7 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,AbstractVector{T
     
     for i = d-2:-1:2
 
-      if size(A_mid,1) != r[i] || size(A_mid,4) != r[i+2]
+      if size(A_mid) != (r[i],n[i],n[i+1],r[i+2])
         A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
       end
 
@@ -5971,14 +6028,17 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,AbstractVector{T
   
     all(isempty.(setdiff.(left_to_right_indices_new, left_to_right_indices))) &&
     all(isempty.(setdiff.(right_to_left_indices_new, right_to_left_indices))) &&
-    return ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps)
+    return r == r_temp ? ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) : BaseTensorTrain(G,r_temp,sweeps)
 
     left_to_right_indices .= left_to_right_indices_new
     right_to_left_indices .= right_to_left_indices_new
 
     if sweeps >= maxsweeps
-      return isempty(setdiff(r,r_temp)) ?
-        ExtendedTensorTrain(G,r,left_to_right_indices,right_to_left_indices,left_to_right_subs,right_to_left_subs,sweeps) :
+      # The right-to-left sweep overwrote `r` bond by bond without writing any cores, so
+      # r_temp is the rank vector the cores are actually in.  Compare elementwise: a set
+      # comparison cannot tell [..,6,7,..] from [..,7,6,..].
+      return r == r_temp ?
+        ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) :
         BaseTensorTrain(G,r_temp,sweeps)
     end
 
@@ -5986,7 +6046,7 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,AbstractVector{T
 
 end
 
-function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,r::S,maxsweeps::S = 6) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,r::S,maxsweeps::S = 30) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   ranks = ones(Int,d+1)
   ranks[2:d] .= r
@@ -7067,6 +7127,50 @@ function TTevaluate(train::FunctionalTensorTrain,points::AbstractVector{Abstract
 
 end
 
+"""
+Evaluate a ChebyshevTensorTrain or LegendreTensorTrain at the point 'x'.
+
+Signature
+=========
+
+yhat = TTevaluate(train,x,domain)
+"""
+function TTevaluate(train::ChebyshevTensorTrain,x::AbstractArray{R,1},domain::AbstractMatrix{T}) where {R<:Real,T<:AbstractFloat}
+
+  d = length(train.cores)
+  poly = Vector{Matrix{R}}(undef, d)
+  @inbounds for i = 1:d
+    order = length(train.cores[i][1])-1
+    poly[i] = cheb_polynomial(order, normalize_node(x[i], domain[:, i]))
+  end
+
+  A = [(poly[1]*train.cores[1][i,k])[1] for i in 1:train.ranks[1], k in 1:train.ranks[2]]
+  @inbounds for j = 2:d
+    A *= [(poly[j]*train.cores[j][i,k])[1] for i in 1:train.ranks[j], k in 1:train.ranks[j+1]]
+  end
+
+  return A[1][1]
+
+end
+
+function TTevaluate(train::LegendreTensorTrain,x::AbstractArray{R,1},domain::AbstractMatrix{T}) where {R<:Real,T<:AbstractFloat}
+
+  d = length(train.cores)
+  poly = Vector{Matrix{R}}(undef, d)
+  @inbounds for i = 1:d
+    order = length(train.cores[i][1])-1
+    poly[i] = legendre_polynomial(order, normalize_node(x[i], domain[:, i]))
+  end
+
+  A = [(poly[1]*train.cores[1][i,k])[1] for i in 1:train.ranks[1], k in 1:train.ranks[2]]
+  @inbounds for j = 2:d
+    A *= [(poly[j]*train.cores[j][i,k])[1] for i in 1:train.ranks[j], k in 1:train.ranks[j+1]]
+  end
+
+  return A[1][1]
+
+end
+
 #### Functions to compute derivatives and gradients of continuous tensor trains
 
 """
@@ -7220,7 +7324,7 @@ function TThessian(train::ChebyshevTensorTrain,x::AbstractArray{R,1},domain::Abs
 
   d = length(train.cores)
 
-  hessian = Matrix{R,2}(undef,d,d)
+  hessian = Matrix{R}(undef,d,d)
 
   @inbounds for i = 1:d
     @inbounds for j = 1:d
@@ -7236,7 +7340,7 @@ function TThessian(train::LegendreTensorTrain,x::AbstractArray{R,1},domain::Abst
 
   d = length(train.cores)
 
-  hessian = Matrix{R,2}(undef,d,d)
+  hessian = Matrix{R}(undef,d,d)
 
   @inbounds for i = 1:d
     @inbounds for j = 1:d
@@ -9726,7 +9830,7 @@ function TTnewton(train::DiscreteTensorTrain,nodes::NTuple{d,AbstractVector{T}},
 
   g = deepcopy(train.cores)
 
-  new_G = Vector{Array{T,3}}(undef,dx)
+  new_g = Vector{Array{T,3}}(undef,dx)
 
   for i in dx:-1:2
     new_g[i] = g[ds+i]
@@ -9786,7 +9890,7 @@ function TTnewton(train::ContinuousTensorTrain,nodes::NTuple{d,AbstractVector{T}
 
   new_point = [nodes[i][point_index[i]] for i in 1:d]
 
-  return new_point, point_index, TTevaluate(train,point_index), iters
+  return new_point, point_index, TTevaluate(train,new_point,domain), iters
 
 end
 
@@ -9831,7 +9935,7 @@ function TTnewton_step(train::DiscreteTensorTrain,nodes::NTuple{d,AbstractVector
 
   g = deepcopy(train.cores)
 
-  new_G = Vector{Array{T,3}}(undef,dx)
+  new_g = Vector{Array{T,3}}(undef,dx)
 
   for i in dx:-1:2
     new_g[i] = g[ds+i]
@@ -9913,7 +10017,7 @@ function TTdescent(train::DiscreteTensorTrain,nodes::NTuple{d,AbstractVector{T}}
 
   g = deepcopy(train.cores)
 
-  new_G = Vector{Array{T,3}}(undef,dx)
+  new_g = Vector{Array{T,3}}(undef,dx)
 
   for i in dx:-1:2
     new_g[i] = g[ds+i]
@@ -9975,7 +10079,7 @@ function TTdescent(train::ContinuousTensorTrain,nodes::NTuple{d,AbstractVector{T
 
   new_point = [nodes[i][point_index[i]] for i in 1:d]
 
-  return new_point, point_index, TTevaluate(train,point_index), iters
+  return new_point, point_index, TTevaluate(train,new_point,domain), iters
 
 end
 
@@ -10021,7 +10125,7 @@ function TTdescent_step(train::DiscreteTensorTrain,nodes::NTuple{d,AbstractVecto
 
   g = deepcopy(train.cores)
 
-  new_G = Vector{Array{T,3}}(undef,dx)
+  new_g = Vector{Array{T,3}}(undef,dx)
 
   for i in dx:-1:2
     new_g[i] = g[ds+i]

@@ -1,14 +1,14 @@
 ```@meta
-CurrentModule = TensorTrainApprox
+CurrentModule = TensorTrainTools
 ```
 
-# TensorTrainApprox
+# TensorTrainTools
 
-Documentation for [TensorTrainApprox](https://github.com/RJDENNIS/TensorTrainApprox.jl).
+Documentation for [TensorTrainTools](https://github.com/RJDennis/TensorTrainTools.jl).
 
 ```@index
 ```
 
 ```@autodocs
-Modules = [TensorTrainApprox]
+Modules = [TensorTrainTools]
 ```
