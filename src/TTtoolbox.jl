@@ -9194,11 +9194,13 @@ function TTextremize(train::DiscreteTensorTrain,K::S) where {S<:Integer} # Based
 
     G = reshape(Π[k],r[k],n[k]*r[k+1])
     Q = Q*G
-    Q = reshape(Q,K*n[k],r[k+1])
+    Kf = size(Q,1)  # topK clamps the beam to min(rows,K), so the live width can be below K
+    Q = reshape(Q,Kf*n[k],r[k+1])
     ind = topK(Q,K)
-    subs = [ind2sub(ind[i],(K,n[k]))[2] for i in 1:K]
+    prnt = [ind2sub(ind[i],(Kf,n[k]))[1] for i in eachindex(ind)]
+    subs = [ind2sub(ind[i],(Kf,n[k]))[2] for i in eachindex(ind)]
     Q = Q[ind,:]
-    I = [I subs]
+    I = [I[prnt,:] subs]  # each surviving candidate carries ITS OWN history forward
 
   end
 
@@ -9224,11 +9226,13 @@ function TTextremize(train::Union{RightOrthBaseTensorTrain,RightOrthExtendedTens
 
     G = reshape(Π[k],r[k],n[k]*r[k+1])
     Q = Q*G
-    Q = reshape(Q,K*n[k],r[k+1])
+    Kf = size(Q,1)  # topK clamps the beam to min(rows,K), so the live width can be below K
+    Q = reshape(Q,Kf*n[k],r[k+1])
     ind = topK(Q,K)
-    subs = [ind2sub(ind[i],(K,n[k]))[2] for i in 1:K]
+    prnt = [ind2sub(ind[i],(Kf,n[k]))[1] for i in eachindex(ind)]
+    subs = [ind2sub(ind[i],(Kf,n[k]))[2] for i in eachindex(ind)]
     Q = Q[ind,:]
-    I = [I subs]
+    I = [I[prnt,:] subs]  # each surviving candidate carries ITS OWN history forward
 
   end
 
@@ -9265,11 +9269,13 @@ function TTextremize(train::DiscreteTensorTrain,K::S,state::Vector{S}) where {S<
 
     G = reshape(Π[k],r[k],n[k]*r[k+1])
     Q = Q*G
-    Q = reshape(Q,K*n[k],r[k+1])
+    Kf = size(Q,1)  # topK clamps the beam to min(rows,K), so the live width can be below K
+    Q = reshape(Q,Kf*n[k],r[k+1])
     ind = topK(Q,K)
-    subs = [ind2sub(ind[i],(K,n[k]))[2] for i in 1:K]
+    prnt = [ind2sub(ind[i],(Kf,n[k]))[1] for i in eachindex(ind)]
+    subs = [ind2sub(ind[i],(Kf,n[k]))[2] for i in eachindex(ind)]
     Q = Q[ind,:]
-    I = [I subs]
+    I = [I[prnt,:] subs]  # each surviving candidate carries ITS OWN history forward
 
   end
 
@@ -9305,11 +9311,13 @@ function TTextremize(train::Union{RightOrthBaseTensorTrain,RightOrthExtendedTens
 
     G = reshape(Π[k],r[k],n[k]*r[k+1])
     Q = Q*G
-    Q = reshape(Q,K*n[k],r[k+1])
+    Kf = size(Q,1)  # topK clamps the beam to min(rows,K), so the live width can be below K
+    Q = reshape(Q,Kf*n[k],r[k+1])
     ind = topK(Q,K)
-    subs = [ind2sub(ind[i],(K,n[k]))[2] for i in 1:K]
+    prnt = [ind2sub(ind[i],(Kf,n[k]))[1] for i in eachindex(ind)]
+    subs = [ind2sub(ind[i],(Kf,n[k]))[2] for i in eachindex(ind)]
     Q = Q[ind,:]
-    I = [I subs]
+    I = [I[prnt,:] subs]  # each surviving candidate carries ITS OWN history forward
 
   end
 
