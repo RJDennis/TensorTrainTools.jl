@@ -1118,9 +1118,6 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 30) where {
     right_to_left_indices .= right_to_left_indices_new
 
     if sweeps >= maxsweeps
-      # The right-to-left sweep overwrote `r` bond by bond without writing any cores, so
-      # r_temp is the rank vector the cores are actually in.  Compare elementwise: a set
-      # comparison cannot tell [..,6,7,..] from [..,7,6,..].
       return r == r_temp ?
         ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) :
         BaseTensorTrain(G,r_temp,sweeps)
@@ -1353,9 +1350,6 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,r::AbstractVector{S},maxsweeps::S
     right_to_left_indices .= right_to_left_indices_new
 
     if sweeps >= maxsweeps
-      # The right-to-left sweep overwrote `r` bond by bond without writing any cores, so
-      # r_temp is the rank vector the cores are actually in.  Compare elementwise: a set
-      # comparison cannot tell [..,6,7,..] from [..,7,6,..].
       return r == r_temp ?
         ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) :
         BaseTensorTrain(G,r_temp,sweeps)
@@ -1619,9 +1613,6 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps::S = 30)
     right_to_left_indices .= right_to_left_indices_new
 
     if sweeps >= maxsweeps
-      # The right-to-left sweep overwrote `r` bond by bond without writing any cores, so
-      # r_temp is the rank vector the cores are actually in.  Compare elementwise: a set
-      # comparison cannot tell [..,6,7,..] from [..,7,6,..].
       return r == r_temp ?
         ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) :
         BaseTensorTrain(G,r_temp,sweeps)
@@ -1855,9 +1846,6 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,r::AbstractVector{S},maxs
     right_to_left_indices .= right_to_left_indices_new
 
     if sweeps >= maxsweeps
-      # The right-to-left sweep overwrote `r` bond by bond without writing any cores, so
-      # r_temp is the rank vector the cores are actually in.  Compare elementwise: a set
-      # comparison cannot tell [..,6,7,..] from [..,7,6,..].
       return r == r_temp ?
         ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) :
         BaseTensorTrain(G,r_temp,sweeps)
@@ -2121,9 +2109,6 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 30
     right_to_left_indices .= right_to_left_indices_new
 
     if sweeps >= maxsweeps
-      # The right-to-left sweep overwrote `r` bond by bond without writing any cores, so
-      # r_temp is the rank vector the cores are actually in.  Compare elementwise: a set
-      # comparison cannot tell [..,6,7,..] from [..,7,6,..].
       return r == r_temp ?
         ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) :
         BaseTensorTrain(G,r_temp,sweeps)
@@ -2357,9 +2342,6 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,r::AbstractVector{S},max
     right_to_left_indices .= right_to_left_indices_new
 
     if sweeps >= maxsweeps
-      # The right-to-left sweep overwrote `r` bond by bond without writing any cores, so
-      # r_temp is the rank vector the cores are actually in.  Compare elementwise: a set
-      # comparison cannot tell [..,6,7,..] from [..,7,6,..].
       return r == r_temp ?
         ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) :
         BaseTensorTrain(G,r_temp,sweeps)
@@ -2623,9 +2605,6 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps
     right_to_left_indices .= right_to_left_indices_new
 
     if sweeps >= maxsweeps
-      # The right-to-left sweep overwrote `r` bond by bond without writing any cores, so
-      # r_temp is the rank vector the cores are actually in.  Compare elementwise: a set
-      # comparison cannot tell [..,6,7,..] from [..,7,6,..].
       return r == r_temp ?
         ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) :
         BaseTensorTrain(G,r_temp,sweeps)
@@ -2859,9 +2838,6 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,r::AbstractVecto
     right_to_left_indices .= right_to_left_indices_new
 
     if sweeps >= maxsweeps
-      # The right-to-left sweep overwrote `r` bond by bond without writing any cores, so
-      # r_temp is the rank vector the cores are actually in.  Compare elementwise: a set
-      # comparison cannot tell [..,6,7,..] from [..,7,6,..].
       return r == r_temp ?
         ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) :
         BaseTensorTrain(G,r_temp,sweeps)
@@ -3248,9 +3224,6 @@ function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,tol::T,m
     right_to_left_indices .= right_to_left_indices_new
 
     if sweeps >= maxsweeps
-      # The right-to-left sweep overwrote `r` bond by bond without writing any cores, so
-      # r_temp is the rank vector the cores are actually in.  Compare elementwise: a set
-      # comparison cannot tell [..,6,7,..] from [..,7,6,..].
       return r == r_temp ?
         ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) :
         BaseTensorTrain(G,r_temp,sweeps)
@@ -3479,9 +3452,6 @@ function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,tol::T,i
     right_to_left_indices .= right_to_left_indices_new
 
     if sweeps >= maxsweeps
-      # The right-to-left sweep overwrote `r` bond by bond without writing any cores, so
-      # r_temp is the rank vector the cores are actually in.  Compare elementwise: a set
-      # comparison cannot tell [..,6,7,..] from [..,7,6,..].
       return r == r_temp ?
         ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) :
         BaseTensorTrain(G,r_temp,sweeps)
@@ -3735,9 +3705,6 @@ function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,r::Abstr
     right_to_left_indices .= right_to_left_indices_new
 
     if sweeps >= maxsweeps
-      # The right-to-left sweep overwrote `r` bond by bond without writing any cores, so
-      # r_temp is the rank vector the cores are actually in.  Compare elementwise: a set
-      # comparison cannot tell [..,6,7,..] from [..,7,6,..].
       return r == r_temp ?
         ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) :
         BaseTensorTrain(G,r_temp,sweeps)
@@ -4039,9 +4006,6 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,
     right_to_left_indices .= right_to_left_indices_new
 
     if sweeps >= maxsweeps
-      # The right-to-left sweep overwrote `r` bond by bond without writing any cores, so
-      # r_temp is the rank vector the cores are actually in.  Compare elementwise: a set
-      # comparison cannot tell [..,6,7,..] from [..,7,6,..].
       return r == r_temp ?
         ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) :
         BaseTensorTrain(G,r_temp,sweeps)
@@ -4270,9 +4234,6 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,
     right_to_left_indices .= right_to_left_indices_new
 
     if sweeps >= maxsweeps
-      # The right-to-left sweep overwrote `r` bond by bond without writing any cores, so
-      # r_temp is the rank vector the cores are actually in.  Compare elementwise: a set
-      # comparison cannot tell [..,6,7,..] from [..,7,6,..].
       return r == r_temp ?
         ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) :
         BaseTensorTrain(G,r_temp,sweeps)
@@ -4526,9 +4487,6 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,
     right_to_left_indices .= right_to_left_indices_new
 
     if sweeps >= maxsweeps
-      # The right-to-left sweep overwrote `r` bond by bond without writing any cores, so
-      # r_temp is the rank vector the cores are actually in.  Compare elementwise: a set
-      # comparison cannot tell [..,6,7,..] from [..,7,6,..].
       return r == r_temp ?
         ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) :
         BaseTensorTrain(G,r_temp,sweeps)
@@ -4811,9 +4769,6 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T
     right_to_left_indices .= right_to_left_indices_new
 
     if sweeps >= maxsweeps
-      # The right-to-left sweep overwrote `r` bond by bond without writing any cores, so
-      # r_temp is the rank vector the cores are actually in.  Compare elementwise: a set
-      # comparison cannot tell [..,6,7,..] from [..,7,6,..].
       return r == r_temp ?
         ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) :
         BaseTensorTrain(G,r_temp,sweeps)
@@ -5023,9 +4978,6 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T
     right_to_left_indices .= right_to_left_indices_new
 
     if sweeps >= maxsweeps
-      # The right-to-left sweep overwrote `r` bond by bond without writing any cores, so
-      # r_temp is the rank vector the cores are actually in.  Compare elementwise: a set
-      # comparison cannot tell [..,6,7,..] from [..,7,6,..].
       return r == r_temp ?
         ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) :
         BaseTensorTrain(G,r_temp,sweeps)
@@ -5280,9 +5232,6 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T
     right_to_left_indices .= right_to_left_indices_new
 
     if sweeps >= maxsweeps
-      # The right-to-left sweep overwrote `r` bond by bond without writing any cores, so
-      # r_temp is the rank vector the cores are actually in.  Compare elementwise: a set
-      # comparison cannot tell [..,6,7,..] from [..,7,6,..].
       return r == r_temp ?
         ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) :
         BaseTensorTrain(G,r_temp,sweeps)
@@ -5565,9 +5514,6 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,AbstractVector{T
     right_to_left_indices .= right_to_left_indices_new
 
     if sweeps >= maxsweeps
-      # The right-to-left sweep overwrote `r` bond by bond without writing any cores, so
-      # r_temp is the rank vector the cores are actually in.  Compare elementwise: a set
-      # comparison cannot tell [..,6,7,..] from [..,7,6,..].
       return r == r_temp ?
         ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) :
         BaseTensorTrain(G,r_temp,sweeps)
@@ -5777,9 +5723,6 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,AbstractVector{T
     right_to_left_indices .= right_to_left_indices_new
 
     if sweeps >= maxsweeps
-      # The right-to-left sweep overwrote `r` bond by bond without writing any cores, so
-      # r_temp is the rank vector the cores are actually in.  Compare elementwise: a set
-      # comparison cannot tell [..,6,7,..] from [..,7,6,..].
       return r == r_temp ?
         ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) :
         BaseTensorTrain(G,r_temp,sweeps)
@@ -6034,9 +5977,6 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,AbstractVector{T
     right_to_left_indices .= right_to_left_indices_new
 
     if sweeps >= maxsweeps
-      # The right-to-left sweep overwrote `r` bond by bond without writing any cores, so
-      # r_temp is the rank vector the cores are actually in.  Compare elementwise: a set
-      # comparison cannot tell [..,6,7,..] from [..,7,6,..].
       return r == r_temp ?
         ExtendedTensorTrain(G,r,left_to_right_indices_new,right_to_left_indices_new,left_to_right_subs,right_to_left_subs,sweeps) :
         BaseTensorTrain(G,r_temp,sweeps)
@@ -8416,8 +8356,8 @@ function TTorthleft(train::L) where {L<:BaseTensorTrain}
     Q, R = qr(G)
     Π[k] = reshape(Matrix(Q),r[k],n[k],r[k+1])
     # Update the (k+1)'th core
-    G = reshape(Π[k+1],r[k+1]*n[k+1],r[k+2])
-    G = G*R
+    G = reshape(Π[k+1],r[k+1],n[k+1]*r[k+2])
+    G = R*G
     Π[k+1] = reshape(G,r[k+1],n[k+1],r[k+2])
 
   end
@@ -8440,8 +8380,8 @@ function TTorthleft(train::L) where {L<:ExtendedTensorTrain}
     Q, R = qr(G)
     Π[k] = reshape(Matrix(Q),r[k],n[k],r[k+1])
     # Update the (k+1)'th core
-    G = reshape(Π[k+1],r[k+1]*n[k+1],r[k+2])
-    G = G*R
+    G = reshape(Π[k+1],r[k+1],n[k+1]*r[k+2])
+    G = R*G
     Π[k+1] = reshape(G,r[k+1],n[k+1],r[k+2])
 
   end
@@ -8472,8 +8412,8 @@ function TTorthleftright(train::L,μ::S) where {L<:BaseTensorTrain,S<:Integer}
     Q, R = qr(G)
     Π[k] = reshape(Matrix(Q),r[k],n[k],r[k+1])
     # Update the (k+1)'th core
-    G = reshape(Π[k+1],r[k+1]*n[k+1],r[k+2])
-    G = G*R
+    G = reshape(Π[k+1],r[k+1],n[k+1]*r[k+2])
+    G = R*G
     Π[k+1] = reshape(G,r[k+1],n[k+1],r[k+2])
 
   end
@@ -8509,8 +8449,8 @@ function TTorthleftright(train::L,μ::S) where {L<:ExtendedTensorTrain,S<:Intege
     Q, R = qr(G)
     Π[k] = reshape(Matrix(Q),r[k],n[k],r[k+1])
     # Update the (k+1)'th core
-    G = reshape(Π[k+1],r[k+1]*n[k+1],r[k+2])
-    G = G*R
+    G = reshape(Π[k+1],r[k+1],n[k+1]*r[k+2])
+    G = R*G
     Π[k+1] = reshape(G,r[k+1],n[k+1],r[k+2])
 
   end
