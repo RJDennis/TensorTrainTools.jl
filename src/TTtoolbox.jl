@@ -282,7 +282,7 @@ function ind2sub(i::AbstractVector{S},dims::AbstractVector{S}) where {S<:Integer
     end
   end
 
-  subs = Tuple(CartesianIndices(Tuple(dims))[i])
+  subs = Tuple.(CartesianIndices(Tuple(dims))[i])
 
   return subs
 
@@ -295,7 +295,7 @@ Signatures
 ==========
 
 t = tsvd(A,δ)
-t = tsvd(A,δ,r)
+t = tsvd(A,r)
 """
 function tsvd(A::AbstractArray{T1,2},δ::T2) where {T1<:AbstractFloat,T2<:AbstractFloat} # Looks at norm of singular values
 
@@ -320,7 +320,7 @@ end
 function tsvd(A::AbstractArray{T,2},r::S) where {T<:AbstractFloat,S<:Integer} # Looks at norm of singular values
 
   n = size(A)
-  if r > minimum(n) !! r < 1
+  if r > minimum(n) || r < 1
     error("Invalid rank.")
   end
 
@@ -409,7 +409,7 @@ function TTrandn(n::NTuple{d,S},r::AbstractVector{S},T::DataType=Float64) where 
 
   G = Vector{Array{T,3}}(undef,d)
   for i = 1:d
-    G[i] = rand(T,r[i],n[i],r[i+1])
+    G[i] = randn(T,r[i],n[i],r[i+1])
   end
 
   return BaseTensorTrain(G,r,0)
@@ -642,7 +642,7 @@ t = TTals(A,r,tol)
 t = TTals(A,r,tol,maxsweeps)
 t = TTals(A,r,tol,maxsweeps,seed)
 """
-function TTals(A::AbstractArray{T,d},r::S,tol::T1,maxsweeps::S=100,seed::S=123456) where{T<:AbstractFloat,T1<:AbstractFloat,S<:Integer,d}
+function TTals(A::AbstractArray{T,d},r::S,tol::T1,maxsweeps::Integer = 10,seed::Integer = 123456) where{T<:AbstractFloat,T1<:AbstractFloat,S<:Integer,d}
 
   if d == 1
     return BaseTensorTrain([reshape(A,1,:,1)],[1,1],0)
@@ -708,7 +708,7 @@ function TTals(A::AbstractArray{T,d},r::S,tol::T1,maxsweeps::S=100,seed::S=12345
 
 end
 
-function TTals(A::AbstractArray{T,d},r::AbstractVector{S},tol::T1,maxsweeps::S=100,seed::S=123456) where{T<:AbstractFloat,T1<:AbstractFloat,S<:Integer,d}
+function TTals(A::AbstractArray{T,d},r::AbstractVector{S},tol::T1,maxsweeps::Integer = 10,seed::Integer = 123456) where{T<:AbstractFloat,T1<:AbstractFloat,S<:Integer,d}
 
   if d == 1
     return BaseTensorTrain([reshape(A,1,:,1)],[1,1],0)
@@ -824,6 +824,8 @@ end
 
 function TTsvd(A::AbstractArray{T,d},r::AbstractVector{S}) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Oseledets and Tyrtyshnikov (2010).
 
+  r = copy(r) # The achieved ranks are written into 'r', so the caller's vector must not be touched
+
   if length(r) != d+1
     error("Rank vector has incorrect length")
   end
@@ -887,7 +889,7 @@ t = DMRGcross(B,μ,tol,maxsweeps)
 t = DMRGcross(B,μ,r)
 t = DMRGcross(B,μ,r,maxsweeps)
 """
-function DMRGcross(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 30) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020)
+function DMRGcross(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::Integer = 10) where {T<:AbstractFloat,d} # Based on the description given in Dolgov and Savostyanov (2020)
 
   # When d ≤ 2
 
@@ -901,7 +903,7 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 30) where {
 
   rinit = 2
 
-  r = ones(S,d+1)
+  r = ones(Int,d+1)
   for i = 2:d
     r[i] = min(n[i-1],n[i],rinit)
   end
@@ -912,11 +914,11 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 30) where {
 
   # Create containers to hold the linear indices and sub-indices
 
-  left_to_right_indices = Vector{Vector{S}}(undef,d-1)
-  right_to_left_indices = Vector{Vector{S}}(undef,d-1)
+  left_to_right_indices = Vector{Vector{Int}}(undef,d-1)
+  right_to_left_indices = Vector{Vector{Int}}(undef,d-1)
 
-  left_to_right_subs = Vector{Array{Tuple{S,Vararg{S}}}}(undef,d-1)
-  right_to_left_subs = Vector{Array{Tuple{S,Vararg{S}}}}(undef,d-1)
+  left_to_right_subs = Vector{Array{Tuple{Int,Vararg{Int}}}}(undef,d-1)
+  right_to_left_subs = Vector{Array{Tuple{Int,Vararg{Int}}}}(undef,d-1)
 
   # We first sweep from left to right, so only the right indices really need to be initialized.  We initialize both 
   # set of indices so that convergence can be checked at the end of the first left-right sweep.
@@ -1030,7 +1032,7 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 30) where {
 
     # Solve for the final indices
 
-    if size(A_last,3) != r[d-1]
+    if size(A_last,1) != r[d-1]
       A_last = Array{T,3}(undef,(r[d-1],n[d-1],n[d]))
     end
 
@@ -1127,7 +1129,7 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 30) where {
 
 end
 
-function DMRGcross(B::AbstractArray{T,d},μ::T,r::AbstractVector{S},maxsweeps::S = 30) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross(B::AbstractArray{T,d},μ::T,r::AbstractVector{S},maxsweeps::Integer = 10) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   if length(r) != d+1
     error("Rank vector has incorrect length")
@@ -1265,7 +1267,7 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,r::AbstractVector{S},maxsweeps::S
 
     # Solve for the final indices
 
-    if size(A_last,3) != r[d-1]
+    if size(A_last,1) != r[d-1]
       A_last = Array{T,3}(undef,(r[d-1],n[d-1],n[d]))
     end
 
@@ -1359,7 +1361,7 @@ function DMRGcross(B::AbstractArray{T,d},μ::T,r::AbstractVector{S},maxsweeps::S
 
 end
 
-function DMRGcross(B::AbstractArray{T,d},μ::T,r::S,maxsweeps::S = 30) where {T<:AbstractFloat,S<:Integer,d}
+function DMRGcross(B::AbstractArray{T,d},μ::T,r::S,maxsweeps::Integer = 10) where {T<:AbstractFloat,S<:Integer,d}
 
   ranks = ones(Int,d+1)
   ranks[2:d] .= r
@@ -1381,7 +1383,7 @@ t = DMRGcross_generic(B,μ,tol,maxsweeps)
 t = DMRGcross_generic(B,μ,r)
 t = DMRGcross_generic(B,μ,r,maxsweeps)
 """
-function DMRGcross_generic(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps::S = 30) where {T<:AbstractFloat,R<: AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_generic(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps::Integer = 10) where {T<:AbstractFloat,R<: AbstractFloat,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   # When d ≤ 2
 
@@ -1395,7 +1397,7 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps::S = 30)
 
   rinit = 2
 
-  r = ones(S,d+1)
+  r = ones(Int,d+1)
   for i = 2:d
     r[i] = min(n[i-1],n[i],rinit)
   end
@@ -1406,11 +1408,11 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps::S = 30)
 
   # Create containers to hold the linear indices and sub-indices
 
-  left_to_right_indices = Vector{Vector{S}}(undef,d-1)
-  right_to_left_indices = Vector{Vector{S}}(undef,d-1)
+  left_to_right_indices = Vector{Vector{Int}}(undef,d-1)
+  right_to_left_indices = Vector{Vector{Int}}(undef,d-1)
 
-  left_to_right_subs = Vector{Array{Tuple{S,Vararg{S}}}}(undef,d-1)
-  right_to_left_subs = Vector{Array{Tuple{S,Vararg{S}}}}(undef,d-1)
+  left_to_right_subs = Vector{Array{Tuple{Int,Vararg{Int}}}}(undef,d-1)
+  right_to_left_subs = Vector{Array{Tuple{Int,Vararg{Int}}}}(undef,d-1)
 
   # We first sweep from left to right, so only the right indices really need to be initialized.  We initialize both 
   # set of indices so that convergence can be checked at the end of the first left-right sweep.
@@ -1525,7 +1527,7 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps::S = 30)
 
     # Solve for the final indices
 
-    if size(A_last,3) != r[d-1]
+    if size(A_last,1) != r[d-1]
       A_last = Array{T,3}(undef,(r[d-1],n[d-1],n[d]))
     end
 
@@ -1622,7 +1624,7 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps::S = 30)
 
 end
 
-function DMRGcross_generic(B::AbstractArray{T,d},μ::R,r::AbstractVector{S},maxsweeps::S = 30) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_generic(B::AbstractArray{T,d},μ::R,r::AbstractVector{S},maxsweeps::Integer = 10) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   if length(r) != d+1
     error("Rank vector has incorrect length")
@@ -1761,7 +1763,7 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,r::AbstractVector{S},maxs
 
     # Solve for the final indices
 
-    if size(A_last,3) != r[d-1]
+    if size(A_last,1) != r[d-1]
       A_last = Array{T,3}(undef,(r[d-1],n[d-1],n[d]))
     end
 
@@ -1855,7 +1857,7 @@ function DMRGcross_generic(B::AbstractArray{T,d},μ::R,r::AbstractVector{S},maxs
 
 end
 
-function DMRGcross_generic(B::AbstractArray{T,d},μ::R,r::S,maxsweeps::S = 30) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_generic(B::AbstractArray{T,d},μ::R,r::S,maxsweeps::Integer = 10) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   ranks = ones(Int,d+1)
   ranks[2:d] .= r
@@ -1877,7 +1879,7 @@ t = DMRGcross_threaded(B,μ,tol,maxsweeps)
 t = DMRGcross_threaded(B,μ,r)
 t = DMRGcross_threaded(B,μ,r,maxsweeps)
 """
-function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 30) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::Integer = 10) where {T<:AbstractFloat,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   # When d ≤ 2
 
@@ -1891,7 +1893,7 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 30
 
   rinit = 2
 
-  r = ones(S,d+1)
+  r = ones(Int,d+1)
   for i = 2:d
     r[i] = min(n[i-1],n[i],rinit)
   end
@@ -1902,11 +1904,11 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 30
 
   # Create containers to hold the linear indices and sub-indices
 
-  left_to_right_indices = Vector{Vector{S}}(undef,d-1)
-  right_to_left_indices = Vector{Vector{S}}(undef,d-1)
+  left_to_right_indices = Vector{Vector{Int}}(undef,d-1)
+  right_to_left_indices = Vector{Vector{Int}}(undef,d-1)
 
-  left_to_right_subs = Vector{Array{Tuple{S,Vararg{S}}}}(undef,d-1)
-  right_to_left_subs = Vector{Array{Tuple{S,Vararg{S}}}}(undef,d-1)
+  left_to_right_subs = Vector{Array{Tuple{Int,Vararg{Int}}}}(undef,d-1)
+  right_to_left_subs = Vector{Array{Tuple{Int,Vararg{Int}}}}(undef,d-1)
 
   # We first sweep from left to right, so only the right indices really need to be initialized.  We initialize both 
   # set of indices so that convergence can be checked at the end of the first left-right sweep.
@@ -2021,7 +2023,7 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 30
 
     # Solve for the final indices
 
-    if size(A_last,3) != r[d-1]
+    if size(A_last,1) != r[d-1]
       A_last = Array{T,3}(undef,(r[d-1],n[d-1],n[d]))
     end
 
@@ -2118,7 +2120,7 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,tol::T,maxsweeps::S = 30
 
 end
 
-function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,r::AbstractVector{S},maxsweeps::S = 30) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,r::AbstractVector{S},maxsweeps::Integer = 10) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   if length(r) != d+1
     error("Rank vector has incorrect length")
@@ -2257,7 +2259,7 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,r::AbstractVector{S},max
 
     # Solve for the final indices
 
-    if size(A_last,3) != r[d-1]
+    if size(A_last,1) != r[d-1]
       A_last = Array{T,3}(undef,(r[d-1],n[d-1],n[d]))
     end
 
@@ -2351,7 +2353,7 @@ function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,r::AbstractVector{S},max
 
 end
 
-function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,r::S,maxsweeps::S = 30) where {T<:AbstractFloat,S<:Integer,d}
+function DMRGcross_threaded(B::AbstractArray{T,d},μ::T,r::S,maxsweeps::Integer = 10) where {T<:AbstractFloat,S<:Integer,d}
 
   ranks = ones(Int,d+1)
   ranks[2:d] .= r
@@ -2373,7 +2375,7 @@ t = DMRGcross_generic_threaded(B,μ,tol,maxsweeps)
 t = DMRGcross_generic_threaded(B,μ,r)
 t = DMRGcross_generic_threaded(B,μ,r,maxsweeps)
 """
-function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps::S = 30) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps::Integer = 10) where {T<:AbstractFloat,R<:AbstractFloat,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   # When d ≤ 2
 
@@ -2387,7 +2389,7 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps
 
   rinit = 2
 
-  r = ones(S,d+1)
+  r = ones(Int,d+1)
   for i = 2:d
     r[i] = min(n[i-1],n[i],rinit)
   end
@@ -2398,11 +2400,11 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps
 
   # Create containers to hold the linear indices and sub-indices
 
-  left_to_right_indices = Vector{Vector{S}}(undef,d-1)
-  right_to_left_indices = Vector{Vector{S}}(undef,d-1)
+  left_to_right_indices = Vector{Vector{Int}}(undef,d-1)
+  right_to_left_indices = Vector{Vector{Int}}(undef,d-1)
 
-  left_to_right_subs = Vector{Array{Tuple{S,Vararg{S}}}}(undef,d-1)
-  right_to_left_subs = Vector{Array{Tuple{S,Vararg{S}}}}(undef,d-1)
+  left_to_right_subs = Vector{Array{Tuple{Int,Vararg{Int}}}}(undef,d-1)
+  right_to_left_subs = Vector{Array{Tuple{Int,Vararg{Int}}}}(undef,d-1)
 
   # We first sweep from left to right, so only the right indices really need to be initialized.  We initialize both 
   # set of indices so that convergence can be checked at the end of the first left-right sweep.
@@ -2517,7 +2519,7 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps
 
     # Solve for the final indices
 
-    if size(A_last,3) != r[d-1]
+    if size(A_last,1) != r[d-1]
       A_last = Array{T,3}(undef,(r[d-1],n[d-1],n[d]))
     end
 
@@ -2614,7 +2616,7 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,tol::R,maxsweeps
 
 end
 
-function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,r::AbstractVector{S},maxsweeps::S = 30) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,r::AbstractVector{S},maxsweeps::Integer = 10) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   if length(r) != d+1
     error("Rank vector has incorrect length")
@@ -2753,7 +2755,7 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,r::AbstractVecto
 
     # Solve for the final indices
 
-    if size(A_last,3) != r[d-1]
+    if size(A_last,1) != r[d-1]
       A_last = Array{T,3}(undef,(r[d-1],n[d-1],n[d]))
     end
 
@@ -2847,7 +2849,7 @@ function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,r::AbstractVecto
 
 end
 
-function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,r::S,maxsweeps::S = 30) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_generic_threaded(B::AbstractArray{T,d},μ::R,r::S,maxsweeps::Integer = 10) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   ranks = ones(Int,d+1)
   ranks[2:d] .= r
@@ -2870,7 +2872,7 @@ t = TTals(f,nodes,r,tol)
 t = TTals(f,nodes,r,tol,maxsweeps)
 t = TTals(f,nodes,r,tol,maxsweeps,seed)
 """
-function TTals(f::Function,nodes::NTuple{d,AbstractVector{T}},r::S,tol::T,maxsweeps::S=100,seed::S=123456) where {T<:AbstractFloat,S<:Integer,d}
+function TTals(f::Function,nodes::NTuple{d,AbstractVector{T}},r::S,tol::T,maxsweeps::Integer = 10,seed::Integer = 123456) where {T<:AbstractFloat,S<:Integer,d}
 
   n = length.(nodes)
 
@@ -2956,7 +2958,7 @@ t = DMRGcross(f,nodes,μ,tol,initial,maxsweeps)
 t = DMRGcross(f,nodes,μ,r)
 t = DMRGcross(f,nodes,μ,r,maxsweeps)
 """
-function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,tol::T,maxsweeps::S = 30) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,tol::T,maxsweeps::Integer = 10) where {T<:AbstractFloat,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   n = length.(nodes)
 
@@ -2974,18 +2976,18 @@ function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,tol::T,m
 
   rinit = 2
 
-  r = ones(S,d+1)
+  r = ones(Int,d+1)
   for i = 2:d
     r[i] = min(n[i-1],n[i],rinit)
   end
 
   G = Vector{Array{T,3}}(undef,d)
 
-  left_to_right_indices = Vector{Vector{S}}(undef,d-1)
-  right_to_left_indices = Vector{Vector{S}}(undef,d-1)
+  left_to_right_indices = Vector{Vector{Int}}(undef,d-1)
+  right_to_left_indices = Vector{Vector{Int}}(undef,d-1)
 
-  left_to_right_subs = Vector{Array{Tuple{S,Vararg{S}}}}(undef,d-1)
-  right_to_left_subs = Vector{Array{Tuple{S,Vararg{S}}}}(undef,d-1)
+  left_to_right_subs = Vector{Array{Tuple{Int,Vararg{Int}}}}(undef,d-1)
+  right_to_left_subs = Vector{Array{Tuple{Int,Vararg{Int}}}}(undef,d-1)
   
   # We first sweep from left to right, so only the right indices really need to be initialized.  We initialize both 
   # set of indices so that convergence can be checked at the end of the first left-right sweep.
@@ -3034,7 +3036,7 @@ function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,tol::T,m
   left_to_right_indices_new = similar(left_to_right_indices)
   right_to_left_indices_new = similar(right_to_left_indices)
 
-  point_index = Vector{S}(undef,d)
+  point_index = Vector{Int}(undef,d)
   point       = Vector{T}(undef,d)
 
   # Pre-allocate supercores
@@ -3115,7 +3117,7 @@ function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,tol::T,m
 
     # Solve for the final indices
 
-    if size(A_last,3) != r[d-1]
+    if size(A_last,1) != r[d-1]
       A_last = Array{T,3}(undef,(r[d-1],n[d-1],n[d]))
     end
 
@@ -3233,7 +3235,7 @@ function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,tol::T,m
 
 end
 
-function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,tol::T,initial::ExtendedTensorTrain,maxsweeps::S = 30) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,tol::T,initial::ExtendedTensorTrain,maxsweeps::Integer = 10) where {T<:AbstractFloat,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   # When d ≤ 2
 
@@ -3251,18 +3253,18 @@ function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,tol::T,i
 
   G = Vector{Array{T,3}}(undef,d)
 
-  left_to_right_indices = deepcopy(initial.left_to_right_ind)
-  right_to_left_indices = deepcopy(initial.right_to_left_ind)
+  left_to_right_indices = copy(initial.left_to_right_ind)
+  right_to_left_indices = copy(initial.right_to_left_ind)
   
-  left_to_right_subs = deepcopy(initial.left_to_right_sub)
-  right_to_left_subs = deepcopy(initial.right_to_left_sub)
+  left_to_right_subs = copy(initial.left_to_right_sub)
+  right_to_left_subs = copy(initial.right_to_left_sub)
   
   r = copy(initial.ranks)
 
   left_to_right_indices_new = similar(left_to_right_indices)
   right_to_left_indices_new = similar(right_to_left_indices)
 
-  point_index = Vector{S}(undef,d)
+  point_index = Vector{Int}(undef,d)
   point       = Vector{T}(undef,d)
 
   # Pre-allocate supercores
@@ -3343,7 +3345,7 @@ function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,tol::T,i
 
     # Solve for the final indices
 
-    if size(A_last,3) != r[d-1]
+    if size(A_last,1) != r[d-1]
       A_last = Array{T,3}(undef,(r[d-1],n[d-1],n[d]))
     end
 
@@ -3461,7 +3463,7 @@ function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,tol::T,i
 
 end
 
-function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,r::AbstractVector{S},maxsweeps::S = 30) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,r::AbstractVector{S},maxsweeps::Integer = 10) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   if length(r) != d+1
     error("Rank vector has incorrect length")
@@ -3555,6 +3557,10 @@ function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,r::Abstr
 
     # Solve for the first indices
 
+    if size(A_first,3) != r[3]
+      A_first = Array{T,3}(undef,n[1],n[2],r[3])
+    end
+
     for k = 1:r[3]
       point_index[3:end] .= right_to_left_subs[2][k]
       for j in CartesianIndices((1:n[1],1:n[2]))
@@ -3580,6 +3586,10 @@ function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,r::Abstr
     # Solve for the interior indices
     
     for i = 2:d-2
+
+      if size(A_mid) != (r[i],n[i],n[i+1],r[i+2])
+        A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      end
 
       for l = 1:r[i]
         point_index[1:i-1] .= left_to_right_subs[i-1][l]
@@ -3610,6 +3620,10 @@ function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,r::Abstr
     end
 
     # Solve for the final indices
+
+    if size(A_last,1) != r[d-1]
+      A_last = Array{T,3}(undef,(r[d-1],n[d-1],n[d]))
+    end
 
     for k = 1:r[d-1]
       point_index[1:d-2] .= left_to_right_subs[d-2][k]
@@ -3646,6 +3660,10 @@ function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,r::Abstr
     
     for i = d-2:-1:2
 
+      if size(A_mid) != (r[i],n[i],n[i+1],r[i+2])
+        A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      end
+
       for l = 1:r[i]
         point_index[1:i-1] .= left_to_right_subs[i-1][l]
         for k = 1:r[i+2]
@@ -3673,6 +3691,10 @@ function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,r::Abstr
     end
     
     # Solve for the first indices
+
+    if size(A_first,3) != r[3]
+      A_first = Array{T,3}(undef,n[1],n[2],r[3])
+    end
 
     for k = 1:r[3]
       point_index[3:end] .= right_to_left_subs[2][k]
@@ -3714,7 +3736,7 @@ function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,r::Abstr
 
 end
 
-function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,r::S,maxsweeps::S = 30) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,r::S,maxsweeps::Integer = 10) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   ranks = ones(Int,d+1)
   ranks[2:d] .= r
@@ -3738,7 +3760,7 @@ t = DMRGcross_generic(f,nodes,μ,tol,initial,maxsweeps)
 t = DMRGcross_generic(f,nodes,μ,r)
 t = DMRGcross_generic(f,nodes,μ,r,maxsweeps)
 """
-function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,tol::R,maxsweeps::S = 30) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,tol::R,maxsweeps::Integer = 10) where {T<:AbstractFloat,R<:AbstractFloat,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   # When d ≤ 2
 
@@ -3756,18 +3778,18 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,
 
   rinit = 2
 
-  r = ones(S,d+1)
+  r = ones(Int,d+1)
   for i = 2:d
     r[i] = min(n[i-1],n[i],rinit)
   end
 
   G = Vector{Array{T,3}}(undef,d)
 
-  left_to_right_indices = Vector{Vector{S}}(undef,d-1)
-  right_to_left_indices = Vector{Vector{S}}(undef,d-1)
+  left_to_right_indices = Vector{Vector{Int}}(undef,d-1)
+  right_to_left_indices = Vector{Vector{Int}}(undef,d-1)
 
-  left_to_right_subs = Vector{Array{Tuple{S,Vararg{S}}}}(undef,d-1)
-  right_to_left_subs = Vector{Array{Tuple{S,Vararg{S}}}}(undef,d-1)
+  left_to_right_subs = Vector{Array{Tuple{Int,Vararg{Int}}}}(undef,d-1)
+  right_to_left_subs = Vector{Array{Tuple{Int,Vararg{Int}}}}(undef,d-1)
   
   # We first sweep from left to right, so only the right indices really need to be initialized.  We initialize both 
   # set of indices so that convergence can be checked at the end of the first left-right sweep.
@@ -3816,7 +3838,7 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,
   left_to_right_indices_new = similar(left_to_right_indices)
   right_to_left_indices_new = similar(right_to_left_indices)
 
-  point_index = Vector{S}(undef,d)
+  point_index = Vector{Int}(undef,d)
   point       = Vector{T}(undef,d)
 
   # Pre-allocate supercores
@@ -3897,7 +3919,7 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,
 
     # Solve for the final indices
 
-    if size(A_last,3) != r[d-1]
+    if size(A_last,1) != r[d-1]
       A_last = Array{T,3}(undef,(r[d-1],n[d-1],n[d]))
     end
 
@@ -4015,7 +4037,7 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,
 
 end
 
-function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,tol::R,initial::ExtendedTensorTrain,maxsweeps::S = 30) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,tol::R,initial::ExtendedTensorTrain,maxsweeps::Integer = 10) where {T<:AbstractFloat,R<:AbstractFloat,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   # When d ≤ 2
 
@@ -4033,18 +4055,18 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,
 
   G = Vector{Array{T,3}}(undef,d)
 
-  left_to_right_indices = deepcopy(initial.left_to_right_ind)
-  right_to_left_indices = deepcopy(initial.right_to_left_ind)
+  left_to_right_indices = copy(initial.left_to_right_ind)
+  right_to_left_indices = copy(initial.right_to_left_ind)
 
-  left_to_right_subs = deepcopy(initial.left_to_right_sub)
-  right_to_left_subs = deepcopy(initial.right_to_left_sub)
+  left_to_right_subs = copy(initial.left_to_right_sub)
+  right_to_left_subs = copy(initial.right_to_left_sub)
 
   r = copy(initial.ranks)
 
   left_to_right_indices_new = similar(left_to_right_indices)
   right_to_left_indices_new = similar(right_to_left_indices)
 
-  point_index = Vector{S}(undef,d)
+  point_index = Vector{Int}(undef,d)
   point       = Vector{T}(undef,d)
 
   # Pre-allocate supercores
@@ -4125,7 +4147,7 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,
 
     # Solve for the final indices
 
-    if size(A_last,3) != r[d-1]
+    if size(A_last,1) != r[d-1]
       A_last = Array{T,3}(undef,(r[d-1],n[d-1],n[d]))
     end
 
@@ -4243,7 +4265,7 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,
 
 end
 
-function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,r::Vector{S},maxsweeps::S = 30) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,r::Vector{S},maxsweeps::Integer = 10) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   if length(r) != d+1
     error("Rank vector has incorrect length")
@@ -4337,6 +4359,10 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,
 
     # Solve for the first indices
 
+    if size(A_first,3) != r[3]
+      A_first = Array{T,3}(undef,n[1],n[2],r[3])
+    end
+
     for k = 1:r[3]
       point_index[3:end] .= right_to_left_subs[2][k]
       for j in CartesianIndices((1:n[1],1:n[2]))
@@ -4362,6 +4388,10 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,
     # Solve for the interior indices
     
     for i = 2:d-2
+
+      if size(A_mid) != (r[i],n[i],n[i+1],r[i+2])
+        A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      end
 
       for l = 1:r[i]
         point_index[1:i-1] .= left_to_right_subs[i-1][l]
@@ -4392,6 +4422,10 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,
     end
 
     # Solve for the final indices
+
+    if size(A_last,1) != r[d-1]
+      A_last = Array{T,3}(undef,(r[d-1],n[d-1],n[d]))
+    end
 
     for k = 1:r[d-1]
       point_index[1:d-2] .= left_to_right_subs[d-2][k]
@@ -4428,6 +4462,10 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,
     
     for i = d-2:-1:2
 
+      if size(A_mid) != (r[i],n[i],n[i+1],r[i+2])
+        A_mid = Array{T,4}(undef,(r[i],n[i],n[i+1],r[i+2]))
+      end
+
       for l = 1:r[i]
         point_index[1:i-1] .= left_to_right_subs[i-1][l]
         for k = 1:r[i+2]
@@ -4455,6 +4493,10 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,
     end
     
     # Solve for the first indices
+
+    if size(A_first,3) != r[3]
+      A_first = Array{T,3}(undef,n[1],n[2],r[3])
+    end
 
     for k = 1:r[3]
       point_index[3:end] .= right_to_left_subs[2][k]
@@ -4496,7 +4538,7 @@ function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,
 
 end
 
-function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,r::S,maxsweeps::S = 30) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_generic(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,r::S,maxsweeps::Integer = 10) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   ranks = ones(S,d+1)
   ranks[2:d] .= r
@@ -4520,7 +4562,7 @@ t = DMRGcross_threaded(f,nodes,μ,tol,initial,maxsweeps)
 t = DMRGcross_threaded(f,nodes,μ,r)
 t = DMRGcross_threaded(f,nodes,μ,r,maxsweeps)
 """
-function DMRGcross_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,tol::T,maxsweeps::S = 30) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,tol::T,maxsweeps::Integer = 10) where {T<:AbstractFloat,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   # When d ≤ 2
 
@@ -4538,18 +4580,18 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T
 
   rinit = 2
 
-  r = ones(S,d+1)
+  r = ones(Int,d+1)
   for i = 2:d
     r[i] = min(n[i-1],n[i],rinit)
   end
 
   G = Vector{Array{T,3}}(undef,d)
 
-  left_to_right_indices = Vector{Vector{S}}(undef,d-1)
-  right_to_left_indices = Vector{Vector{S}}(undef,d-1)
+  left_to_right_indices = Vector{Vector{Int}}(undef,d-1)
+  right_to_left_indices = Vector{Vector{Int}}(undef,d-1)
 
-  left_to_right_subs = Vector{Array{Tuple{S,Vararg{S}}}}(undef,d-1)
-  right_to_left_subs = Vector{Array{Tuple{S,Vararg{S}}}}(undef,d-1)
+  left_to_right_subs = Vector{Array{Tuple{Int,Vararg{Int}}}}(undef,d-1)
+  right_to_left_subs = Vector{Array{Tuple{Int,Vararg{Int}}}}(undef,d-1)
   
   # We first sweep from left to right, so only the right indices really need to be initialized.  We initialize both 
   # set of indices so that convergence can be checked at the end of the first left-right sweep.
@@ -4778,7 +4820,7 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T
 
 end
 
-function DMRGcross_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,tol::T,initial::ExtendedTensorTrain,maxsweeps::S = 30) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,tol::T,initial::ExtendedTensorTrain,maxsweeps::Integer = 10) where {T<:AbstractFloat,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   # When d ≤ 2
 
@@ -4796,11 +4838,11 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T
 
   G = Vector{Array{T,3}}(undef,d)
 
-  left_to_right_indices = deepcopy(initial.left_to_right_ind)
-  right_to_left_indices = deepcopy(initial.right_to_left_ind)
+  left_to_right_indices = copy(initial.left_to_right_ind)
+  right_to_left_indices = copy(initial.right_to_left_ind)
 
-  left_to_right_subs = deepcopy(initial.left_to_right_sub)
-  right_to_left_subs = deepcopy(initial.right_to_left_sub)
+  left_to_right_subs = copy(initial.left_to_right_sub)
+  right_to_left_subs = copy(initial.right_to_left_sub)
 
   r = copy(initial.ranks)
   
@@ -4987,7 +5029,7 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T
 
 end
 
-function DMRGcross_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,r::Vector{S},maxsweeps::S = 30) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,r::Vector{S},maxsweeps::Integer = 10) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   if length(r) != d+1
     error("Rank vector has incorrect length")
@@ -5241,7 +5283,7 @@ function DMRGcross_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T
 
 end
 
-function DMRGcross_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,r::S,maxsweeps::S = 30) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::T,r::S,maxsweeps::Integer = 10) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   ranks = ones(Int,d+1)
   ranks[2:d] .= r
@@ -5265,7 +5307,7 @@ t = DMRGcross_generic_threaded(f,nodes,μ,tol,initial,maxsweeps)
 t = DMRGcross_generic_threaded(f,nodes,μ,r)
 t = DMRGcross_generic_threaded(f,nodes,μ,r,maxsweeps)
 """
-function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,tol::R,maxsweeps::S = 30) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,tol::R,maxsweeps::Integer = 10) where {T<:AbstractFloat,R<:AbstractFloat,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   # When d ≤ 2
 
@@ -5283,18 +5325,18 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,AbstractVector{T
 
   rinit = 2
 
-  r = ones(S,d+1)
+  r = ones(Int,d+1)
   for i = 2:d
     r[i] = min(n[i-1],n[i],rinit)
   end
 
   G = Vector{Array{T,3}}(undef,d)
 
-  left_to_right_indices = Vector{Vector{S}}(undef,d-1)
-  right_to_left_indices = Vector{Vector{S}}(undef,d-1)
+  left_to_right_indices = Vector{Vector{Int}}(undef,d-1)
+  right_to_left_indices = Vector{Vector{Int}}(undef,d-1)
 
-  left_to_right_subs = Vector{Array{Tuple{S,Vararg{S}}}}(undef,d-1)
-  right_to_left_subs = Vector{Array{Tuple{S,Vararg{S}}}}(undef,d-1)
+  left_to_right_subs = Vector{Array{Tuple{Int,Vararg{Int}}}}(undef,d-1)
+  right_to_left_subs = Vector{Array{Tuple{Int,Vararg{Int}}}}(undef,d-1)
     
   # We first sweep from left to right, so only the right indices really need to be initialized.  We initialize both 
   # set of indices so that convergence can be checked at the end of the first left-right sweep.
@@ -5523,7 +5565,7 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,AbstractVector{T
 
 end
 
-function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,tol::R,initial::ExtendedTensorTrain,maxsweeps::S = 30) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,tol::R,initial::ExtendedTensorTrain,maxsweeps::Integer = 10) where {T<:AbstractFloat,R<:AbstractFloat,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   # When d ≤ 2
 
@@ -5541,11 +5583,11 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,AbstractVector{T
 
   G = Vector{Array{T,3}}(undef,d)
 
-  left_to_right_indices = deepcopy(initial.left_to_right_ind)
-  right_to_left_indices = deepcopy(initial.right_to_left_ind)
+  left_to_right_indices = copy(initial.left_to_right_ind)
+  right_to_left_indices = copy(initial.right_to_left_ind)
 
-  left_to_right_subs = deepcopy(initial.left_to_right_sub)
-  right_to_left_subs = deepcopy(initial.right_to_left_sub)
+  left_to_right_subs = copy(initial.left_to_right_sub)
+  right_to_left_subs = copy(initial.right_to_left_sub)
 
   r = copy(initial.ranks)
   
@@ -5732,7 +5774,7 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,AbstractVector{T
 
 end
 
-function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,r::Vector{S},maxsweeps::S = 30) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,r::Vector{S},maxsweeps::Integer = 10) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   if length(r) != d+1
     error("Rank vector has incorrect length")
@@ -5986,7 +6028,7 @@ function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,AbstractVector{T
 
 end
 
-function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,r::S,maxsweeps::S = 30) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
+function DMRGcross_generic_threaded(f::Function,nodes::NTuple{d,AbstractVector{T}},μ::R,r::S,maxsweeps::Integer = 10) where {T<:AbstractFloat,R<:AbstractFloat,S<:Integer,d} # Based on the description given in Dolgov and Savostyanov (2020).
 
   ranks = ones(Int,d+1)
   ranks[2:d] .= r
@@ -6137,7 +6179,7 @@ function cheb_polynomial_deriv(order::S,point::AbstractArray{R,1}) where {S<:Int
     pll = NaN
     for i = 2:order+1
       if i == 2
-        pl, p = p, x[j]
+        pl, p = p, point[j]
         poly_deriv[i,j] = one(R)
       else
         pll, pl = pl, p
@@ -6446,8 +6488,8 @@ function legendre_polynomial_deriv(order::S,point::AbstractArray{R,1}) where {S<
         poly[j,i] = point[j]
         poly_deriv[j,i] = one(R)
       else
-        poly[j,i] = ((2*i-1)/i)*point[j]*poly[i-1] - ((i-1)/i)*poly[i-2]
-        poly_deriv[j,i] = i*(point[j]*poly[i]-poly[i-1])/(point[j]^2-1)
+        poly[j,i] = ((2*i-1)/i)*point[j]*poly[j,i-1] - ((i-1)/i)*poly[j,i-2]
+        poly_deriv[j,i] = i*(point[j]*poly[j,i]-poly[j,i-1])/(point[j]^2-1)
       end
     end
   end
@@ -6639,16 +6681,24 @@ function piecewise_linear_nodes(n::S,domain = [1.0,-1.0],T::DataType=Float64) wh
     error("The number of nodes must be positive.")
   end
 
-  nodes = [T(domain[1]+domain[2])/2.0 for _ in 1:n]
+  mid = T(domain[1]+domain[2])/2
 
-  if isodd(n)
-    inc = T(domain[1]-domain[2])/(n-1)
-  else
-    inc = T(domain[1]-domain[2])/n
+  if n == 1
+    return [mid]
   end
+
+  # The nodes are equally spaced and include both limits of the domain, so that consecutive nodes are
+  # separated by (domain[1]-domain[2])/(n-1) whether the number of nodes is odd or even.  Building them
+  # outwards from the centre of the domain keeps the grid exactly symmetric.  When the number of nodes is
+  # even the centre falls between two nodes, so the offsets are half-integer multiples of the spacing.
+
+  inc   = T(domain[1]-domain[2])/(n-1)
+  nodes = fill(mid,n)
+
   @inbounds for i = 1:div(n,2)
-    nodes[i]     += (i-1-div(n,2))*inc
-    nodes[n-i+1] -= (i-1-div(n,2))*inc
+    offset        = (T(n+1)/2 - i)*inc
+    nodes[i]     -= offset
+    nodes[n-i+1] += offset
   end
 
   return nodes
@@ -7535,7 +7585,7 @@ function TTintegrate_PL(train::DiscreteTensorTrain,domain::Union{Matrix{R},Vecto
     r = copy(train.ranks[μ+1:end])
 
     integral = fill(T(1.0),1,1)
-    for i = 1:d
+    for i = 1:μ
       term = trapazoidal(train.cores[i],domain[:,i])
       integral *= term
     end
@@ -7705,7 +7755,7 @@ function TTcompute_marginal_GL(train::DiscreteTensorTrain,domain::AbstractMatrix
     integral = reshape(train.cores[1], train.ranks[1], size(train.cores[1], 2), train.ranks[2])
     for i = 2:d
       n = size(train.cores[i])
-      nodes, weights = chebyshev(n[2])
+      nodes, weights = legendre(n[2])
       term = zeros(n[1], n[3])
       for j = 1:n[2]
         @views term += train.cores[i][:, j, :] * weights[j]
@@ -7717,7 +7767,7 @@ function TTcompute_marginal_GL(train::DiscreteTensorTrain,domain::AbstractMatrix
     integral = reshape(train.cores[d], train.ranks[d], size(train.cores[d], 2), train.ranks[d+1])
     for i = (d-1):-1:1
       n = size(train.cores[i])
-      nodes, weights = chebyshev(n[2])
+      nodes, weights = legendre(n[2])
       term = zeros(n[1], n[3])
       for j = 1:n[2]
         @views term += train.cores[i][:, j, :] * weights[j]
@@ -7729,7 +7779,7 @@ function TTcompute_marginal_GL(train::DiscreteTensorTrain,domain::AbstractMatrix
     integral = reshape(train.cores[ind], train.ranks[ind], size(train.cores[ind], 2), train.ranks[ind+1])
     for i = ind+1:d
       n = size(train.cores[i])
-      nodes, weights = chebyshev(n[2])
+      nodes, weights = legendre(n[2])
       term = zeros(n[1], n[3])
       for j = 1:n[2]
         @views term += train.cores[i][:, j, :] * weights[j]
@@ -7738,7 +7788,7 @@ function TTcompute_marginal_GL(train::DiscreteTensorTrain,domain::AbstractMatrix
     end
     for i = ind-1:-1:1
       n = size(train.cores[i])
-      nodes, weights = chebyshev(n[2])
+      nodes, weights = legendre(n[2])
       term = zeros(n[1], n[3])
       for j = 1:n[2]
         @views term += train.cores[i][:, j, :] * weights[j]
@@ -7834,18 +7884,18 @@ function TTcompute_marginal_PL(train::DiscreteTensorTrain,domain::AbstractMatrix
     integral = reshape(train.cores[d], train.ranks[d], size(train.cores[d], 2), train.ranks[d+1])
     for i = (d-1):-1:1
       term = trapazoidal(train.cores[i], domain[:, i])
-      integral = times_dim_1(term, integral) * ((domain[1, i] - domain[2, i]) / 2)
+      integral = times_dim_1(term, integral)
     end
     return integral[1, :, 1]
   else
     integral = reshape(train.cores[ind], train.ranks[ind], size(train.cores[ind], 2), train.ranks[ind+1])
     for i = ind+1:d
       term = trapazoidal(train.cores[i], domain[:, i])
-      integral = times_dim_3(integral, term) * ((domain[1, i] - domain[2, i]) / 2)
+      integral = times_dim_3(integral, term)
     end
     for i = ind-1:-1:1
       term = trapazoidal(train.cores[i], domain[:, i])
-      integral = times_dim_1(term, integral) * ((domain[1, i] - domain[2, i]) / 2)
+      integral = times_dim_1(term, integral)
     end
     return integral[1, :, 1]
   end
@@ -7868,14 +7918,35 @@ function TTrounding(train::BaseTensorTrain,tol::T) where {T<:AbstractFloat}
   r = copy(train.ranks)
   n = Tuple(size(train.cores[i])[2] for i in 1:d)
 
-  G = deepcopy(train.cores)
+  G = copy(train.cores)
 
   r_new = copy(r)
+
+  # Right orthogonalise, sweeping from the last core to the second, so that the norm of the whole train
+  # is carried by the first core.  Without this the local threshold does not bound the global error.
+  #
+  # The factorisation is done here rather than through 'rq' because 'rq' requires a fat unfolding, and a
+  # train that has been squared or raised to a power carries ranks with r[i] > n[i]*r[i+1] near its ends.
+  # For such a core the LQ factors are thin, which drops the rank to n[i]*r[i+1] exactly, losing nothing.
+
+  for i = d:-1:2
+
+    F        = qr(Matrix(transpose(reshape(G[i],r_new[i],n[i]*r_new[i+1]))))
+    R        = Matrix(transpose(F.R))
+    Q        = Matrix(transpose(Matrix(F.Q)))
+    r_new[i] = size(Q,1)
+    G[i]     = reshape(Q,r_new[i],n[i],r_new[i+1])
+    G[i-1]   = times_dim_3(G[i-1],R)
+
+  end
+
+  # Truncate, sweeping from the first core to the last, against the norm of the train
+
+  δ = d > 1 ? (tol/sqrt(d-1))*norm(G[1]) : zero(tol)
 
   for i = 1:d-1
 
     A = reshape(G[i],r_new[i]*n[i],r_new[i+1])
-    δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r_new[i+1] = tsvd(A,δ)
     G[i] = reshape(u,r_new[i],n[i],r_new[i+1])
     G[i+1] = times_dim_1(Matrix(transpose(v*Diagonal(s))),G[i+1])
@@ -7892,14 +7963,35 @@ function TTrounding(train::ExtendedTensorTrain,tol::T) where {T<:AbstractFloat}
   r = copy(train.ranks)
   n = Tuple(size(train.cores[i])[2] for i in 1:d)
 
-  G = deepcopy(train.cores)
+  G = copy(train.cores)
 
   r_new = copy(r)
+
+  # Right orthogonalise, sweeping from the last core to the second, so that the norm of the whole train
+  # is carried by the first core.  Without this the local threshold does not bound the global error.
+  #
+  # The factorisation is done here rather than through 'rq' because 'rq' requires a fat unfolding, and a
+  # train that has been squared or raised to a power carries ranks with r[i] > n[i]*r[i+1] near its ends.
+  # For such a core the LQ factors are thin, which drops the rank to n[i]*r[i+1] exactly, losing nothing.
+
+  for i = d:-1:2
+
+    F        = qr(Matrix(transpose(reshape(G[i],r_new[i],n[i]*r_new[i+1]))))
+    R        = Matrix(transpose(F.R))
+    Q        = Matrix(transpose(Matrix(F.Q)))
+    r_new[i] = size(Q,1)
+    G[i]     = reshape(Q,r_new[i],n[i],r_new[i+1])
+    G[i-1]   = times_dim_3(G[i-1],R)
+
+  end
+
+  # Truncate, sweeping from the first core to the last, against the norm of the train
+
+  δ = d > 1 ? (tol/sqrt(d-1))*norm(G[1]) : zero(tol)
 
   for i = 1:d-1
 
     A = reshape(G[i],r_new[i]*n[i],r_new[i+1])
-    δ = (tol/sqrt(d-1))*norm(A)
     u,s,v,r_new[i+1] = tsvd(A,δ)
     G[i] = reshape(u,r_new[i],n[i],r_new[i+1])
     G[i+1] = times_dim_1(Matrix(transpose(v*Diagonal(s))),G[i+1])
@@ -7921,7 +8013,7 @@ t = TTmult(s,train)
 """
 function TTmult(train::DiscreteTensorTrain,s::T) where {T<:Real}
 
-  G = deepcopy(train.cores)
+  G = copy(train.cores)
   G[1] = G[1]*s
 
   return BaseTensorTrain(G,train.ranks,train.sweeps)
@@ -7955,29 +8047,35 @@ function TTadd(traina::DiscreteTensorTrain,trainb::DiscreteTensorTrain,anchor="s
 
   if da > db # traina has more cores than trainb
     n = Tuple(size(traina.cores[i])[2] for i in 1:da)
-    filler = TTconstant(one(Z),Tuple(n[db+1:end]),1)
-    if anchor == "end"
+    if anchor == "end" # trainb aligns with the last cores of traina, so the filler takes the leading modes
+      filler = TTconstant(one(Z),Tuple(n[1:da-db]),1)
       G = [filler.cores;trainb.cores]
+      r = [ones(Int,da-db);trainb.ranks]
     elseif anchor == "start"
+      filler = TTconstant(one(Z),Tuple(n[db+1:end]),1)
       G = [trainb.cores;filler.cores]
+      r = [trainb.ranks;ones(Int,da-db)]
     else
-      error()
+      error("'anchor' must be either \"start\" or \"end\"")
     end
-    temp_train = BaseTensorTrain(G,[trainb.ranks;ones(Int,da-db)],0)
+    temp_train = BaseTensorTrain(G,r,0)
     return TTadd(traina,temp_train)
   end
 
   if db > da # trainb has more cores than traina
     n = Tuple(size(trainb.cores[i])[2] for i in 1:db)
-    filler = TTconstant(one(Z),Tuple(n[da+1:end]),1)
-    if anchor == "end"
+    if anchor == "end" # traina aligns with the last cores of trainb, so the filler takes the leading modes
+      filler = TTconstant(one(Z),Tuple(n[1:db-da]),1)
       G = [filler.cores;traina.cores]
+      r = [ones(Int,db-da);traina.ranks]
     elseif anchor == "start"
+      filler = TTconstant(one(Z),Tuple(n[da+1:end]),1)
       G = [traina.cores;filler.cores]
+      r = [traina.ranks;ones(Int,db-da)]
     else
-      error()
-    end  
-    temp_train = BaseTensorTrain(G,[traina.ranks;ones(Int,db-da)],0)
+      error("'anchor' must be either \"start\" or \"end\"")
+    end
+    temp_train = BaseTensorTrain(G,r,0)
     return TTadd(temp_train,trainb)
   end
 
@@ -7992,10 +8090,10 @@ function TTadd(traina::DiscreteTensorTrain,trainb::DiscreteTensorTrain,anchor="s
     end
   end
 
-  coresa = deepcopy(traina.cores)
+  coresa = copy(traina.cores)
   ra     = copy(traina.ranks)
 
-  coresb = deepcopy(trainb.cores)
+  coresb = copy(trainb.cores)
   rb     = copy(trainb.ranks)
 
   G     = Vector{Array{Z,3}}(undef,da)
@@ -8050,29 +8148,35 @@ function TTsubtract(traina::DiscreteTensorTrain,trainb::DiscreteTensorTrain,anch
 
   if da > db # traina has more cores than trainb
     n = Tuple(size(traina.cores[i])[2] for i in 1:da)
-    filler = TTconstant(1.0,Tuple(n[db+1:end]),1)
-    if anchor == "end"
+    if anchor == "end" # trainb aligns with the last cores of traina, so the filler takes the leading modes
+      filler = TTconstant(one(T),Tuple(n[1:da-db]),1)
       G = [filler.cores;trainb.cores]
+      r = [ones(Int,da-db);trainb.ranks]
     elseif anchor == "start"
+      filler = TTconstant(one(T),Tuple(n[db+1:end]),1)
       G = [trainb.cores;filler.cores]
+      r = [trainb.ranks;ones(Int,da-db)]
     else
-      error()
+      error("'anchor' must be either \"start\" or \"end\"")
     end
-    temp_train = BaseTensorTrain(G,[trainb.ranks;ones(Int,da-db)],0)
+    temp_train = BaseTensorTrain(G,r,0)
     return TTsubtract(traina,temp_train)
   end
 
   if db > da # trainb has more cores than traina
     n = Tuple(size(trainb.cores[i])[2] for i in 1:db)
-    filler = TTconstant(1.0,Tuple(n[da+1:end]),1)
-    if anchor == "end"
+    if anchor == "end" # traina aligns with the last cores of trainb, so the filler takes the leading modes
+      filler = TTconstant(one(T),Tuple(n[1:db-da]),1)
       G = [filler.cores;traina.cores]
+      r = [ones(Int,db-da);traina.ranks]
     elseif anchor == "start"
+      filler = TTconstant(one(T),Tuple(n[da+1:end]),1)
       G = [traina.cores;filler.cores]
+      r = [traina.ranks;ones(Int,db-da)]
     else
-      error()
-    end  
-    temp_train = BaseTensorTrain(G,[traina.ranks;ones(Int,db-da)],0)
+      error("'anchor' must be either \"start\" or \"end\"")
+    end
+    temp_train = BaseTensorTrain(G,r,0)
     return TTsubtract(temp_train,trainb)
   end
 
@@ -8087,10 +8191,10 @@ function TTsubtract(traina::DiscreteTensorTrain,trainb::DiscreteTensorTrain,anch
     end
   end
 
-  coresa = deepcopy(traina.cores)
+  coresa = copy(traina.cores)
   ra     = copy(traina.ranks)
 
-  coresb = deepcopy(trainb.cores)
+  coresb = copy(trainb.cores)
   rb     = copy(trainb.ranks)
 
   G     = Vector{Array{T,3}}(undef,da)
@@ -8201,7 +8305,7 @@ t = TTHadamard(train1,train2)
 function TTHadamard(train1::DiscreteTensorTrain,train2::DiscreteTensorTrain) # Based on the description given in Daas, Ballard, and Benner (2020)
 
   d1 = length(train1.cores)
-  d2 = length(train1.cores)
+  d2 = length(train2.cores)
 
   T = eltype(train1.cores[1])
 
@@ -8288,7 +8392,7 @@ t = TTorthright(train)
 """
 function TTorthright(train::L) where {L<:BaseTensorTrain}  # Tensor train orthogonalisation based on the description given in Chertkov, Ryzhakov, Novikov, and Oseledets (2022), algorthm 3.
 
-  Π = deepcopy(train.cores)
+  Π = copy(train.cores)
   d = length(Π)
   n = Tuple(size(Π[k])[2] for k = 1:d)
   r = copy(train.ranks)
@@ -8312,7 +8416,7 @@ end
 
 function TTorthright(train::L) where {L<:ExtendedTensorTrain}
 
-  Π = deepcopy(train.cores)
+  Π = copy(train.cores)
   d = length(Π)
   n = Tuple(size(Π[k])[2] for k = 1:d)
   r = copy(train.ranks)
@@ -8344,7 +8448,7 @@ t = TTorthleft(train)
 """
 function TTorthleft(train::L) where {L<:BaseTensorTrain}
 
-  Π = deepcopy(train.cores)
+  Π = copy(train.cores)
   d = length(Π)
   n = Tuple(size(Π[k])[2] for k = 1:d)
   r = copy(train.ranks)
@@ -8368,7 +8472,7 @@ end
 
 function TTorthleft(train::L) where {L<:ExtendedTensorTrain}
 
-  Π = deepcopy(train.cores)
+  Π = copy(train.cores)
   d = length(Π)
   n = Tuple(size(Π[k])[2] for k = 1:d)
   r = copy(train.ranks)
@@ -8400,7 +8504,7 @@ t = TTorthleftright(train,μ)
 """
 function TTorthleftright(train::L,μ::S) where {L<:BaseTensorTrain,S<:Integer}
 
-  Π = deepcopy(train.cores)
+  Π = copy(train.cores)
   d = length(Π)
   n = Tuple(size(Π[k])[2] for k = 1:d)
   r = copy(train.ranks)
@@ -8437,7 +8541,7 @@ end
 
 function TTorthleftright(train::L,μ::S) where {L<:ExtendedTensorTrain,S<:Integer}
 
-  Π = deepcopy(train.cores)
+  Π = copy(train.cores)
   d = length(Π)
   n = Tuple(size(Π[k])[2] for k = 1:d)
   r = copy(train.ranks)
@@ -8534,8 +8638,8 @@ function TTinner_prod(traina::DiscreteTensorTrain,trainb::DiscreteTensorTrain)
 
   d = length(na)
 
-  ga = deepcopy(traina.cores)
-  gb = deepcopy(trainb.cores)
+  ga = copy(traina.cores)
+  gb = copy(trainb.cores)
 
   ra = copy(traina.ranks)
   rb = copy(trainb.ranks)
@@ -8570,18 +8674,18 @@ function TTinner_prod2(traina::DiscreteTensorTrain,trainb::DiscreteTensorTrain)
   da = length(na)
   db = length(nb)
 
-  if sum(na .- nb[1:da]) != 0
-    error("Tensor trains have incompatible dimensions")
-  end
-
   if length(na) == length(nb)
     error("Trains have equal dimensions: try using TTinner_prod(traina,trainb)")
   elseif length(na) > length(nb)
     error("traina has more dimensions than trainb")
   end
 
-  ga = deepcopy(traina.cores)
-  gb = deepcopy(trainb.cores)
+  if sum(na .- nb[1:da]) != 0
+    error("Tensor trains have incompatible dimensions")
+  end
+
+  ga = copy(traina.cores)
+  gb = copy(trainb.cores)
 
   ra = copy(traina.ranks)
   rb = copy(trainb.ranks)
@@ -8596,8 +8700,8 @@ function TTinner_prod2(traina::DiscreteTensorTrain,trainb::DiscreteTensorTrain)
 
   inner_prod = reshape(ga[da],ra[da]*na[da],ra[da+1])'*reshape(gb[da],rb[da]*nb[da],rb[da+1])
 
-  gc = deepcopy(trainb.cores[da+1:end])
-  rc = [1;rb[da+1:end]]
+  gc = copy(trainb.cores[da+1:end])
+  rc = [1;rb[da+2:end]]
 
   gc[1] = times_dim_1(inner_prod,gc[1])
 
@@ -8668,6 +8772,37 @@ function trapazoidal(y::AbstractArray{T1,3},domain::AbstractVector{T2}) where {T
 end
 
 """
+Compute the cumulative integral of the values 'y' at the nodes 'x' using the trapezoidal rule and
+scale it to end at one.  This turns a density that has been evaluated at a set of nodes into a
+distribution function that can be inverted.  The nodes need not be equally spaced, so a plain
+cumulative sum of 'y', which weights every node the same, is not a substitute.
+
+Signature
+=========
+
+F = cumulative_trapazoid(y,x)
+"""
+function cumulative_trapazoid(y::AbstractVector{T1},x::AbstractVector{T2}) where {T1<:AbstractFloat,T2<:AbstractFloat} # not exported
+
+  T = promote_type(T1,T2)
+
+  n = length(y)
+  F = Vector{T}(undef,n)
+
+  F[1] = zero(T)
+  for i = 2:n
+    F[i] = F[i-1] + (x[i]-x[i-1])*(y[i]+y[i-1])/2
+  end
+
+  if F[n] > zero(T)
+    F ./= F[n]
+  end
+
+  return F
+
+end
+
+"""
 Take a draw from a density by inverting the CDF.
 
 Signatures
@@ -8712,7 +8847,7 @@ function TTCD_GH(train::DiscreteTensorTrain,N::S,seed::S = 123456) where {S<:Int
   T = eltype(train.cores[1])
 
   d = length(train.cores)
-  Π = deepcopy(train.cores)
+  Π = copy(train.cores)
   n = Tuple(size(Π[i]) for i in 1:d)
   r = copy(train.ranks)
 
@@ -8743,9 +8878,7 @@ function TTCD_GH(train::DiscreteTensorTrain,N::S,seed::S = 123456) where {S<:Int
     Ψ[k] = times_dim_3(Π[k],P[k+1])[:,:,1] # [Π[k][:,i,:]*P[k+1] for i in 1:n[k][2]]
     for l = 1:N
       p = abs.(Φ[k][l:l,:]*Ψ[k])[:] # p is now a vector with length n[k][2]
-      p .= cumsum(p)
-      p .= p./p[end]
-      f = piecewise_linear_evaluate(p,nodes[k])
+      f = piecewise_linear_evaluate(cumulative_trapazoid(p,nodes[k]),nodes[k])
       sample[l,k] = invert_cdf(f,q[l,k],nodes[k][begin],nodes[k][end])
       g = [piecewise_linear_evaluate(Π[k][i,:,j],nodes[k]) for i = 1:r[k], j = 1:r[k+1]]
       ϕ[l,:] = Φ[k][l,:]'*[g[i,j].(sample[l,k]) for i in axes(g,1),j in axes(g,2)]
@@ -8769,7 +8902,7 @@ sample = TTCD_GC(train,N,domain,seed)
 function TTCD_GC(train::DiscreteTensorTrain,N::S,domain::AbstractMatrix{T},seed::S = 123456) where {T<:AbstractFloat,S<:Integer} # Based on the descriptions given in Dolgov, Anaya-Izquierdo, Fox, and Scheichl (2020)
 
   d = length(train.cores)
-  Π = deepcopy(train.cores)
+  Π = copy(train.cores)
   n = Tuple(size(Π[i]) for i in 1:d)
   r = copy(train.ranks)
 
@@ -8801,9 +8934,7 @@ function TTCD_GC(train::DiscreteTensorTrain,N::S,domain::AbstractMatrix{T},seed:
     Ψ[k] = times_dim_3(Π[k],P[k+1])[:,:,1] # [Π[k][:,i,:]*P[k+1] for i in 1:n[k][2]]
     for l = 1:N
       p = abs.(Φ[k][l:l,:]*Ψ[k])[:] # p is now a vector with length n[k][2]
-      p .= cumsum(p)
-      p .= p./p[end]
-      f = piecewise_linear_evaluate(p,nodes[k])
+      f = piecewise_linear_evaluate(cumulative_trapazoid(p,nodes[k]),nodes[k])
       sample[l,k] = invert_cdf(f,q[l,k],nodes[k][begin],nodes[k][end])
       g = [piecewise_linear_evaluate(Π[k][i,:,j],nodes[k]) for i = 1:r[k], j = 1:r[k+1]]
       ϕ[l,:] = Φ[k][l,:]'*[g[i,j].(sample[l,k]) for i in axes(g,1),j in axes(g,2)]
@@ -8827,7 +8958,7 @@ sample = TTCD_GL(train,N,domain,seed)
 function TTCD_GL(train::DiscreteTensorTrain,N::S,domain::AbstractMatrix{T},seed::S = 123456) where {T<:AbstractFloat,S<:Integer} # Based on the descriptions given in Dolgov, Anaya-Izquierdo, Fox, and Scheichl (2020)
 
   d = length(train.cores)
-  Π = deepcopy(train.cores)
+  Π = copy(train.cores)
   n = Tuple(size(Π[i]) for i in 1:d)
   r = copy(train.ranks)
 
@@ -8859,9 +8990,7 @@ function TTCD_GL(train::DiscreteTensorTrain,N::S,domain::AbstractMatrix{T},seed:
     Ψ[k] = times_dim_3(Π[k],P[k+1])[:,:,1] # [Π[k][:,i,:]*P[k+1] for i in 1:n[k][2]]
     for l = 1:N
       p = abs.(Φ[k][l:l,:]*Ψ[k])[:] # p is now a vector with length n[k][2]
-      p .= cumsum(p)
-      p .= p./p[end]
-      f = piecewise_linear_evaluate(p,nodes[k])
+      f = piecewise_linear_evaluate(cumulative_trapazoid(p,nodes[k]),nodes[k])
       sample[l,k] = invert_cdf(f,q[l,k],nodes[k][begin],nodes[k][end])
       g = [piecewise_linear_evaluate(Π[k][i,:,j],nodes[k]) for i = 1:r[k], j = 1:r[k+1]]
       ϕ[l,:] = Φ[k][l,:]'*[g[i,j].(sample[l,k]) for i in axes(g,1),j in axes(g,2)]
@@ -8885,7 +9014,7 @@ sample = TTCD_PL(train,N,domain,seed)
 function TTCD_PL(train::DiscreteTensorTrain,N::S,domain::AbstractMatrix{T},seed::S = 123456) where {T<:AbstractFloat,S<:Integer} # Based on the descriptions given in Dolgov, Anaya-Izquierdo, Fox, and Scheichl (2020)
 
   d = length(train.cores)
-  Π = deepcopy(train.cores)
+  Π = copy(train.cores)
   n = Tuple(size(Π[i]) for i in 1:d)
   r = copy(train.ranks)
 
@@ -8912,9 +9041,7 @@ function TTCD_PL(train::DiscreteTensorTrain,N::S,domain::AbstractMatrix{T},seed:
     Ψ[k] = times_dim_3(Π[k],P[k+1])[:,:,1] # [Π[k][:,i,:]*P[k+1] for i in 1:n[k][2]]
     for l = 1:N
       p = abs.(Φ[k][l:l,:]*Ψ[k])[:] # p is now a vector with length n[k][2]
-      p .= cumsum(p)
-      p .= p./p[end]
-      f = piecewise_linear_evaluate(p,nodes[k])
+      f = piecewise_linear_evaluate(cumulative_trapazoid(p,nodes[k]),nodes[k])
       sample[l,k] = invert_cdf(f,q[l,k],nodes[k][begin],nodes[k][end])
       g = [piecewise_linear_evaluate(Π[k][i,:,j],nodes[k]) for i = 1:r[k], j = 1:r[k+1]]
       ϕ[l,:] = Φ[k][l,:]'*[g[i,j].(sample[l,k]) for i in axes(g,1),j in axes(g,2)]
@@ -9118,7 +9245,7 @@ soln = TTextremize(train,K,nodes,state) # state is a vector of floating point nu
 function TTextremize(train::DiscreteTensorTrain,K::S) where {S<:Integer} # Based on the description given in Chertkov, Ryzhakov, Novikov, and Oseledets (2022), algorthm 1.
 
   orth_train = TTorthright(train)  
-  Π = deepcopy(orth_train.cores)
+  Π = copy(orth_train.cores)
   
   d = length(Π)
   r = copy(orth_train.ranks)
@@ -9150,7 +9277,7 @@ end
 
 function TTextremize(train::Union{RightOrthBaseTensorTrain,RightOrthExtendedTensorTrain},K::S) where {S<:Integer} # Based on the description given in Chertkov, Ryzhakov, Novikov, and Oseledets (2022), algorthm 1.
 
-  Π = deepcopy(train.cores)
+  Π = copy(train.cores)
   
   d = length(Π)
   r = copy(train.ranks)
@@ -9183,7 +9310,7 @@ end
 function TTextremize(train::DiscreteTensorTrain,K::S,state::Vector{S}) where {S<:Integer}
 
   orth_train = TTorthright(train)  
-  Π = deepcopy(orth_train.cores)
+  Π = copy(orth_train.cores)
   
   d = length(Π)
   ds = length(state)
@@ -9225,7 +9352,7 @@ end
 
 function TTextremize(train::Union{RightOrthBaseTensorTrain,RightOrthExtendedTensorTrain},K::S,state::Vector{S}) where {S<:Integer}
 
-  Π = deepcopy(train.cores)
+  Π = copy(train.cores)
   
   d = length(Π)
   ds = length(state)
@@ -9515,7 +9642,7 @@ function TTOpt(f::Function,nodes::NTuple{d,AbstractVector{T}},ranks::Vector{S},s
 Random.seed!(seed)
 
   if length(ranks) != d+1
-    error{"ranks must have length d+1"}
+    error("ranks must have length d+1")
   end
   
   n = Tuple(length.(nodes))
@@ -9743,7 +9870,7 @@ function TTnewton(train::DiscreteTensorTrain,nodes::NTuple{d,AbstractVector{T}},
     grad = [TTevaluate(TTderivative(train,nodes[i],i),point_index) for i in 1:d]
     hess = [TTevaluate(TTderivative(TTderivative(train,nodes[i],i),nodes[j],j),point_index) for i in 1:d, j in 1:d]
 
-    new_point .= point .- hess\grad
+    new_point .= new_point .- hess\grad
 
     for i in 1:d
       new_point_index[i] = findmin(abs.(new_point[i] .- nodes[i]))[2]
@@ -9776,7 +9903,7 @@ function TTnewton(train::DiscreteTensorTrain,nodes::NTuple{d,AbstractVector{T}},
 
   state_index = [findfirst(x->x==state[i],nodes[i]) for i = 1:ds]
 
-  g = deepcopy(train.cores)
+  g = copy(train.cores)
 
   new_g = Vector{Array{T,3}}(undef,dx)
 
@@ -9789,7 +9916,7 @@ function TTnewton(train::DiscreteTensorTrain,nodes::NTuple{d,AbstractVector{T}},
   end
   new_g[1] = times_dim_1(temp,g[ds+1])
 
-  condensed_train = BaseTensorTrain(new_g,[1;train.ranks[ds+1:end]],0)
+  condensed_train = BaseTensorTrain(new_g,[1;train.ranks[ds+2:end]],0)
 
   point, point_index, f_point, iters = TTnewton(condensed_train,nodes[ds+1:end],point,tol,maxiters)
 
@@ -9816,10 +9943,10 @@ function TTnewton(train::ContinuousTensorTrain,nodes::NTuple{d,AbstractVector{T}
 
   while true
 
-    grad = TTgradient(train,point,domain)
-    hess = TThessian(train,point,domain)
+    grad = TTgradient(train,new_point,domain)
+    hess = TThessian(train,new_point,domain)
 
-    new_point .= point .- hess\grad
+    new_point .= new_point .- hess\grad
 
     for i in 1:d
       new_point_index[i] = findmin(abs.(new_point[i] .- nodes[i]))[2]
@@ -9881,7 +10008,7 @@ function TTnewton_step(train::DiscreteTensorTrain,nodes::NTuple{d,AbstractVector
 
   state_index = [findfirst(x->x==state[i],nodes[i]) for i = 1:ds]
 
-  g = deepcopy(train.cores)
+  g = copy(train.cores)
 
   new_g = Vector{Array{T,3}}(undef,dx)
 
@@ -9894,7 +10021,7 @@ function TTnewton_step(train::DiscreteTensorTrain,nodes::NTuple{d,AbstractVector
   end
   new_g[1] = times_dim_1(temp,g[ds+1])
 
-  condensed_train = BaseTensorTrain(new_g,[1;train.ranks[ds+1:end]],0)
+  condensed_train = BaseTensorTrain(new_g,[1;train.ranks[ds+2:end]],0)
 
   point, point_index, f_point = TTnewton_step(condensed_train,nodes[ds+1:end],point)
 
@@ -9930,7 +10057,7 @@ function TTdescent(train::DiscreteTensorTrain,nodes::NTuple{d,AbstractVector{T}}
 
     grad = [TTevaluate(TTderivative(train,nodes[i],i),point_index) for i in 1:d]
 
-    new_point .= point .- α*grad
+    new_point .= new_point .- α*grad
 
     for i in 1:d
       new_point_index[i] = findmin(abs.(new_point[i] .- nodes[i]))[2]
@@ -9963,7 +10090,7 @@ function TTdescent(train::DiscreteTensorTrain,nodes::NTuple{d,AbstractVector{T}}
 
   state_index = [findfirst(x->x==state[i],nodes[i]) for i = 1:ds]
 
-  g = deepcopy(train.cores)
+  g = copy(train.cores)
 
   new_g = Vector{Array{T,3}}(undef,dx)
 
@@ -9976,7 +10103,7 @@ function TTdescent(train::DiscreteTensorTrain,nodes::NTuple{d,AbstractVector{T}}
   end
   new_g[1] = times_dim_1(temp,g[ds+1])
 
-  condensed_train = BaseTensorTrain(new_g,[1;train.ranks[ds+1:end]],0)
+  condensed_train = BaseTensorTrain(new_g,[1;train.ranks[ds+2:end]],0)
 
   point, point_index, f_point, iters = TTdescent(condensed_train,nodes[ds+1:end],point,α,tol,maxiters)
 
@@ -10006,9 +10133,9 @@ function TTdescent(train::ContinuousTensorTrain,nodes::NTuple{d,AbstractVector{T
 
   while true
 
-    grad = TTgradient(train,point,domain)
+    grad = TTgradient(train,new_point,domain)
 
-    new_point .= point .- α*grad
+    new_point .= new_point .- α*grad
 
     for i in 1:d
       new_point_index[i] = findmin(abs.(new_point[i] .- nodes[i]))[2]
@@ -10071,7 +10198,7 @@ function TTdescent_step(train::DiscreteTensorTrain,nodes::NTuple{d,AbstractVecto
 
   state_index = [findfirst(x->x==state[i],nodes[i]) for i = 1:ds]
 
-  g = deepcopy(train.cores)
+  g = copy(train.cores)
 
   new_g = Vector{Array{T,3}}(undef,dx)
 
@@ -10084,7 +10211,7 @@ function TTdescent_step(train::DiscreteTensorTrain,nodes::NTuple{d,AbstractVecto
   end
   new_g[1] = times_dim_1(temp,g[ds+1])
 
-  condensed_train = BaseTensorTrain(new_g,[1;train.ranks[ds+1:end]],0)
+  condensed_train = BaseTensorTrain(new_g,[1;train.ranks[ds+2:end]],0)
 
   point, point_index, f_point = TTdescent_step(condensed_train,nodes[ds+1:end],point,α)
 

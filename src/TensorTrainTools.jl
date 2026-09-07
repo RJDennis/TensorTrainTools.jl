@@ -16,7 +16,8 @@ export BaseTensorTrain,
        ChebyshevTensorTrain,
        LegendreTensorTrain,
        PiecewiseTensorTrain,
-       FunctionalTensorTrain
+       FunctionalTensorTrain,
+       DiscreteTensorTrain
 
 export TTconstant,
        TTrand,
