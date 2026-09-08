@@ -652,7 +652,19 @@ function TTals(A::AbstractArray{T,d},r::S,tol::T1,maxsweeps::Integer = 10,seed::
 
   N = size(A)
 
-  train = TTrand(N,r,T)
+  requested      = fill(Int(r),d+1)
+  requested[1]   = 1
+  requested[d+1] = 1
+
+  ranks = ones(Int,d+1)
+  for k = 1:d
+    ranks[k+1] = min(ranks[k]*N[k],requested[k+1])
+  end
+  for k = d:-1:1
+    ranks[k] = min(ranks[k],ranks[k+1]*N[k])
+  end
+
+  train = TTrand(N,ranks,T)
   cores = copy(train.cores)
   r     = copy(train.ranks)
 
@@ -714,11 +726,28 @@ function TTals(A::AbstractArray{T,d},r::AbstractVector{S},tol::T1,maxsweeps::Int
     return BaseTensorTrain([reshape(A,1,:,1)],[1,1],0)
   end
 
+  if length(r) != d+1
+    error("Dimension mis-match between 'A' and 'r'.")
+  end
+  if r[begin] != 1 || r[end] != 1
+    error("The first and last ranks must equal 1.")
+  end
+
   Random.seed!(seed)
 
   N = size(A)
 
-  train = TTrand(N,r,T)
+  requested = collect(Int,r)
+
+  ranks = ones(Int,d+1)
+  for k = 1:d
+    ranks[k+1] = min(ranks[k]*N[k],requested[k+1])
+  end
+  for k = d:-1:1
+    ranks[k] = min(ranks[k],ranks[k+1]*N[k])
+  end
+
+  train = TTrand(N,ranks,T)
   cores = copy(train.cores)
   r     = copy(train.ranks)
 
@@ -824,7 +853,7 @@ end
 
 function TTsvd(A::AbstractArray{T,d},r::AbstractVector{S}) where {T<:AbstractFloat,S<:Integer,d} # Based on the description given in Oseledets and Tyrtyshnikov (2010).
 
-  r = copy(r) # The achieved ranks are written into 'r', so the caller's vector must not be touched
+  r = copy(r)
 
   if length(r) != d+1
     error("Rank vector has incorrect length")
@@ -7361,10 +7390,10 @@ function TTintegrate_GC(train::DiscreteTensorTrain,domain::Union{Matrix{R},Vecto
   integral = fill(T(1.0),1,1)
   for i = 1:d
     n = size(train.cores[i])
-    term = zeros(n[1],n[3])
+    term = zeros(T,n[1],n[3])
     nodes, weights = chebyshev(n[2])
     for j = 1:n[2]
-      term += train.cores[i][:,j,:]*(1.0-nodes[j]^2.0)^(0.5)*weights[j]
+      term += train.cores[i][:,j,:]*(one(T)-nodes[j]^2.0)^(0.5)*weights[j]
     end
     integral *= term*((domain[1,i]-domain[2,i])/2)
   end
@@ -7394,10 +7423,10 @@ function TTintegrate_GC(train::DiscreteTensorTrain,domain::Union{Matrix{R},Vecto
     integral = fill(T(1.0),1,1)
     for i = 1:μ
       n = size(train.cores[i])
-      term = zeros(n[1],n[3])
+      term = zeros(T,n[1],n[3])
       nodes, weights = chebyshev(n[2])
       for j = 1:n[2]
-        term += train.cores[i][:,j,:]*(1.0-nodes[j]^2.0)^(0.5)*weights[j]
+        term += train.cores[i][:,j,:]*(one(T)-nodes[j]^2.0)^(0.5)*weights[j]
       end
       integral *= term*((domain[1,i]-domain[2,i])/2)
     end
@@ -7427,7 +7456,7 @@ function TTintegrate_GL(train::DiscreteTensorTrain,domain::Union{Matrix{R},Vecto
   integral = fill(T(1.0),1,1)
   for i = 1:d
     n = size(train.cores[i])
-    term = zeros(n[1],n[3])
+    term = zeros(T,n[1],n[3])
     nodes, weights = legendre(n[2])
     for j = 1:n[2]
       term += train.cores[i][:,j,:]*weights[j]
@@ -7460,7 +7489,7 @@ function TTintegrate_GL(train::DiscreteTensorTrain,domain::Union{Matrix{R},Vecto
     integral = fill(T(1.0),1,1)
     for i = 1:μ
       n = size(train.cores[i])
-      term = zeros(n[1],n[3])
+      term = zeros(T,n[1],n[3])
       nodes, weights = legendre(n[2])
       for j = 1:n[2]
         term += train.cores[i][:,j,:]*weights[j]
@@ -7493,7 +7522,7 @@ function TTintegrate_GH(train::DiscreteTensorTrain) # Integrates over all dimens
   integral = fill(T(1.0),1,1)
   for i = 1:d
     n = size(train.cores[i])
-    term = zeros(n[1],n[3])
+    term = zeros(T,n[1],n[3])
     nodes, weights = hermite(n[2])
     for j = 1:n[2]
       term += train.cores[i][:,j,:]*exp(nodes[j]^2.0)*weights[j]
@@ -7526,7 +7555,7 @@ function TTintegrate_GH(train::DiscreteTensorTrain,μ::S) where {S<:Integer} # I
     integral = fill(T(1.0),1,1)
     for i = 1:μ
       n = size(train.cores[i])
-      term = zeros(n[1],n[3])
+      term = zeros(T,n[1],n[3])
       nodes, weights = hermite(n[2])
       for j = 1:n[2]
         term += train.cores[i][:,j,:]*exp(nodes[j]^2.0)*weights[j]
@@ -7613,9 +7642,9 @@ function TTintegrate_GC(train::FunctionalTensorTrain,nodes::NTuple{d,AbstractVec
   integral = fill(T(1.0),1,1) 
   for i = 1:d
     node, weights = chebyshev(n[i])
-    F = zeros(train.ranks[i],train.ranks[i+1])
+    F = zeros(T,train.ranks[i],train.ranks[i+1])
     for j = 1:n[i]
-      F += reshape([train.cores[i][k]([nodes[i][j]]) for k in eachindex(train.cores[i])]*(1.0-node[j]^2.0)^(0.5)*weights[j],train.ranks[i],train.ranks[i+1])
+      F += reshape([train.cores[i][k]([nodes[i][j]]) for k in eachindex(train.cores[i])]*(one(T)-node[j]^2.0)^(0.5)*weights[j],train.ranks[i],train.ranks[i+1])
     end
     integral *= F*((domain[1,i]-domain[2,i])/2)
   end
@@ -7632,14 +7661,14 @@ Signature
 
 area = TTintegrate_GL(train,nodes,domain)
 """
-function TTintegrate_LC(train::FunctionalTensorTrain,nodes::NTuple{d,AbstractVector{T}},domain::Union{Matrix{R},Vector{R}}) where {T<:AbstractFloat,R<:AbstractFloat,d} # Integrates over all dimensions
+function TTintegrate_GL(train::FunctionalTensorTrain,nodes::NTuple{d,AbstractVector{T}},domain::Union{Matrix{R},Vector{R}}) where {T<:AbstractFloat,R<:AbstractFloat,d} # Integrates over all dimensions
 
   n = length.(nodes)
 
   integral = fill(T(1.0),1,1) 
   for i = 1:d
     node, weights = legendre(n[i])
-    F = zeros(train.ranks[i],train.ranks[i+1])
+    F = zeros(T,train.ranks[i],train.ranks[i+1])
     for j = 1:n[i]
       F += reshape([train.cores[i][k]([nodes[i][j]]) for k in eachindex(train.cores[i])]*weights[j],train.ranks[i],train.ranks[i+1])
     end
@@ -7665,7 +7694,7 @@ function TTintegrate_GH(train::FunctionalTensorTrain,nodes::NTuple{d,AbstractVec
   integral = fill(T(1.0),1,1) 
   for i = 1:d
     node, weights = hermite(n[i])
-    F = zeros(train.ranks[i],train.ranks[i+1])
+    F = zeros(T,train.ranks[i],train.ranks[i+1])
     for j = 1:n[i]
       F += reshape([train.cores[i][k]([nodes[i][j]]) for k in eachindex(train.cores[i])]*exp(node[j]^2.0)*weights[j],train.ranks[i],train.ranks[i+1])
     end
@@ -7695,9 +7724,9 @@ function TTcompute_marginal_GC(train::DiscreteTensorTrain,domain::AbstractMatrix
     for i = 2:d
       n = size(train.cores[i])
       nodes, weights = chebyshev(n[2])
-      term = zeros(n[1], n[3])
+      term = zeros(T,n[1], n[3])
       for j = 1:n[2]
-        @views term += train.cores[i][:, j, :] * (1.0 - nodes[j]^2.0)^(0.5) * weights[j]
+        @views term += train.cores[i][:, j, :] * (one(T) - nodes[j]^2.0)^(0.5) * weights[j]
       end
       integral = times_dim_3(integral, term) * ((domain[1, i] - domain[2, i]) / 2)
     end
@@ -7707,9 +7736,9 @@ function TTcompute_marginal_GC(train::DiscreteTensorTrain,domain::AbstractMatrix
     for i = (d-1):-1:1
       n = size(train.cores[i])
       nodes, weights = chebyshev(n[2])
-      term = zeros(n[1], n[3])
+      term = zeros(T,n[1], n[3])
       for j = 1:n[2]
-        @views term += train.cores[i][:, j, :] * (1.0 - nodes[j]^2.0)^(0.5) * weights[j]
+        @views term += train.cores[i][:, j, :] * (one(T) - nodes[j]^2.0)^(0.5) * weights[j]
       end
       integral = times_dim_1(term, integral) * ((domain[1, i] - domain[2, i]) / 2)
     end
@@ -7719,18 +7748,18 @@ function TTcompute_marginal_GC(train::DiscreteTensorTrain,domain::AbstractMatrix
     for i = ind+1:d
       n = size(train.cores[i])
       nodes, weights = chebyshev(n[2])
-      term = zeros(n[1], n[3])
+      term = zeros(T,n[1], n[3])
       for j = 1:n[2]
-        @views term += train.cores[i][:, j, :] * (1.0 - nodes[j]^2.0)^(0.5) * weights[j]
+        @views term += train.cores[i][:, j, :] * (one(T) - nodes[j]^2.0)^(0.5) * weights[j]
       end
       integral = times_dim_3(integral, term) * ((domain[1, i] - domain[2, i]) / 2)
     end
     for i = ind-1:-1:1
       n = size(train.cores[i])
       nodes, weights = chebyshev(n[2])
-      term = zeros(n[1], n[3])
+      term = zeros(T,n[1], n[3])
       for j = 1:n[2]
-        @views term += train.cores[i][:, j, :] * (1.0 - nodes[j]^2.0)^(0.5) * weights[j]
+        @views term += train.cores[i][:, j, :] * (one(T) - nodes[j]^2.0)^(0.5) * weights[j]
       end
       integral = times_dim_1(term, integral) * ((domain[1, i] - domain[2, i]) / 2)
     end
@@ -7756,7 +7785,7 @@ function TTcompute_marginal_GL(train::DiscreteTensorTrain,domain::AbstractMatrix
     for i = 2:d
       n = size(train.cores[i])
       nodes, weights = legendre(n[2])
-      term = zeros(n[1], n[3])
+      term = zeros(T,n[1], n[3])
       for j = 1:n[2]
         @views term += train.cores[i][:, j, :] * weights[j]
       end
@@ -7768,7 +7797,7 @@ function TTcompute_marginal_GL(train::DiscreteTensorTrain,domain::AbstractMatrix
     for i = (d-1):-1:1
       n = size(train.cores[i])
       nodes, weights = legendre(n[2])
-      term = zeros(n[1], n[3])
+      term = zeros(T,n[1], n[3])
       for j = 1:n[2]
         @views term += train.cores[i][:, j, :] * weights[j]
       end
@@ -7780,7 +7809,7 @@ function TTcompute_marginal_GL(train::DiscreteTensorTrain,domain::AbstractMatrix
     for i = ind+1:d
       n = size(train.cores[i])
       nodes, weights = legendre(n[2])
-      term = zeros(n[1], n[3])
+      term = zeros(T,n[1], n[3])
       for j = 1:n[2]
         @views term += train.cores[i][:, j, :] * weights[j]
       end
@@ -7789,7 +7818,7 @@ function TTcompute_marginal_GL(train::DiscreteTensorTrain,domain::AbstractMatrix
     for i = ind-1:-1:1
       n = size(train.cores[i])
       nodes, weights = legendre(n[2])
-      term = zeros(n[1], n[3])
+      term = zeros(T,n[1], n[3])
       for j = 1:n[2]
         @views term += train.cores[i][:, j, :] * weights[j]
       end
@@ -7811,13 +7840,14 @@ margin = TTcompute_marginal_GH(train,ind)
 function TTcompute_marginal_GH(train::DiscreteTensorTrain,ind::S) where {S<:Integer} # Assumes Gauss-Hermite quadrature
 
   d = length(train.cores)
+  T = eltype(train.cores[1])
 
   if ind == 1
     integral = reshape(train.cores[1], train.ranks[1], size(train.cores[1], 2), train.ranks[2])
     for i = 2:d
       n = size(train.cores[i])
       nodes, weights = hermite(n[2])
-      term = zeros(n[1], n[3])
+      term = zeros(T,n[1], n[3])
       for j = 1:n[2]
         @views term += train.cores[i][:, j, :]*exp(nodes[j]^2.0)*weights[j]
       end
@@ -7829,7 +7859,7 @@ function TTcompute_marginal_GH(train::DiscreteTensorTrain,ind::S) where {S<:Inte
     for i = (d-1):-1:1
       n = size(train.cores[i])
       nodes, weights = hermite(n[2])
-      term = zeros(n[1], n[3])
+      term = zeros(T,n[1], n[3])
       for j = 1:n[2]
         @views term += train.cores[i][:, j, :]*exp(nodes[j]^2.0)*weights[j]
       end
@@ -7841,7 +7871,7 @@ function TTcompute_marginal_GH(train::DiscreteTensorTrain,ind::S) where {S<:Inte
     for i = ind+1:d
       n = size(train.cores[i])
       nodes, weights = hermite(n[2])
-      term = zeros(n[1], n[3])
+      term = zeros(T,n[1], n[3])
       for j = 1:n[2]
         @views term += train.cores[i][:, j, :]*exp(nodes[j]^2.0)*weights[j]
       end
@@ -7850,7 +7880,7 @@ function TTcompute_marginal_GH(train::DiscreteTensorTrain,ind::S) where {S<:Inte
     for i = ind-1:-1:1
       n = size(train.cores[i])
       nodes, weights = hermite(n[2])
-      term = zeros(n[1], n[3])
+      term = zeros(T,n[1], n[3])
       for j = 1:n[2]
         @views term += train.cores[i][:, j, :]*exp(nodes[j]^2.0)*weights[j]
       end
@@ -7922,25 +7952,7 @@ function TTrounding(train::BaseTensorTrain,tol::T) where {T<:AbstractFloat}
 
   r_new = copy(r)
 
-  # Right orthogonalise, sweeping from the last core to the second, so that the norm of the whole train
-  # is carried by the first core.  Without this the local threshold does not bound the global error.
-  #
-  # The factorisation is done here rather than through 'rq' because 'rq' requires a fat unfolding, and a
-  # train that has been squared or raised to a power carries ranks with r[i] > n[i]*r[i+1] near its ends.
-  # For such a core the LQ factors are thin, which drops the rank to n[i]*r[i+1] exactly, losing nothing.
-
-  for i = d:-1:2
-
-    F        = qr(Matrix(transpose(reshape(G[i],r_new[i],n[i]*r_new[i+1]))))
-    R        = Matrix(transpose(F.R))
-    Q        = Matrix(transpose(Matrix(F.Q)))
-    r_new[i] = size(Q,1)
-    G[i]     = reshape(Q,r_new[i],n[i],r_new[i+1])
-    G[i-1]   = times_dim_3(G[i-1],R)
-
-  end
-
-  # Truncate, sweeping from the first core to the last, against the norm of the train
+  tt_orth_right!(G,r_new,d,2)
 
   δ = d > 1 ? (tol/sqrt(d-1))*norm(G[1]) : zero(tol)
 
@@ -7967,25 +7979,7 @@ function TTrounding(train::ExtendedTensorTrain,tol::T) where {T<:AbstractFloat}
 
   r_new = copy(r)
 
-  # Right orthogonalise, sweeping from the last core to the second, so that the norm of the whole train
-  # is carried by the first core.  Without this the local threshold does not bound the global error.
-  #
-  # The factorisation is done here rather than through 'rq' because 'rq' requires a fat unfolding, and a
-  # train that has been squared or raised to a power carries ranks with r[i] > n[i]*r[i+1] near its ends.
-  # For such a core the LQ factors are thin, which drops the rank to n[i]*r[i+1] exactly, losing nothing.
-
-  for i = d:-1:2
-
-    F        = qr(Matrix(transpose(reshape(G[i],r_new[i],n[i]*r_new[i+1]))))
-    R        = Matrix(transpose(F.R))
-    Q        = Matrix(transpose(Matrix(F.Q)))
-    r_new[i] = size(Q,1)
-    G[i]     = reshape(Q,r_new[i],n[i],r_new[i+1])
-    G[i-1]   = times_dim_3(G[i-1],R)
-
-  end
-
-  # Truncate, sweeping from the first core to the last, against the norm of the train
+  tt_orth_right!(G,r_new,d,2)
 
   δ = d > 1 ? (tol/sqrt(d-1))*norm(G[1]) : zero(tol)
 
@@ -8383,6 +8377,65 @@ function rq(A::AbstractMatrix{T}) where {T<:Real} # not exported
 end
 
 """
+Left orthogonalise cores 'first' to 'last' of 'Π' in place, carrying the triangular factor into the
+next core and writing the ranks that were achieved into 'r'.
+
+A core can only carry a rank of r[k+1] <= r[k]*n[k]; a train that has been squared or raised to a power
+carries larger ones.  The QR factor is thin in that case, which drops the rank to r[k]*n[k].  That is
+exact, not a truncation: the surplus directions are linearly dependent by construction.  This is why the
+rank is read back out of the factorisation rather than assumed, and why 'r' is an output as well as an
+input.
+
+Signature
+=========
+
+tt_orth_left!(Π,r,first,last)
+"""
+function tt_orth_left!(Π::AbstractVector{Array{T,3}},r::AbstractVector{S},first::Integer,last::Integer) where {T<:AbstractFloat,S<:Integer} # not exported
+
+  for k = first:last
+
+    n      = size(Π[k],2)
+    F      = qr(reshape(Π[k],r[k]*n,r[k+1]))
+    Q      = Matrix(F.Q)
+    r[k+1] = size(Q,2)
+    Π[k]   = reshape(Q,r[k],n,r[k+1])
+    Π[k+1] = times_dim_1(Matrix(F.R),Π[k+1])
+
+  end
+
+  return nothing
+
+end
+
+"""
+Right orthogonalise cores 'first' down to 'last' of 'Π' in place, carrying the triangular factor into
+the previous core and writing the ranks that were achieved into 'r'.  See tt_orth_left! for why the rank
+is taken from the factorisation; here the bound is r[k] <= n[k]*r[k+1].
+
+Signature
+=========
+
+tt_orth_right!(Π,r,first,last)
+"""
+function tt_orth_right!(Π::AbstractVector{Array{T,3}},r::AbstractVector{S},first::Integer,last::Integer) where {T<:AbstractFloat,S<:Integer} # not exported
+
+  for k = first:-1:last
+
+    n      = size(Π[k],2)
+    F      = qr(Matrix(transpose(reshape(Π[k],r[k],n*r[k+1]))))
+    Q      = Matrix(transpose(Matrix(F.Q)))
+    r[k]   = size(Q,1)
+    Π[k]   = reshape(Q,r[k],n,r[k+1])
+    Π[k-1] = times_dim_3(Π[k-1],Matrix(transpose(F.R)))
+
+  end
+
+  return nothing
+
+end
+
+"""
 Right orthogonalise a discrete tensor train.
 
 Signature
@@ -8394,23 +8447,11 @@ function TTorthright(train::L) where {L<:BaseTensorTrain}  # Tensor train orthog
 
   Π = copy(train.cores)
   d = length(Π)
-  n = Tuple(size(Π[k])[2] for k = 1:d)
   r = copy(train.ranks)
-  
-  for k = d:-1:2
 
-    # Update the k'th core
-    G = reshape(Π[k],r[k],n[k]*r[k+1])
-    R, Q = rq(G)
-    Π[k] = reshape(Q,r[k],n[k],r[k+1])
-    # Update the (k-1)'th core
-    G = reshape(Π[k-1],r[k-1]*n[k-1],r[k])
-    G = G*R
-    Π[k-1] = reshape(G,r[k-1],n[k-1],r[k])
+  tt_orth_right!(Π,r,d,2)
 
-  end
-
-  return RightOrthBaseTensorTrain(Π,train.ranks,train.sweeps)
+  return RightOrthBaseTensorTrain(Π,r,train.sweeps)
 
 end
 
@@ -8418,23 +8459,11 @@ function TTorthright(train::L) where {L<:ExtendedTensorTrain}
 
   Π = copy(train.cores)
   d = length(Π)
-  n = Tuple(size(Π[k])[2] for k = 1:d)
   r = copy(train.ranks)
-  
-  for k = d:-1:2
 
-    # Update the k'th core
-    G = reshape(Π[k],r[k],n[k]*r[k+1])
-    R, Q = rq(G)
-    Π[k] = reshape(Q,r[k],n[k],r[k+1])
-    # Update the (k-1)'th core
-    G = reshape(Π[k-1],r[k-1]*n[k-1],r[k])
-    G = G*R
-    Π[k-1] = reshape(G,r[k-1],n[k-1],r[k])
+  tt_orth_right!(Π,r,d,2)
 
-  end
-
-  return RightOrthExtendedTensorTrain(Π,train.ranks,train.left_to_right_ind,train.right_to_left_ind,train.left_to_right_sub,train.right_to_left_sub,train.sweeps)
+  return RightOrthExtendedTensorTrain(Π,r,train.left_to_right_ind,train.right_to_left_ind,train.left_to_right_sub,train.right_to_left_sub,train.sweeps)
 
 end
 
@@ -8450,23 +8479,11 @@ function TTorthleft(train::L) where {L<:BaseTensorTrain}
 
   Π = copy(train.cores)
   d = length(Π)
-  n = Tuple(size(Π[k])[2] for k = 1:d)
   r = copy(train.ranks)
-  
-  for k = 1:d-1
 
-    # Update the k'th core
-    G = reshape(Π[k],r[k]*n[k],r[k+1])
-    Q, R = qr(G)
-    Π[k] = reshape(Matrix(Q),r[k],n[k],r[k+1])
-    # Update the (k+1)'th core
-    G = reshape(Π[k+1],r[k+1],n[k+1]*r[k+2])
-    G = R*G
-    Π[k+1] = reshape(G,r[k+1],n[k+1],r[k+2])
+  tt_orth_left!(Π,r,1,d-1)
 
-  end
-
-  return LeftOrthBaseTensorTrain(Π,train.ranks,train.sweeps)
+  return LeftOrthBaseTensorTrain(Π,r,train.sweeps)
 
 end
 
@@ -8474,23 +8491,11 @@ function TTorthleft(train::L) where {L<:ExtendedTensorTrain}
 
   Π = copy(train.cores)
   d = length(Π)
-  n = Tuple(size(Π[k])[2] for k = 1:d)
   r = copy(train.ranks)
-  
-  for k = 1:d-1
 
-    # Update the k'th core
-    G = reshape(Π[k],r[k]*n[k],r[k+1])
-    Q, R = qr(G)
-    Π[k] = reshape(Matrix(Q),r[k],n[k],r[k+1])
-    # Update the (k+1)'th core
-    G = reshape(Π[k+1],r[k+1],n[k+1]*r[k+2])
-    G = R*G
-    Π[k+1] = reshape(G,r[k+1],n[k+1],r[k+2])
+  tt_orth_left!(Π,r,1,d-1)
 
-  end
-
-  return LeftOrthExtendedTensorTrain(Π,train.ranks,train.left_to_right_ind,train.right_to_left_ind,train.left_to_right_sub,train.right_to_left_sub,train.sweeps)
+  return LeftOrthExtendedTensorTrain(Π,r,train.left_to_right_ind,train.right_to_left_ind,train.left_to_right_sub,train.right_to_left_sub,train.sweeps)
 
 end
 
@@ -8506,36 +8511,12 @@ function TTorthleftright(train::L,μ::S) where {L<:BaseTensorTrain,S<:Integer}
 
   Π = copy(train.cores)
   d = length(Π)
-  n = Tuple(size(Π[k])[2] for k = 1:d)
   r = copy(train.ranks)
-  
-  for k = 1:μ-1
 
-    # Update the k'th core
-    G = reshape(Π[k],r[k]*n[k],r[k+1])
-    Q, R = qr(G)
-    Π[k] = reshape(Matrix(Q),r[k],n[k],r[k+1])
-    # Update the (k+1)'th core
-    G = reshape(Π[k+1],r[k+1],n[k+1]*r[k+2])
-    G = R*G
-    Π[k+1] = reshape(G,r[k+1],n[k+1],r[k+2])
+  tt_orth_left!(Π,r,1,μ-1)
+  tt_orth_right!(Π,r,d,μ+1)
 
-  end
-
-  for k = d:-1:μ+1
-
-    # Update the k'th core
-    G = reshape(Π[k],r[k],n[k]*r[k+1])
-    R, Q = rq(G)
-    Π[k] = reshape(Q,r[k],n[k],r[k+1])
-    # Update the (k-1)'th core
-    G = reshape(Π[k-1],r[k-1]*n[k-1],r[k])
-    G = G*R
-    Π[k-1] = reshape(G,r[k-1],n[k-1],r[k])
-
-  end
-
-  return BaseTensorTrain(Π,train.ranks,train.sweeps)
+  return BaseTensorTrain(Π,r,train.sweeps)
 
 end
 
@@ -8543,36 +8524,12 @@ function TTorthleftright(train::L,μ::S) where {L<:ExtendedTensorTrain,S<:Intege
 
   Π = copy(train.cores)
   d = length(Π)
-  n = Tuple(size(Π[k])[2] for k = 1:d)
   r = copy(train.ranks)
-  
-  for k = 1:μ-1
 
-    # Update the k'th core
-    G = reshape(Π[k],r[k]*n[k],r[k+1])
-    Q, R = qr(G)
-    Π[k] = reshape(Matrix(Q),r[k],n[k],r[k+1])
-    # Update the (k+1)'th core
-    G = reshape(Π[k+1],r[k+1],n[k+1]*r[k+2])
-    G = R*G
-    Π[k+1] = reshape(G,r[k+1],n[k+1],r[k+2])
+  tt_orth_left!(Π,r,1,μ-1)
+  tt_orth_right!(Π,r,d,μ+1)
 
-  end
-
-  for k = d:-1:μ+1
-
-    # Update the k'th core
-    G = reshape(Π[k],r[k],n[k]*r[k+1])
-    R, Q = rq(G)
-    Π[k] = reshape(Q,r[k],n[k],r[k+1])
-    # Update the (k-1)'th core
-    G = reshape(Π[k-1],r[k-1]*n[k-1],r[k])
-    G = G*R
-    Π[k-1] = reshape(G,r[k-1],n[k-1],r[k])
-
-  end
-
-  return ExtendedTensorTrain(Π,train.ranks,train.left_to_right_ind,train.right_to_left_ind,train.left_to_right_sub,train.right_to_left_sub,train.sweeps)
+  return ExtendedTensorTrain(Π,r,train.left_to_right_ind,train.right_to_left_ind,train.left_to_right_sub,train.right_to_left_sub,train.sweeps)
 
 end
 
@@ -8853,7 +8810,7 @@ function TTCD_GH(train::DiscreteTensorTrain,N::S,seed::S = 123456) where {S<:Int
 
   rng = MersenneTwister(seed)
   q = rand(rng,N,d)
-  sample = zeros(N,d)
+  sample = zeros(T,N,d)
 
   P = Vector{Matrix{T}}(undef,d+1)
   Φ = Vector{Matrix{T}}(undef,d+1)
@@ -8864,7 +8821,7 @@ function TTCD_GH(train::DiscreteTensorTrain,N::S,seed::S = 123456) where {S<:Int
 
   P[d+1] = [1.0;;]
   for k = d:-1:1
-    term = zeros(n[k][1],n[k][3])
+    term = zeros(T,n[k][1],n[k][3])
     nodes[k], weights[k] = hermite(n[k][2])
     for j = 1:n[k][2]
       term += Π[k][:,j,:]*exp(nodes[k][j]^2.0)*weights[k][j]
@@ -8872,9 +8829,9 @@ function TTCD_GH(train::DiscreteTensorTrain,N::S,seed::S = 123456) where {S<:Int
     P[k] = term*P[k+1]
   end
 
-  Φ[1] = ones(N,1)
+  Φ[1] = ones(T,N,1)
   for k = 1:d
-    ϕ = zeros(N,n[k][3])
+    ϕ = zeros(T,N,n[k][3])
     Ψ[k] = times_dim_3(Π[k],P[k+1])[:,:,1] # [Π[k][:,i,:]*P[k+1] for i in 1:n[k][2]]
     for l = 1:N
       p = abs.(Φ[k][l:l,:]*Ψ[k])[:] # p is now a vector with length n[k][2]
@@ -9214,20 +9171,6 @@ function topK(M::AbstractMatrix{T},K::S) where {T<:AbstractFloat,S<:Integer} # n
   p = sortperm(m,rev=true)
 
   return p[1:min(n[1],K)]
-
-end
-
-"""
-Horizontally concatenate two matrices.
-
-Signature
-=========
-
-c = stack(a,b)
-"""
-function stack(a::AbstractMatrix{T},b::AbstractMatrix{T}) where {T<:AbstractFloat} # not exported
-
-  return [a b]
 
 end
 
