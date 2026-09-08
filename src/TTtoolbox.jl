@@ -6110,10 +6110,12 @@ nodes = cheb_nodes(n,domain,T)
 """
 function cheb_nodes(n::S,domain = [1.0,-1.0],T::DataType=Float64) where {S<:Integer}
 
-  points = [(domain[1] + domain[2]) * T(0.5) for _ in 1:n]
+  upper  = T(domain[1])
+  lower  = T(domain[2])
+  points = [(upper + lower) * T(0.5) for _ in 1:n]
 
   @inbounds for i = 1:div(n, 2)
-    x = -cospi(T(i - 0.5)/n) * (domain[1] - domain[2]) * T(0.5)
+    x = -cospi(T(i - 0.5)/n) * (upper - lower) * T(0.5)
     points[i] += x
     points[n-i+1] -= x
   end
@@ -6422,8 +6424,11 @@ nodes= legendre_nodes(n,domain,T)
 """
 function legendre_nodes(n::S,domain=[1.0,-1.0],T::DataType=Float64) where {S<:Integer}
 
-  λ, Q = eigen(SymTridiagonal(zeros(T,n), [i / sqrt(T(4i^2 - 1)) for i = 1:n-1]))
-  nodes = (λ .+ 1) * (domain[1] - domain[2]) / 2 .+ domain[2]
+  upper = T(domain[1])
+  lower = T(domain[2])
+
+  λ, Q  = eigen(SymTridiagonal(zeros(T,n), [i / sqrt(T(4i^2 - 1)) for i = 1:n-1]))
+  nodes = T.((λ .+ 1) * (upper - lower) / 2 .+ lower)
 
   return nodes
 
@@ -6443,10 +6448,11 @@ function legendre_polynomial(order::S,point::R) where {S<:Integer,R<:Real}
   poly[1] = one(R)
 
   @inbounds for i = 2:order+1
+    deg = i-1
     if i == 2
       poly[i] = point
     else
-      poly[i] = ((2*i-1)/i)*point*poly[i-1] - ((i-1)/i)*poly[i-2]
+      poly[i] = ((2*deg-1)/deg)*point*poly[i-1] - ((deg-1)/deg)*poly[i-2]
     end
   end
 
@@ -6461,10 +6467,11 @@ function legendre_polynomial(order::S,point::Array{R,1}) where {S<:Integer,R<:Re
 
   @inbounds for i = 2:order+1
     for j in eachindex(point)
+      deg = i-1
       if i == 2
         poly[j,i] = point[j]
       else
-        poly[j,i] = ((2*i-1)/i)*point[j]*poly[j,i-1] - ((i-1)/i)*poly[j,i-2]
+        poly[j,i] = ((2*deg-1)/deg)*point[j]*poly[j,i-1] - ((deg-1)/deg)*poly[j,i-2]
       end
     end
   end
@@ -6472,6 +6479,13 @@ function legendre_polynomial(order::S,point::Array{R,1}) where {S<:Integer,R<:Re
   return poly
 
 end
+
+"""
+The first and second derivatives of the Legendre polynomial of degree 'n' at 'point' = +/-1, where
+the recurrences used away from the limits divide by zero.
+"""
+legendre_deriv_at_limit(n::Integer,point::Real)     = (point > 0 ? one(point) : (-1)^(n-1))*n*(n+1)/2 # not exported
+legendre_sec_deriv_at_limit(n::Integer,point::Real) = (point > 0 ? one(point) : (-1)^n)*(n-1)*n*(n+1)*(n+2)/8 # not exported
 
 """
 Construct the derivative of a Legendre polynomial at 'point'. 'point' can be a scalar or a vector of scalars.
@@ -6488,13 +6502,17 @@ function legendre_polynomial_deriv(order::S,point::R) where {S<:Integer,R<:Real}
   poly[1] = one(R)
   poly_deriv[1] = zero(R)
 
+  edge = abs(point) == one(R)
+
   @inbounds for i = 2:order+1
+    deg = i-1
     if i == 2
       poly[i] = point
       poly_deriv[i] = one(R)
     else
-      poly[i] = ((2*i-1)/i)*point*poly[i-1] - ((i-1)/i)*poly[i-2]
-      poly_deriv[i] = i*(point*poly[i]-poly[i-1])/(point^2-1)
+      poly[i] = ((2*deg-1)/deg)*point*poly[i-1] - ((deg-1)/deg)*poly[i-2]
+      poly_deriv[i] = edge ? R(legendre_deriv_at_limit(deg,point)) :
+                             deg*(point*poly[i]-poly[i-1])/(point^2-1)
     end
   end
 
@@ -6513,12 +6531,14 @@ function legendre_polynomial_deriv(order::S,point::AbstractArray{R,1}) where {S<
 
   @inbounds for j = 1:n
     for i = 2:order+1
+      deg = i-1
       if i == 2
         poly[j,i] = point[j]
         poly_deriv[j,i] = one(R)
       else
-        poly[j,i] = ((2*i-1)/i)*point[j]*poly[j,i-1] - ((i-1)/i)*poly[j,i-2]
-        poly_deriv[j,i] = i*(point[j]*poly[j,i]-poly[j,i-1])/(point[j]^2-1)
+        poly[j,i] = ((2*deg-1)/deg)*point[j]*poly[j,i-1] - ((deg-1)/deg)*poly[j,i-2]
+        poly_deriv[j,i] = abs(point[j]) == one(R) ? R(legendre_deriv_at_limit(deg,point[j])) :
+                          deg*(point[j]*poly[j,i]-poly[j,i-1])/(point[j]^2-1)
       end
     end
   end
@@ -6544,15 +6564,23 @@ function legendre_polynomial_sec_deriv(order::S,point::R) where {S<:Integer,R<:R
   poly_deriv[1] = zero(R)
   poly_sec_deriv[1] = zero(R)
 
+  edge = abs(point) == one(R)
+
   @inbounds for i = 2:order+1
+    deg = i-1
     if i == 2
       poly[i] = point
       poly_deriv[i] = one(R)
       poly_sec_deriv[i] = zero(R)
     else
-      poly[i] = ((2*i-1)/i)*point*poly[i-1] - ((i-1)/i)*poly[i-2]
-      poly_deriv[i] = i*(point*poly[i]-poly[i-1])/(point^2-1)
-      poly_sec_deriv[i] = i*(poly[i]*((point^2-1)^(-1)-2*point^2/(point^2-1)^2)+(point/(point^2-1))*poly_deriv[i]) - i*(poly[i-1]*(-2*point/(point^2-1)^2) + (1/(point^2-1))*poly_deriv[i-1])
+      poly[i] = ((2*deg-1)/deg)*point*poly[i-1] - ((deg-1)/deg)*poly[i-2]
+      if edge
+        poly_deriv[i]     = R(legendre_deriv_at_limit(deg,point))
+        poly_sec_deriv[i] = R(legendre_sec_deriv_at_limit(deg,point))
+      else
+        poly_deriv[i]     = deg*(point*poly[i]-poly[i-1])/(point^2-1)
+        poly_sec_deriv[i] = (2*point*poly_deriv[i] - deg*(deg+1)*poly[i])/(1-point^2)
+      end
     end
   end
 
@@ -6573,14 +6601,20 @@ function legendre_polynomial_sec_deriv(order::S,point::Array{R,1}) where {S<:Int
 
   @inbounds for j = 1:n
     for i = 2:order+1
+      deg = i-1
       if i == 2
         poly[j,i] = point[j]
         poly_deriv[j,i] = one(R)
         poly_sec_deriv[j,i] = zero(R)
       else
-        poly[j,i] = ((2*i-1)/i)*point[j]*poly[j,i-1] - ((i-1)/i)*poly[j,i-2]
-        poly_deriv[j,i] = i*(point[j]*poly[j,i]-poly[j,i-1])/(point[j]^2-1)
-        poly_sec_deriv[j,i] = i*(poly[j,i]*((point[j]^2-1)^(-1)-2*point[j]^2/(point[j]^2-1)^2)+(point[j]/(point[j]^2-1))*poly_deriv[j,i]) - i*(poly[j,i-1]*(-2*point[j]/(point[j]^2-1)^2) + (1/(point[j]^2-1))*poly_deriv[j,i-1])
+        poly[j,i] = ((2*deg-1)/deg)*point[j]*poly[j,i-1] - ((deg-1)/deg)*poly[j,i-2]
+        if abs(point[j]) == one(R)
+          poly_deriv[j,i]     = R(legendre_deriv_at_limit(deg,point[j]))
+          poly_sec_deriv[j,i] = R(legendre_sec_deriv_at_limit(deg,point[j]))
+        else
+          poly_deriv[j,i]     = deg*(point[j]*poly[j,i]-poly[j,i-1])/(point[j]^2-1)
+          poly_sec_deriv[j,i] = (2*point[j]*poly_deriv[j,i] - deg*(deg+1)*poly[j,i])/(1-point[j]^2)
+        end
       end
     end
   end
