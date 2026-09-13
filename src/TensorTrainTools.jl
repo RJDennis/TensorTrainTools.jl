@@ -28,7 +28,7 @@ export TTevaluate, TTdecompress, TTdecompress_threaded, TTsize, TTnorm
 
 # Algebra
 export TTadd, TTsubtract, TTmult, TTHadamard, TTsquared, TTpower, TTexp, TTrounding,
-       TTinner_prod, TTreverse_indices
+       TTinner_prod, TTinner_prod2, TTreverse_indices
 
 # Orthogonalisation
 export TTorthleft, TTorthright, TTorthleftright

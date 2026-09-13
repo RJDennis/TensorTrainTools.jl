@@ -8701,45 +8701,6 @@ function TTinner_prod2(traina::DiscreteTensorTrain,trainb::DiscreteTensorTrain)
 end
 
 """
-Use bisection to find the fix-point of the continuous function 'f'.
-
-Signature
-=========
-
-xstar, f_xstar, iters = bisection(f,x,tol,maxiters)
-"""
-function bisection(f::Function,x::AbstractVector{R},tol::T,maxiters::S) where {R<:AbstractFloat,T<:AbstractFloat,S<:Integer} # not exported
-
-  b = x[2]
-  a = x[1]
-
-  c = (a+b)/2
-
-  iter = 0
-  while true
-
-    if f(c)*f(b) <= 0.0
-      a, b = c, b
-    else
-      a, b = a, c
-    end
-
-    len = abs(b-a)
-
-    c = (a+b)/2
-
-    iter += 1
-    if iter >= maxiters || len <= tol
-      break
-    end
-
-  end
-
-  return c, f(c), iter
-
-end
-
-"""
 Use the trapazoidal method to integrate the cores of a discrete tensor train.
 
 Signature
@@ -8794,31 +8755,48 @@ function cumulative_trapazoid(y::AbstractVector{T1},x::AbstractVector{T2}) where
 end
 
 """
-Take a draw from a density by inverting the CDF.
+Invert the trapezoidal CDF that takes the values 'F' at the nodes 'nodes' at the probability 'u', where
+'p' holds the density at those nodes.  'F' is built by the trapezoid rule, which treats the density as
+linear between the nodes, so the CDF is quadratic there and inverting it means solving a quadratic.
+Interpolating 'F' linearly instead is the inverse of a piecewise constant density: it spreads the draws
+that land in an interval uniformly across it, and the sample then has a visible step at every node.
 
-Signatures
-==========
+Signature
+=========
 
-c = invert_cdf(f,u)       # Unbounded domain
-c = invert_cdf(f,u,lb,ub) # Bounded domain
+x = invert_piecewise_cdf(F,p,nodes,u)
 """
-function invert_cdf(f::Function,u::T) where {T<:AbstractFloat} # not exported
+function invert_piecewise_cdf(F::AbstractVector{T},p::AbstractVector{T},nodes::AbstractVector{R},u::Real) where {T<:AbstractFloat,R<:AbstractFloat} # not exported
 
-  g(x) = f(x)-u
+  n = length(F)
 
-  c, fc, its = bisection(g,[floatmax(T),floatmin(T)],eps(),5_000)
+  if u <= F[1]
+    return nodes[1]
+  elseif u >= F[n]
+    return nodes[n]
+  end
 
-  return c
+  j = clamp(searchsortedlast(F,u),1,n-1) # F[j] <= u < F[j+1]
 
-end
+  ΔF = F[j+1] - F[j]
 
-function invert_cdf(f::Function,u::T,lb::T,ub::T) where {T<:AbstractFloat} # not exported
+  if ΔF <= zero(T) # the density is zero across the interval
+    return nodes[j]
+  end
 
-  g(x) = f(x)-u
+  # Write the density across the interval as p[j] + (p[j+1]-p[j])*t, with t = (x-nodes[j])/h the
+  # position within it.  The mass it carries is ΔF, which fixes the scale that 'F' was normalized by
+  # and leaves t as the root of ((p[j+1]-p[j])/2)*t^2 + p[j]*t - c = 0.  The root is written as
+  # 2c/(p[j]+sqrt(D)) rather than the usual quotient so that it stays accurate as p[j+1] approaches
+  # p[j], where the quadratic degenerates to the linear interpolation of 'F' that it replaces.
 
-  c, fc, its = bisection(g,[ub,lb],eps(),5_000)
+  c = (u-F[j])*(p[j]+p[j+1])/(2*ΔF)
+  D = p[j]^2 + 2*(p[j+1]-p[j])*c # never negative: it falls from p[j]^2 to p[j+1]^2 as u crosses the interval
+  b = p[j] + sqrt(max(D,zero(T)))
 
-  return c
+  t = b > zero(T) ? clamp(2*c/b,zero(T),one(T)) : zero(T)
+
+  return nodes[j] + t*(nodes[j+1]-nodes[j])
 
 end
 
@@ -8869,8 +8847,8 @@ function TTCD_GH(train::DiscreteTensorTrain,N::S,seed::S = 123456) where {S<:Int
     Ψ[k] = times_dim_3(Π[k],P[k+1])[:,:,1] # [Π[k][:,i,:]*P[k+1] for i in 1:n[k][2]]
     for l = 1:N
       p = abs.(Φ[k][l:l,:]*Ψ[k])[:] # p is now a vector with length n[k][2]
-      f = piecewise_linear_evaluate(cumulative_trapazoid(p,nodes[k]),nodes[k])
-      sample[l,k] = invert_cdf(f,q[l,k],nodes[k][begin],nodes[k][end])
+      F = cumulative_trapazoid(p,nodes[k])
+      sample[l,k] = invert_piecewise_cdf(F,p,nodes[k],q[l,k])
       g = [piecewise_linear_evaluate(Π[k][i,:,j],nodes[k]) for i = 1:r[k], j = 1:r[k+1]]
       ϕ[l,:] = Φ[k][l,:]'*[g[i,j].(sample[l,k]) for i in axes(g,1),j in axes(g,2)]
     end
@@ -8925,8 +8903,8 @@ function TTCD_GC(train::DiscreteTensorTrain,N::S,domain::AbstractMatrix{T},seed:
     Ψ[k] = times_dim_3(Π[k],P[k+1])[:,:,1] # [Π[k][:,i,:]*P[k+1] for i in 1:n[k][2]]
     for l = 1:N
       p = abs.(Φ[k][l:l,:]*Ψ[k])[:] # p is now a vector with length n[k][2]
-      f = piecewise_linear_evaluate(cumulative_trapazoid(p,nodes[k]),nodes[k])
-      sample[l,k] = invert_cdf(f,q[l,k],nodes[k][begin],nodes[k][end])
+      F = cumulative_trapazoid(p,nodes[k])
+      sample[l,k] = invert_piecewise_cdf(F,p,nodes[k],q[l,k])
       g = [piecewise_linear_evaluate(Π[k][i,:,j],nodes[k]) for i = 1:r[k], j = 1:r[k+1]]
       ϕ[l,:] = Φ[k][l,:]'*[g[i,j].(sample[l,k]) for i in axes(g,1),j in axes(g,2)]
     end
@@ -8981,8 +8959,8 @@ function TTCD_GL(train::DiscreteTensorTrain,N::S,domain::AbstractMatrix{T},seed:
     Ψ[k] = times_dim_3(Π[k],P[k+1])[:,:,1] # [Π[k][:,i,:]*P[k+1] for i in 1:n[k][2]]
     for l = 1:N
       p = abs.(Φ[k][l:l,:]*Ψ[k])[:] # p is now a vector with length n[k][2]
-      f = piecewise_linear_evaluate(cumulative_trapazoid(p,nodes[k]),nodes[k])
-      sample[l,k] = invert_cdf(f,q[l,k],nodes[k][begin],nodes[k][end])
+      F = cumulative_trapazoid(p,nodes[k])
+      sample[l,k] = invert_piecewise_cdf(F,p,nodes[k],q[l,k])
       g = [piecewise_linear_evaluate(Π[k][i,:,j],nodes[k]) for i = 1:r[k], j = 1:r[k+1]]
       ϕ[l,:] = Φ[k][l,:]'*[g[i,j].(sample[l,k]) for i in axes(g,1),j in axes(g,2)]
     end
@@ -9032,8 +9010,8 @@ function TTCD_PL(train::DiscreteTensorTrain,N::S,domain::AbstractMatrix{T},seed:
     Ψ[k] = times_dim_3(Π[k],P[k+1])[:,:,1] # [Π[k][:,i,:]*P[k+1] for i in 1:n[k][2]]
     for l = 1:N
       p = abs.(Φ[k][l:l,:]*Ψ[k])[:] # p is now a vector with length n[k][2]
-      f = piecewise_linear_evaluate(cumulative_trapazoid(p,nodes[k]),nodes[k])
-      sample[l,k] = invert_cdf(f,q[l,k],nodes[k][begin],nodes[k][end])
+      F = cumulative_trapazoid(p,nodes[k])
+      sample[l,k] = invert_piecewise_cdf(F,p,nodes[k],q[l,k])
       g = [piecewise_linear_evaluate(Π[k][i,:,j],nodes[k]) for i = 1:r[k], j = 1:r[k+1]]
       ϕ[l,:] = Φ[k][l,:]'*[g[i,j].(sample[l,k]) for i in axes(g,1),j in axes(g,2)]
     end
@@ -10226,4 +10204,3 @@ function TTOpt(train::ExtendedTensorTrain,nodes::NTuple{d,AbstractVector{T}}) wh
 
   return point_opt, point_index_opt, f_opt
 
-end
