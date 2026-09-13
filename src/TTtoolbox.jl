@@ -10204,3 +10204,4 @@ function TTOpt(train::ExtendedTensorTrain,nodes::NTuple{d,AbstractVector{T}}) wh
 
   return point_opt, point_index_opt, f_opt
 
+end
